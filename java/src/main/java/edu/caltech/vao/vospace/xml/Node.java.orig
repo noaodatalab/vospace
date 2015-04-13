@@ -1,0 +1,295 @@
+
+package edu.caltech.vao.vospace.xml;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import com.ximpleware.*;
+import com.ximpleware.xpath.*;
+
+import edu.caltech.vao.vospace.VOSpaceException;
+
+public class Node {
+
+    private VTDNav vn;
+    private AutoPilot ap;
+    private XMLModifier xm;
+    protected String PREFIX;
+
+    /**
+     * Construct a Node from the byte array
+     * @param req The byte array containing the Node
+     */
+    public Node(byte[] bytes) throws VOSpaceException {
+	try {
+	    VTDGen vg = new VTDGen();
+	    vg.setDoc(bytes);
+	    vg.parse(true);
+	    vn = vg.getNav();
+	    ap = new AutoPilot();
+	    xm = new XMLModifier();
+	    ap.declareXPathNameSpace("vos", "http://www.ivoa.net/xml/VOSpace/v2.0");
+	    ap.declareXPathNameSpace("xsi", "http://www.w3.org/2001/XMLSchema-instance");
+	    PREFIX = getNamespacePrefix();
+	    if (!validStructure())
+		throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "Invalid node representation");
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	}
+    }
+
+    /**
+     * Return the values of the items identified by the specified XPath expression
+     * @param expression The XPath expression identifying the items to retrieve
+     * @return the values of the items identified by the XPath expression
+     */
+    private String[] xpath(String expression) throws VOSpaceException {
+	try {
+	    ap.bind(vn);
+	    ArrayList<String> elements = new ArrayList<String>();
+	    ap.selectXPath(expression);
+	    int result = -1;
+	    while ((result = ap.evalXPath()) != -1) {
+		if (vn.getTokenType(result) == VTDNav.TOKEN_ATTR_NAME) {
+		    elements.add(vn.toNormalizedString(result + 1));
+		} else {
+		    int t = vn.getText();
+		    if (t > 0) 
+			elements.add(vn.toNormalizedString(t));
+		}
+	    }
+	    ap.resetXPath();
+	    return elements.toArray(new String[0]);
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Update the value of the text identified by the XPath expression with the specified string
+     * @param expression The XPath expression identifying the text to be replaced
+     * @param value The new text value 
+     */
+    protected void replace(String expression, String value) throws VOSpaceException {
+	try {
+	    ap.bind(vn);
+	    xm.bind(vn);
+	    ap.selectXPath(expression);
+	    int result = -1;
+	    while ((result = ap.evalXPath()) != -1) {
+		if (vn.getTokenType(result) == VTDNav.TOKEN_ATTR_NAME) {
+		    xm.updateToken(result + 1, value);
+		} else {
+		    int t = vn.getText();
+		    if (t > 0)
+			xm.updateToken(t, value);
+		}
+	    }
+	    vn = xm.outputAndReparse();
+	    ap.resetXPath();
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Remove the items identified by the specified XPath expression
+     * @param expression The XPath expression identifying the items to remove
+     */
+    protected void remove(String expression) throws VOSpaceException {
+	try {
+	    ap.bind(vn);
+	    xm.bind(vn);
+	    ap.selectXPath(expression);
+	    int result = -1;
+	    while ((result = ap.evalXPath()) != -1) {
+		xm.remove();
+	    }
+	    vn = xm.outputAndReparse();
+	    ap.resetXPath();
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Add the item identified by the specified XPath expression
+     * @param expression The XPath expression identifying where to add the item
+     * @param item The item to add
+     */
+    protected void add(String expression, String item) throws VOSpaceException {
+	try {
+	    ap.bind(vn);
+	    xm.bind(vn);
+	    ap.selectXPath(expression);
+	    int result = -1;
+	    while ((result = ap.evalXPath()) != -1) {
+		xm.insertAfterElement(item);
+	    }
+	    vn = xm.outputAndReparse();
+	    ap.resetXPath();
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+
+    /**
+     * Add the item identified by the specified XPath expression
+     * @param expression The XPath expression identifying where to add the item
+     * @param item The item to add
+     */
+    protected void addChild(String expression, String item) throws VOSpaceException {
+	try {
+	    ap.bind(vn);
+	    xm.bind(vn);
+	    ap.selectXPath(expression);
+	    int result = -1;
+	    while ((result = ap.evalXPath()) != -1) {
+		xm.insertAfterHead(item);
+	    }
+	    vn = xm.outputAndReparse();
+	    ap.resetXPath();
+	} catch (Exception e) {
+	    e.printStackTrace(System.err);
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Check whether the specified item exists
+     * @param expression The XPath expression identifying the item to check
+     * @return whether the specified item exists or not
+     */
+    protected boolean has(String expression) throws VOSpaceException {
+	try {
+	    boolean has = false;
+	    ap.bind(vn);
+	    ap.selectXPath(expression);
+	    if (ap.evalXPath() != -1)
+		has = true;
+	    ap.resetXPath();
+	    return has;
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Validate the structure of the document
+     */
+    protected boolean validStructure() {
+	return true;
+    }
+
+    /**
+     * Get the uri of the node
+     * @return The uri of the node
+     */
+    public String getUri() throws VOSpaceException {
+	return xpath("/vos:node/@uri")[0];
+    }
+
+    /**
+     * Get the type of the node
+     * @return The type of the node
+     */
+    public String getType() throws VOSpaceException {
+	return xpath("/vos:node/@xsi:type")[0];
+    }
+
+    /**
+     * Set the uri of the node
+     * @param uri The new uri of the node
+     */
+    public void setUri(String uri) throws VOSpaceException {
+	replace("/vos:node/@uri", uri);
+    }
+
+    /**
+     * Get a byte array corresponding to the node
+     * @return a byte array corresponding to the node
+     */
+    public byte[] getBytes() {
+	return vn.getXML().getBytes();
+    }
+
+    /**
+     * Get the namespace prefix used for the node
+     * @return the namespace prefix used for the node
+     */
+    public String getNamespacePrefix() throws VOSpaceException {
+	try {
+	    return vn.getPrefixString(1);
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+    
+    /**
+     * Check whether the node has any properties set
+     * @return whether the node has any properties set
+     */
+    public boolean hasProperties() throws VOSpaceException {
+	try {
+	    return has("/vos:node/vos:properties/vos:property");
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Get the properties set on the node
+     * @return any properties the node has set on it
+     */
+    public HashMap<String, String> getProperties() throws VOSpaceException {
+	try {
+	    HashMap<String, String> properties = new HashMap<String, String>();
+	    String[] propUris = xpath("/vos:node/vos:properties/vos:property/@uri");
+	    for (String uri: propUris) {
+		String value = xpath("/vos:node/vos:properties/vos:property[@uri = '" + uri + "']")[0];
+		properties.put(uri, value);
+	    }
+	    return properties;
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Remove the <properties> element
+     */
+    public void removeProperties() throws VOSpaceException {
+	remove("/vos:node/vos:properties");
+    }
+
+    /**
+     * Remove the <capabilities> element
+     */
+    public void removeCapabilities() throws VOSpaceException {
+	remove("/vos:node/vos:capabilities");
+    }
+
+    /**
+     * Add a <capability> with the specified value to the <capabilities> element creating the latter
+     * if it does not exist.
+     * @param value The value of the <capability> element
+     */
+    public void addCapabilities(String value) throws VOSpaceException {
+	boolean hasCapabilities = has("/vos:node/vos:capabilities");
+	if (!hasCapabilities)
+	    add("/vos:node/vos:provides", PREFIX == null ? "<capabilities></capabilities>" : "<" + PREFIX + ":capabilities></" + PREFIX + ":capabilities>");
+	if (value != null)
+	    addChild("/vos:node/vos:capabilities", PREFIX == null ? "<capability uri=\"" + value + "\"/>" : "<" + PREFIX + ":capability uri=\"" + value + "\"/>");
+    }
+
+
+    /**
+     * Get a string representation of the node
+     * @return a string representation of the node
+     */
+    public String toString() {
+	return new String(getBytes());
+    }
+}

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+    <xsd:schema
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        xmlns:vos.types.1.0="http://www.net.ivoa/xml/VOSpaceTypes-v1.0rc6"
+        targetNamespace="http://www.net.ivoa/xml/VOSpaceContract-v1.0rc6"
+        elementFormDefault="qualified"
+        >
+        
+        <!--+
+            | Import the message schema.
+            +-->
+        <xsd:import
+            namespace="http://www.net.ivoa/xml/VOSpaceTypes-v1.0rc6"
+            schemaLocation="VOSpaceTypes-v1.0rc6.xsd"
+        />
+        
+        <!--+
+            | The GetViews message elements.
+            +-->
+        <xsd:element name="GetViews"         type="vos.types.1.0:GetViewsRequestType"/>
+        <xsd:element name="GetViewsResponse" type="vos.types.1.0:GetViewsResponseType"/>
+        
+        <!--+
+            | The GetProtocols message elements.
+            +-->
+        <xsd:element name="GetProtocols"         type="vos.types.1.0:GetProtocolsRequestType"/>
+        <xsd:element name="GetProtocolsResponse" type="vos.types.1.0:GetProtocolsResponseType"/>
+        
+        <!--+
+            | The GetProperties message elements.
+            +-->
+        <xsd:element name="GetProperties"         type="vos.types.1.0:GetPropertiesRequestType"/>
+        <xsd:element name="GetPropertiesResponse" type="vos.types.1.0:GetPropertiesResponseType"/>
+        
+        <!--+
+            | The CreateNode message elements.
+            +-->
+        <xsd:element name="CreateNode"         type="vos.types.1.0:CreateNodeRequestType"/>
+        <xsd:element name="CreateNodeResponse" type="vos.types.1.0:CreateNodeResponseType"/>
+        
+        <!--+
+            | The DeleteNode message elements.
+            +-->
+        <xsd:element name="DeleteNode"         type="vos.types.1.0:DeleteNodeRequestType"/>
+        <xsd:element name="DeleteNodeResponse" type="vos.types.1.0:DeleteNodeResponseType"/>
+        
+        <!--+
+            | The MoveNode message elements.
+            +-->
+        <xsd:element name="MoveNode"         type="vos.types.1.0:MoveNodeRequestType"/>
+        <xsd:element name="MoveNodeResponse" type="vos.types.1.0:MoveNodeResponseType"/>
+        
+        <!--+
+            | The CopyNode message elements.
+            +-->
+        <xsd:element name="CopyNode"         type="vos.types.1.0:CopyNodeRequestType"/>
+        <xsd:element name="CopyNodeResponse" type="vos.types.1.0:CopyNodeResponseType"/>
+        
+        <!--+
+            | The GetNode message elements.
+            +-->
+        <xsd:element name="GetNode"         type="vos.types.1.0:GetNodeRequestType"/>
+        <xsd:element name="GetNodeResponse" type="vos.types.1.0:GetNodeResponseType"/>
+        
+        <!--+
+            | The SetNode message elements.
+            +-->
+        <xsd:element name="SetNode"         type="vos.types.1.0:SetNodeRequestType"/>
+        <xsd:element name="SetNodeResponse" type="vos.types.1.0:SetNodeResponseType"/>
+        
+        <!--+
+            | The ListNodes message elements.
+            +-->
+        <xsd:element name="ListNodes"         type="vos.types.1.0:ListNodesRequestType"/>
+        <xsd:element name="ListNodesResponse" type="vos.types.1.0:ListNodesResponseType"/>
+        
+        <!--+
+            | The PushToVoSpace message elements.
+            +-->
+        <xsd:element name="PushToVoSpace"         type="vos.types.1.0:PushToVoSpaceRequestType"/>
+        <xsd:element name="PushToVoSpaceResponse" type="vos.types.1.0:PushToVoSpaceResponseType"/>
+        
+        <!--+
+            | The PullToVoSpace message elements.
+            +-->
+        <xsd:element name="PullToVoSpace"         type="vos.types.1.0:PullToVoSpaceRequestType"/>
+        <xsd:element name="PullToVoSpaceResponse" type="vos.types.1.0:PullToVoSpaceResponseType"/>
+        
+        <!--+
+            | The PullFromVoSpace message elements.
+            +-->
+        <xsd:element name="PullFromVoSpace"         type="vos.types.1.0:PullFromVoSpaceRequestType"/>
+        <xsd:element name="PullFromVoSpaceResponse" type="vos.types.1.0:PullFromVoSpaceResponseType"/>
+        
+        <!--+
+            | The PushFromVoSpace message elements.
+            +-->
+        <xsd:element name="PushFromVoSpace"         type="vos.types.1.0:PushFromVoSpaceRequestType"/>
+        <xsd:element name="PushFromVoSpaceResponse" type="vos.types.1.0:PushFromVoSpaceResponseType"/>
+        
+        <!--+
+            | The fault elements.
+            +-->
+        <xsd:element name="InternalFault"             type="vos.types.1.0:InternalFaultType"/>
+        <xsd:element name="NodeNotFoundFault"         type="vos.types.1.0:NodeNotFoundFaultType"/>
+        <xsd:element name="DuplicateNodeFault"        type="vos.types.1.0:DuplicateNodeFaultType"/>
+        <xsd:element name="PermissionDeniedFault"     type="vos.types.1.0:PermissionDeniedFaultType"/>
+        <xsd:element name="InvalidUriFault"           type="vos.types.1.0:InvalidUriFaultType"/>
+        <xsd:element name="InvalidTokenFault"         type="vos.types.1.0:InvalidTokenFaultType"/>
+        <xsd:element name="InvalidArgumentFault"      type="vos.types.1.0:InvalidArgumentFaultType"/>
+        <xsd:element name="TypeNotSupportedFault"     type="vos.types.1.0:TypeNotSupportedFaultType"/>
+        <xsd:element name="ViewNotSupportedFault"     type="vos.types.1.0:ViewNotSupportedFaultType"/>
+        <xsd:element name="ProtocolNotSupportedFault" type="vos.types.1.0:ProtocolNotSupportedFaultType"/>
+        <xsd:element name="TransferFailedFault"       type="vos.types.1.0:TransferFailedFaultType"/>
+        <xsd:element name="InvalidDataFault"          type="vos.types.1.0:InvalidDataFaultType"/>
+        
+    </xsd:schema>
+    

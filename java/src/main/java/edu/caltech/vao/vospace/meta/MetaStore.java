@@ -1,0 +1,254 @@
+/**
+ * MetaStore.java
+ * Author: Matthew Graham (Caltech)
+ * Version: Original (0.1) - 27 June 2006
+ */
+
+package edu.caltech.vao.vospace.meta;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+/**
+ * This interface represents a metadata store for VOSpace 
+ */
+public interface MetaStore {
+
+    /* 
+     * Get the job with the specified identifier
+     * @param jobID The ID of the job to get
+     * @return The requested job or <i>null</i> if there is no job with the given ID.
+     */
+    public String getJob(String jobID) throws SQLException;
+
+    /* 
+     * Add the job with the specified identifier
+     * @param jobID The ID of the job to get
+     * @param job The XML string representation of the job
+     */
+    public void addJob(String jobID, String job) throws SQLException;
+
+    /*
+     * Check whether the object with the specified identifier is in the store
+     */
+    public boolean isStored(String identifier) throws SQLException;
+
+    /*
+     * Store the metadata for the specified identifier
+     */
+    public void storeData(String identifier, int type, Object metadata) throws SQLException;
+
+    /*
+     * Store the metadata for the specified identifier
+     */
+    public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException;
+
+    /*
+     * Store the metadata for the specified identifier
+     */
+    public void storeData(String identifier, int type, String owner, String location, Object metadata) throws SQLException;
+
+    /*
+     * Store the metadata for the specified identifier
+     */
+    public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException;
+
+    public String checkData(String[] identifiers, int limit) throws SQLException;
+
+    public boolean getAllData(String token, int limit) throws SQLException ;
+
+    /*
+     * Retrieve the metadata for the specified identifier at the specified level
+     * of detail
+     */
+    public ResultSet getData(String[] identifiers, String token, int limit) throws SQLException;
+
+    /*
+     * Remove the metadata for the specified identifier
+     */
+    public void removeData(String identifier) throws SQLException;
+ 
+    /*
+     * Update the metadata for the specified identifier
+     */
+    public void updateData(String identifier, Object metadata) throws SQLException;
+
+    /*
+     * Update the metadata for the specified identifier including updating the
+     * identifier
+     */
+    public void updateData(String identifier, String newIdentifier, Object metadata) throws SQLException;
+
+    /*
+     * Update the metadata for the specified identifier including updating the
+     * identifier and the location
+     */
+    public void updateData(String identifier, String newIdentifier, String newLocation, Object metadata) throws SQLException;
+
+    /*
+     * Get a token
+     */
+    public String getToken(String[] identifiers) throws SQLException;
+
+    /*
+     * Get the physical location of the specified identifier
+     */
+    public String getLocation(String identifier) throws SQLException;
+
+    /*
+     * Set the physical location of the specified identifier
+     */
+    public void setLocation(String identifier, String location);
+
+    /*
+     * Get the status of the object with the specified identifier
+     */
+    public boolean getStatus(String identifier) throws SQLException;
+
+    /*
+     * Set the status of the object with the specified identifier
+     */
+    public void setStatus(String identifier, boolean status) throws SQLException;
+
+    /*
+     * Get the type of the object with the specified identifier
+     */
+    public int getType(String identifier) throws SQLException;
+
+    /* 
+     * Check whether the specified property is known to the service
+     */
+    public boolean isKnownProperty(String identifier) throws SQLException;
+
+    /*
+     * Register the specified property
+     */
+    public void registerProperty(String property, int type, boolean readOnly) throws SQLException;
+
+
+    /*
+     * Store the details of the specified transfer
+     */
+    public void storeTransfer(String identifier, String endpoint) throws SQLException;
+
+    /*
+     * Retrieve the job associated with the specified endpoint
+     */
+    public ResultSet getTransfer(String endpoint) throws SQLException;
+
+    /**
+     * Check whether the specified transfer has completed
+     */
+    public boolean isCompleted(String jobid) throws SQLException;
+
+    /*
+     * Store the original view of the specified object
+     */
+    public void setView(String identifier, String view) throws SQLException;
+
+    /*
+     * Get the original view of the object with the specified identifier
+     */
+    public String getView(String identifier) throws SQLException;
+
+    /*
+     * Resolve a location from the specified endpoint
+     */
+    public String resolveLocation(String endpoint) throws SQLException;
+
+    /*
+     * Mark the specified transfer as complete
+     */
+    public void completeTransfer(String endpoint) throws SQLException;
+
+    /*
+     * Mark the specified transfer as complete
+     */
+    public void completeTransfer(String endpoint, boolean updateStatus) throws SQLException;
+
+    /*
+     * Return the identifier associated with the transfer
+     */
+    public String resolveTransfer(String endpoint) throws SQLException;
+
+    /*
+     * Return the identifier associated with the specified location
+     */
+    public String resolveIdentifier(String location) throws SQLException;
+
+    /*
+     * Update the specified property
+     */
+    public void updateProperty(String property, int type) throws SQLException;
+
+    /*
+     * Get the properties of the specified type
+     */
+    public ResultSet getProperties(int type) throws SQLException;
+
+    /*
+     * Get the property type of the specified node
+     */
+    public String getPropertyType(String identifier) throws SQLException;
+
+    /*
+     * Check whether the property is read/only
+     */
+    public boolean isReadOnly(String property) throws SQLException;
+
+    /*
+     * Get the direct children of the specified container node
+     */
+    public String[] getChildren(String identifier) throws SQLException;
+
+    /*
+     * Get the direct children nodes of the specified container node
+     */
+    public String[] getChildrenNodes(String identifier) throws SQLException; 
+
+
+    
+    /*
+     * Get all the children of the specified container node
+     */
+    public String[] getAllChildren(String identifier) throws SQLException;
+    
+    /*
+     * Store a result associated with a Job
+     */
+    public void addResult(String identifier, String result) throws SQLException;
+
+   /*
+     * Get a result associated with a Job
+     */
+    public String getResult(String identifier) throws SQLException;
+
+    /*
+     *     Get the specified node
+     */
+    public String getNode(String identifier) throws SQLException;
+
+    /*
+     * Check the status of a capability (active or not)
+     */
+    public boolean isActive(String identifier, String capability) throws SQLException;
+
+
+    /*
+     * Set the status of a capability (active or not)
+     */
+    public void setActive(String identifier, String capability) throws SQLException;
+
+
+    /*
+     * Register the capabilities
+     */
+    public void registerCapability(String identifier, String capability) throws SQLException;
+
+
+    /**
+     * Check whether transfer associated with a Job exists
+     */
+    public boolean isTransfer(String identifier) throws SQLException;
+
+}

@@ -1,0 +1,6 @@
+<vos:transfer xmlns:vos="http://www.ivoa.net/xml/VOSpace/v2.0">
+  <vos:target></vos:target>
+  <vos:direction></vos:direction>
+  <vos:view uri="" original="True"/>
+  <vos:keepBytes>True</vos:keepBytes>
+</vos:transfer>

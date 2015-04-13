@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE VOTABLE SYSTEM "http://vizier.u-strasbg.fr/xml/VOTable.dtd">
+<VOTABLE version="1.0">
+ <DESCRIPTION>
+   VizieR Astronomical Server: urania.iucaa.ernet.in	2004-04-07T16:13:52
+   Explanations and Statistics of UCDs:			See LINK below
+   In case of problem, please report to:	question@simbad.u-strasbg.fr
+ </DESCRIPTION>
+<!-- VOTable description at  http://vizier.u-strasbg.fr/doc/VOTable/ -->
+
+<DEFINITIONS>
+  <COOSYS ID="J2000" system="eq_FK5" equinox="J2000"/>
+</DEFINITIONS>
+
+
+<!-- Parameters used for the Query:
+ -to=4
+ -from=-3
+ -this=-4
+ -source=
+ -out.max=1000
+ -out.form=XML-VOTable(DTD)
+ !-ignore=-to=!*;-4;=  ReSubmit
+ -order=I
+ -c.eq=J2000
+ -oc.form=sexa
+ -c.r= 10
+ -c.u=arcmin
+ -c.geom=r
+ -out.add=_RAJ2000,_DEJ2000
+ -sort=_r
+ -source=VII/158/table1
+ -out=CooDes
+ -out=RA1950
+ -out=DE1950
+ -out=BLLac
+ -out=Sel
+ -out=Id
+ -out=V
+ V=&gt;20
+ -out=z(em)
+ z(em)=&gt;2.0
+ -out=z(abs)
+ -->
+<INFO ID="Ref" name="-ref" value="VOTx10245" />
+
+<RESOURCE ID="yCat_7158" name="VII/158">
+  <DESCRIPTION>Revised and Updated Catalog of Quasi-stellar Objects (Hewitt+ 1993)</DESCRIPTION>
+  <COOSYS ID="B1950" system="eq_FK4" equinox="J1950"/>
+  <TABLE ID="VII_158_table1" name="VII/158/table1">
+    <DESCRIPTION>The catalogue</DESCRIPTION>
+    <!-- MatchedRows: 1000 (upper limit) -->
+
+    <!-- Now comes the definition of each field -->
+    <FIELD name="_RAJ2000" ucd="POS_EQ_RA_MAIN" ref="J2000" datatype="char" arraysize="11" unit="&quot;h:m:s&quot;">
+      <DESCRIPTION>Right ascension (FK5) Equinox=J2000. (computed by VizieR, not part of the original data)</DESCRIPTION>
+    </FIELD>
+    <FIELD name="_DEJ2000" ucd="POS_EQ_DEC_MAIN" ref="J2000" datatype="char" arraysize="11" unit="&quot;d:m:s&quot;">
+      <DESCRIPTION>Declination (FK5) Equinox=J2000. (computed by VizieR, not part of the original data)</DESCRIPTION>
+    </FIELD>
+    <FIELD name="CooDes" datatype="char" arraysize="8*">
+      <DESCRIPTION>Designation based on 1950 Coordinates (1)</DESCRIPTION>
+    </FIELD>
+    <FIELD name="RA1950" ref="B1950" datatype="char" arraysize="11" unit="&quot;h:m:s&quot;">
+      <DESCRIPTION>Right Ascension 1950 (hours) (1)</DESCRIPTION>
+    </FIELD>
+    <FIELD name="DE1950" ref="B1950" datatype="char" arraysize="11" unit="&quot;d:m:s&quot;">
+      <DESCRIPTION>Declination 1950 (degrees) (1)</DESCRIPTION>
+    </FIELD>
+    <FIELD name="BLLac" datatype="char">
+      <DESCRIPTION>[B] "B" indicates a BL Lac object (1)</DESCRIPTION>
+    </FIELD>
+    <FIELD name="Sel" datatype="char" arraysize="4*">
+      <DESCRIPTION>[RXSVCO +] Selection technique(s) (2)</DESCRIPTION>
+    </FIELD>
+    <FIELD name="Id" datatype="char" arraysize="12*">
+      <DESCRIPTION>Other name</DESCRIPTION>
+      <LINK href="http://urania.iucaa.ernet.in/viz-bin/VizieR-5?-info=XML&amp;-out.add=.&amp;-source=VII/158/table1&amp;recno=${recno}"/>
+    </FIELD>
+    <FIELD name="V" datatype="float" width="5" precision="2" unit="mag">
+      <DESCRIPTION>? Apparent magnitude; often only mpg</DESCRIPTION>
+    </FIELD>
+    <FIELD name="z(em)" datatype="float" width="6" precision="3">
+      <DESCRIPTION>? Emission redshift</DESCRIPTION>
+    </FIELD>
+    <FIELD name="z(abs)" datatype="float" width="7" precision="4">
+      <DESCRIPTION>? Absorption redshift</DESCRIPTION>
+    </FIELD>
+    <FIELD name="recno" datatype="int" width="8" type="hidden">
+      <DESCRIPTION>Record number within the original table (starting from 1)</DESCRIPTION>
+      <LINK href="http://urania.iucaa.ernet.in/viz-bin/VizieR-5?-info=XML&amp;-out.add=.&amp;-source=VII/158/table1&amp;recno=${recno}"/>
+    </FIELD>
+
+<DATA><TABLEDATA>
+<TR><TD>00 03 00.49</TD><TD>+03 02 27.2</TD><TD>0000+027</TD><TD>00 00 26.70</TD><TD>+02 45 45.0</TD><TD> </TD><TD></TD><TD>A</TD><TD>20.14</TD><TD>2.384</TD><TD></TD><TD>10</TD></TR>
+<TR><TD>00 03 22.54</TD><TD>-02 00 52.8</TD><TD>0000-022</TD><TD>00 00 48.80</TD><TD>-02 17 35.1</TD><TD> </TD><TD>O</TD><TD></TD><TD>20.80</TD><TD>2.200</TD><TD></TD><TD>24</TD></TR>
+<TR><TD>00 03 29.17</TD><TD>-42 22 31.5</TD><TD>0000-426</TD><TD>00 00 56.00</TD><TD>-42 39 14.0</TD><TD> </TD><TD>O</TD><TD></TD><TD>21.10</TD><TD>2.110</TD><TD></TD><TD>40</TD></TR>
+<TR><TD>00 03 55.55</TD><TD>-00 55 23.9</TD><TD>0001-012</TD><TD>00 01 21.80</TD><TD>-01 12 06.1</TD><TD> </TD><TD>O</TD><TD></TD><TD>21.50</TD><TD>2.490</TD><TD></TD><TD>58</TD></TR>
+<TR><TD>00 04 00.95</TD><TD>-00 39 00.0</TD><TD>0001-009</TD><TD>00 01 27.20</TD><TD>-00 55 42.2</TD><TD> </TD><TD>O</TD><TD></TD><TD>21.30</TD><TD>2.340</TD><TD></TD><TD>66</TD></TR>
+<TR><TD>00 04 16.15</TD><TD>-01 05 35.8</TD><TD>0001-013</TD><TD>00 01 42.40</TD><TD>-01 22 18.0</TD><TD> </TD><TD>O</TD><TD></TD><TD>20.70</TD><TD>2.250</TD><TD></TD><TD>68</TD></TR>

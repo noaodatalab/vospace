@@ -1,0 +1,10 @@
+<protocols xmlns="http://www.ivoa.net/xml/VOSpace/v2.0">
+ <accepts>
+<protocol uri="ivo://ivoa.net/vospace/core#httpget"/>
+<protocol uri="ivo://ivoa.net/vospace/core#httpput"/>
+</accepts>
+ <provides>
+<protocol uri="ivo://ivoa.net/vospace/core#httpget"/>
+<protocol uri="ivo://ivoa.net/vospace/core#httpput"/>
+</provides>
+</protocols>

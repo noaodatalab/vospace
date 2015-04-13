@@ -1,0 +1,677 @@
+
+package edu.caltech.vao.vospace;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.xml.bind.JAXB;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.events.XMLEvent;
+
+import org.codehaus.stax2.XMLStreamReader2;
+
+import org.apache.commons.io.FileUtils;
+
+import uws.UWSException;
+import uws.job.AbstractJob;
+import uws.job.ErrorType;
+import uws.job.Result;
+import uws.service.BasicUWS;
+
+import edu.caltech.vao.vospace.meta.MetaStore;
+import edu.caltech.vao.vospace.meta.MetaStoreFactory;
+import edu.caltech.vao.vospace.protocol.ProtocolHandler;
+import edu.caltech.vao.vospace.resource.ObjectFactory;
+import edu.caltech.vao.vospace.resource.ParamType;
+import edu.caltech.vao.vospace.resource.ProtocolType;
+import edu.caltech.vao.vospace.resource.TransferType;
+import edu.caltech.vao.vospace.resource.ViewType;
+import edu.caltech.vao.vospace.xml.ContainerNode;
+import edu.caltech.vao.vospace.xml.DataNode;
+import edu.caltech.vao.vospace.xml.Node;
+import edu.caltech.vao.vospace.xml.NodeFactory;
+
+/**
+  * A class to represent a transfer job.
+  */
+public class TransferJob extends AbstractJob {
+
+    private final static boolean STATUS_BUSY = true;
+    private final static boolean STATUS_FREE = false;
+   
+    private final TransferType transfer;
+    private final NodeUtil utils;
+    private final MetaStore store;
+    private final NodeFactory factory;
+    private final VOSpaceManager manager;
+    private final String USER = "";
+    private ArrayList<ProtocolType> SUPPORTED;
+
+    public TransferJob(String document) throws UWSException {
+	super(document);
+	transfer = new ObjectFactory().createTransferType();
+	// Set metadata store
+	try {
+	    MetaStoreFactory mfactory = MetaStoreFactory.getInstance();
+	    store = mfactory.getMetaStore();
+	    utils = new NodeUtil(store);
+	    factory = NodeFactory.getInstance();
+	    manager = VOSpaceManager.getInstance();
+	    loadTransfer(transfer, document);
+	    validateTransfer();
+	} catch (VOSpaceException e) {
+	    throw new UWSException(e.getStatusCode(), e.getMessage());
+	}
+    }
+    
+    /**
+     * Parse the transfer representation and create a Java equivalent
+     *
+     * @param transfer The Java representation of a transfer
+     * @param document The string representation of a transfer
+     */
+    private void loadTransfer(TransferType transfer, String document) throws UWSException {
+	try {
+	    StringReader in = new StringReader(document);
+	    XMLInputFactory xif = XMLInputFactory.newInstance();
+	    XMLStreamReader2 xsr = (XMLStreamReader2) xif.createXMLStreamReader(in);
+	    ObjectFactory of = new ObjectFactory();
+	    // Populate JAXB object
+	    xsr.nextTag(); // Advance to first element - <vos:transfer>
+	    while (xsr.hasNext()) { // Cycle through elements
+		int eventType = xsr.next();
+		if (eventType == XMLEvent.START_ELEMENT) {
+		    String name = xsr.getLocalName();
+		    if (name == "target") {
+			transfer.setTarget(xsr.getElementText());
+		    } else if (name == "direction") {
+			transfer.setDirection(xsr.getElementText());
+		    } else if (name == "view") {
+			ViewType view = of.createViewType();
+			view.setUri(xsr.getAttributeValue(null, "uri"));
+			view.setOriginal(Boolean.valueOf(xsr.getAttributeValue(null, "original")));
+			while (xsr.nextTag() != XMLEvent.END_ELEMENT && xsr.getLocalName() != "view") {
+			    ParamType param = of.createParamType();
+			    param.setUri(xsr.getAttributeValue(null, "uri"));
+			    param.setValue(xsr.getElementText());
+			    view.getParam().add(param);
+			}
+			transfer.setView(view);
+		    } else if (name == "protocol") {
+			ProtocolType protocol = of.createProtocolType();
+			protocol.setUri(xsr.getAttributeValue(null, "uri"));
+			while (xsr.nextTag() != XMLEvent.END_ELEMENT && xsr.getLocalName() != "protocol") {
+			    if (xsr.getLocalName() == "endpoint") {
+				protocol.setEndpoint(xsr.getElementText());
+			    }
+			    while (xsr.nextTag() != XMLEvent.END_ELEMENT && xsr.getLocalName() != "view") {
+				ParamType param = of.createParamType();
+				param.setUri(xsr.getAttributeValue(null, "uri"));
+				param.setValue(xsr.getElementText());
+				protocol.getParam().add(param);
+			    }
+			}
+			transfer.getProtocol().add(protocol);
+		    } else if (name == "keepBytes") {
+			transfer.setKeepBytes(Boolean.valueOf(xsr.getElementText()));
+		    }
+		}
+	    }
+	} catch (Exception e) {
+	    throw new UWSException(e);
+	}
+    }
+
+   /**
+     * Validate the transfer representation - check URIs, views and protocols
+     */
+    private void validateTransfer() throws UWSException {
+	try{
+	    // Check transfer details
+	    String target = transfer.getTarget();
+	    String direction = transfer.getDirection();
+	    boolean external = !direction.startsWith("vos");
+	    // Syntactically valid target and direction (move, copy)
+	    if (!utils.validId(target)) throw new UWSException(UWSException.BAD_REQUEST, "The requested URI is invalid.");
+	    if (!external && !utils.validId(direction)) throw new UWSException(UWSException.BAD_REQUEST, "The requested URI is invalid.");
+	    // Parent node
+	    if (!external && !utils.validParent(direction)) throw new UWSException(UWSException.BAD_REQUEST, "The parent node is not valid.");
+	    // Existence
+	    if (store.isStored(target)) {
+		if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) {
+		    // Container
+		    if (store.getType(target) == NodeType.CONTAINER_NODE.ordinal()) throw new UWSException(UWSException.BAD_REQUEST, "Data cannot be uploaded to a container."); 
+		}
+	    } else {
+		if (!external) throw new UWSException(VOSpaceException.CONFLICT, "A Node does not exist with the requested URI"); 
+	    }
+	    if (!external && store.isStored(direction) && store.getType(direction) != NodeType.CONTAINER_NODE.ordinal()) { 
+		throw new UWSException(VOSpaceException.CONFLICT, "A Node already exists with the requested URI");		
+	    }
+	    if (external) {
+		// Views
+		String uri = transfer.getView().getUri();
+		Views.View view = Views.fromValue(transfer.getView().getUri());
+		if (view == null) throw new UWSException(UWSException.BAD_REQUEST, "A View must be specified.");
+		if (!view.equals(Views.get(Views.View.DEFAULT)) && !manager.SPACE_ACCEPTS_IMAGE.contains(view) && !manager.SPACE_ACCEPTS_TABLE.contains(view) && !manager.SPACE_ACCEPTS_ARCHIVE.contains(view)) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "The service does not support the requested view");
+		// Protocols
+		if (direction.equals("pushFromVoSpace") || direction.equals("pullToVoSpace")) {
+		    checkProtocols(transfer.getProtocol(), manager.SPACE_SERVER_PROTOCOLS);
+		} else if (direction.equals("pushToVoSpace") || direction.equals("pullFromVoSpace")) {
+		    checkProtocols(transfer.getProtocol(), manager.SPACE_CLIENT_PROTOCOLS);
+		}
+	    }
+	} catch (SQLException e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	} catch (VOSpaceException e) {
+	    throw new UWSException(e.getStatusCode(), e.getMessage());
+	}
+    }
+
+    @Override
+    /**
+     * The main business logic of the data transfer
+     */
+    protected void jobWork() throws UWSException, InterruptedException {
+     
+	boolean status = false;
+	
+	// Determine operation
+	String target = transfer.getTarget();
+	String direction = transfer.getDirection();
+
+	// Executing
+	if (!thread.isInterrupted()) {
+	    try {
+		if (direction.equals("pushToVoSpace")) {
+		    pushToVoSpace();
+		} else if (direction.equals("pullToVoSpace")) {
+		    pullToVoSpace();
+		} else if (direction.equals("pushFromVoSpace")) {
+		    pushFromVoSpace();
+		} else if (direction.equals("pullFromVoSpace")) {
+		    pullFromVoSpace();
+		} else if (transfer.isKeepBytes()) {
+		    copyNode();
+		} else if (!transfer.isKeepBytes()) {
+		    moveNode();
+		}
+	    } catch (VOSpaceException e) {
+		throw new UWSException(e.getStatusCode(), e.getMessage());
+	    } catch (SQLException e) {
+		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	    }
+	}
+     
+	long startInstance = System.currentTimeMillis();
+	File file = new File(getLocation(target));
+
+	// Loop activity
+	while (!thread.isInterrupted() && !status) {
+	    Thread.sleep(1000);
+	    if (direction.equals("pushToVoSpace")) {
+	    	status = checkLocation(file, startInstance);
+	    } else if (direction.equals("pullFromVoSpace")) {
+		status = checkTime(startInstance);
+	    }
+	}
+
+	if (!thread.isInterrupted()) {
+	    // Reset node status
+	    if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) { 
+		Node node = getNode(target);
+		setNodeStatus(node, STATUS_FREE);
+	    }
+	    // Commit view ?
+
+	} else {
+	    throw new InterruptedException();
+	}
+    }
+
+    @Override
+    public void clearResources() {
+	// Stop the job (if running)
+	super.clearResources();
+
+    }
+
+    /**
+     * Request a URL to send data to the space
+     */
+    private void pushToVoSpace() throws UWSException {
+	// Request details
+	Node node = null;
+	String target = transfer.getTarget();
+	try {
+	    // Create node (if necessary)
+	    if (!store.isStored(target)) {
+		Node blankNode = factory.getDefaultNode();
+		blankNode.setUri(target);
+		node = manager.create(blankNode, false);
+	    } else {
+		node = getNode(target);
+	    }
+	    // Negotiate protocol details
+	    completeProtocols(target);
+	    // Register transfer endpoints
+	    registerEndpoint();
+	    // Set node status to busy
+	    setNodeStatus(node, STATUS_BUSY);
+	    // Add to results
+	    StringWriter sw = new StringWriter();
+	    JAXB.marshal(transfer, sw);
+	    store.addResult(getJobId(), sw.toString());
+	    addResult(new Result("transferDetails", new URL("http://localhost:8080/vospace-2.0/vospace/results/" + getJobId())));
+	} catch (Exception e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Export data from the space
+     */
+    private void pushFromVoSpace() throws UWSException {
+	// Request details
+	String target = transfer.getTarget();
+	Node node = getNode(target);
+	// Perform data transfer
+	performTransfer(node);
+    }
+
+    /**
+     * Import data into the space
+     */
+    private void pullToVoSpace() throws UWSException {
+	// Request details
+	Node node = null;
+	String target = transfer.getTarget();
+	try {
+	    // Create node (if necessary)
+	    if (!store.isStored(target)) {
+		Node blankNode = factory.getDefaultNode();
+		blankNode.setUri(target);
+		node = manager.create(blankNode, false);
+	    } else {
+		node = getNode(target);
+	    }
+	} catch (Exception e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	}
+	// Negotiate protocol details
+	completeProtocols(target);
+	// Set node status to busy
+	setNodeStatus(node, STATUS_BUSY);
+	// Perform data transfer
+	performTransfer(node);
+    }
+
+    /**
+     * Request a URL to retrieve data from the space
+     */
+    private void pullFromVoSpace() throws UWSException {
+	// Request details
+	String target = transfer.getTarget();
+	// Negotiate protocol details
+	completeProtocols(target);
+	// Register transfer endpoints
+	registerEndpoint();
+	// Add to results
+	try {
+	    StringWriter sw = new StringWriter();
+	    JAXB.marshal(transfer, sw);
+	    store.addResult(getJobId(), sw.toString());
+	    addResult(new Result("transferDetails", new URL("http://localhost:8080/vospace-2.0/vospace/results/" + getJobId())));
+	} catch (Exception e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Check whether the specified file has been modified within the past hour
+     * @param location The file to check
+     * @param start The start point of the hour long period
+     * @return whether the file has been modified with the past hour
+     */
+    private boolean checkLocation(File location, long start) {
+	// Is the hour up?
+	boolean changed = false;
+	if (System.currentTimeMillis() - start < 3600000) {
+	    if (location.exists()) {
+		// Any activity with the past five seconds?
+		long lastModified = location.lastModified();
+		if (lastModified > start && System.currentTimeMillis() - lastModified > 5000) changed = true;
+	    }
+	} else {
+	    changed = true;
+	}
+	return changed;
+    }
+
+    /**
+     * Check whether its been an hour
+     * @param start The start point of the hour long period
+     * @return whether the file has been modified with the past hour
+     */
+    private boolean checkTime(long start) throws UWSException {
+	// Is the hour up?
+	boolean changed = false;
+	long diff = System.currentTimeMillis() - start;
+	if (diff > 3600000) changed = true;
+	if ((diff%5000) < 1000) {
+	    try {
+		if (store.isCompleted(getJobId())) changed = true;
+	    } catch (SQLException e) {
+		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	    }
+	}
+	return changed;
+    }
+
+    /**
+     * Move from the specified target to the direction
+     */
+    private void moveNode() throws VOSpaceException, SQLException, UWSException {
+	// Request details
+	String target = transfer.getTarget();
+	String direction = transfer.getDirection();
+	// Get node
+	ResultSet result = store.getData(new String[] {target}, null, 0);
+	Node node = null;
+	if (result.next()) {
+	    node = factory.getNode(result.getString(1));	
+	} else {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Node not in metastore");
+	}
+	// Check whether endpoint is reserved URI
+	if (direction.endsWith(".null")) {
+	    manager.delete(target);
+	}
+	if (direction.endsWith(".auto")) direction = generateUri(direction, ".auto"); 
+	// Check whether endpoint is a container
+	if (isContainer(direction)) direction += target.substring(target.lastIndexOf("/"));
+	// Change identifier
+	node.setUri(direction);
+	// Move bytes
+	String newLocation = getLocation(direction);
+	if (!moveBytes(store.getLocation(target), newLocation)) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Unable to move bytes between target and direction");
+	// Store update node
+	store.updateData(target, direction, newLocation, node.toString());
+	// Check if target is a container
+	if (node instanceof ContainerNode) {
+	    // Move directory
+	    try {
+		FileUtils.moveDirectory(new File(new URI(target)), new File(new URI(direction)));
+	    } catch (Exception e) {
+		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	    }
+	    // Update metadata
+	    for (String child: store.getAllChildren(target)) {
+		// Update uri
+		Node childNode = manager.getNode(child, "max");
+		node.setUri(child.replace(target, direction));
+      		// Get new location
+		newLocation = getLocation(childNode.getUri());
+		// Store moved node
+		store.updateData(child, childNode.getUri(), getLocation(childNode.getUri()), childNode.toString());
+	    }
+	}
+    }
+
+    /**
+     * Copy from the specified target to the direction
+     */
+    private void copyNode() throws VOSpaceException, SQLException, UWSException {
+	// Request details
+	String target = transfer.getTarget();
+	String direction = transfer.getDirection();
+	// Get node
+	ResultSet result = store.getData(new String[] {target}, null, 0);
+	Node node = null;
+	if (result.next()) {
+	    node = factory.getNode(result.getString(1));	
+	} else {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Node not in metastore");
+	}
+	// Check whether endpoint is reserved URI
+	if (direction.endsWith(".null")) {
+	    manager.delete(target);
+	}
+	if (direction.endsWith(".auto")) direction = generateUri(direction, ".auto"); 
+	// Check whether endpoint is a container
+	if (isContainer(direction)) direction += target.substring(target.lastIndexOf("/"));
+	// Change identifier
+	node.setUri(direction);
+	// Copy bytes
+	String newLocation = getLocation(direction);
+	if (!copyBytes(store.getLocation(target), newLocation)) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Unable to move bytes between target and direction");
+	// Store new node
+	store.storeData(direction, getType(node.getType()), USER, newLocation, node.toString());
+	// Check if target is a container
+	if (node instanceof ContainerNode) {
+	    // Move directory
+	    try {
+		FileUtils.copyDirectory(new File(new URI(target)), new File(new URI(direction)));
+	    } catch (Exception e) {
+		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	    }
+	    // Update metadata
+	    for (String child: store.getAllChildren(target)) {
+		// Update uri
+		Node childNode = manager.getNode(child, "max");
+		node.setUri(child.replace(target, direction));
+      		// Get new location
+		newLocation = getLocation(childNode.getUri());
+		// Store copy node
+		store.storeData(child, getType(childNode.getType()), USER, getLocation(childNode.getUri()), childNode.toString());
+	    }
+	}
+    }
+
+    /**
+     * Generate a URI replacing the specified part
+     * @param uri The static part of the URI
+     * @param remove The part of the URI to replace with an autogenerated part
+     * @return the new URI
+     */
+    private String generateUri(String uri, String remove) {
+	String newUri = uri.substring(0, uri.length() - remove.length()) + UUID.randomUUID().toString();
+	return newUri;
+    }
+
+    /**
+     * Check whether the specified uri is a container
+     * @return whether the specified uri is a container
+     */
+    private boolean isContainer(String uri) throws SQLException {
+	return store.getType(uri) == NodeType.CONTAINER_NODE.ordinal();
+    }
+
+    /**
+     * Get a location for an object
+     * @param identifier The identifier for the object whose location is sought
+     * @return the location for the specified object
+     */
+    private String getLocation(String identifier) {
+	String name = identifier.substring(identifier.lastIndexOf("!"));
+        String dataname = name.substring(name.indexOf("/") + 1);
+        return manager.BASEURI + "/" + dataname; 
+    }
+
+    /**
+     * Move the bytes from the old location to the new location
+     * @param oldLocation The location from which bytes are to be moved
+     * @param newLocation The location to which bytes are to be moved
+     * @return whether the move operation has been successful or not
+     */
+    private boolean moveBytes(String oldLocation, String newLocation) throws UWSException {
+	boolean success = false;
+	try {
+	    FileUtils.moveFile(new File(new URI(oldLocation)), new File(new URI(newLocation)));
+	    success = true;
+	} catch (Exception e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+        }
+	return success;
+    }
+
+    /**
+     * Copy the bytes from the old location to the new location
+     * @param oldLocation The location from which bytes are to be copied
+     * @param newLocation The location to which bytes are to be copied
+     * @return whether the copy operation has been successful or not
+     */
+    private boolean copyBytes(String oldLocation, String newLocation) throws UWSException {
+	boolean success = false;
+	try {
+	    FileUtils.copyFile(new File(new URI(oldLocation)), new File(new URI(newLocation)));
+	    success = true;
+	} catch (Exception e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+        }
+	return success;
+    }
+
+    /**
+     * Get the NodeType integer for the node name
+     * @param type The name of the node type
+     * @return the ordinal value of the equivalent NodeType type
+     */
+    private int getType(String type) {
+	if (type.equals("vos:Node")) {
+	    return NodeType.NODE.ordinal();
+	} else if (type.equals("vos:DataNode")) {
+	    return NodeType.DATA_NODE.ordinal();
+	} else if (type.equals("vos:ContainerNode")) {
+	    return NodeType.CONTAINER_NODE.ordinal();
+	} else if (type.equals("vos:UnstructuredDataNode")) {
+	    return NodeType.UNSTRUCTURED_DATA_NODE.ordinal();
+	} else if (type.equals("vos:StructuredDataNode")) {
+	    return NodeType.STRUCTURED_DATA_NODE.ordinal();
+	} else if (type.equals("vos:LinkNode")) {
+	    return NodeType.LINK_NODE.ordinal();
+	}
+	return -1;
+    }
+
+    /**
+     * Check that there is at least one supported protocol in the supplied list
+     * @param request The list of protocols from the user
+     * @param service The list of protocols that the service supports
+     */
+    private void checkProtocols(List<ProtocolType> request, List<ProtocolType> service) throws UWSException {
+	SUPPORTED = new ArrayList<ProtocolType>();
+	ArrayList<String> uris = new ArrayList<String>();
+	for (ProtocolType reqProtocol : request) {
+	    uris.add(reqProtocol.getUri());
+	}
+	for (ProtocolType serProtocol : service) {
+	    if (uris.contains(serProtocol.getUri())) SUPPORTED.add(serProtocol);
+	}
+	if (SUPPORTED.size() == 0) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "The service supports none of the requested Protocols");
+    }
+
+    /**
+     * Fill in the operational details of any protocols to use in the supplied list
+     * @param nodeUri The URI of the node involved in the data transfer
+     */
+    private void completeProtocols(String nodeUri) throws UWSException {
+	try {
+	    List<ProtocolType> request = transfer.getProtocol();
+	    request.removeAll(request);
+	    for (ProtocolType protocol : SUPPORTED) {
+		ProtocolHandler handler = manager.PROTOCOLS.get(protocol.getUri());
+		protocol = handler.admin(nodeUri, protocol);
+		request.add(protocol);
+	    }
+	} catch (Exception e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Get the specified node
+     * @param identifier The id of the node to retrieve
+     * @return the retrieved node
+     */
+    public Node getNode(String identifier) throws UWSException {
+	Node node = null;
+	try {
+	    ResultSet result = store.getData(new String[] {identifier}, null, 0);
+	    if (result.next()) {
+		node = factory.getNode(result.getString(1));
+	    } 
+	} catch (SQLException e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	} catch (VOSpaceException e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	}
+	return node;
+    }
+
+    /*
+     * Set the status for the node
+     */
+    private void setNodeStatus(Node node, boolean busy) throws UWSException {
+        try {
+            if (node instanceof DataNode) ((DataNode) node).setBusy(busy);
+	    store.setStatus(node.getUri(), busy);
+	    store.updateData(node.getUri(), node.toString());
+	} catch (SQLException e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	} catch (VOSpaceException e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    /**
+     * Register the transfer endpoints
+     */
+    private void registerEndpoint() throws UWSException {
+	try {
+	    String jobId = getJobId();
+	    for (ProtocolType protocol : transfer.getProtocol()) {
+		store.storeTransfer(jobId, protocol.getEndpoint()); 
+	    }
+	} catch (SQLException e) {
+	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+    
+
+
+    /**
+     * Perform the transfer using the negotiated protocols
+     * @param node The node associated with the data transfer
+     */
+    private void performTransfer(Node node) throws UWSException {
+	// Loop through negotiated protocols until one works
+	boolean success = false;
+        for (ProtocolType protocol : transfer.getProtocol()) {
+	    try {
+		ProtocolHandler handler = manager.PROTOCOLS.get(protocol.getUri());
+	        if (handler.invoke(protocol, getLocation(node.getUri()))) {
+	            success = true;
+		    break;
+	        }
+	    } catch (IOException e) {
+		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	    } catch (VOSpaceException e) {
+		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+	    }
+	}	
+	if (!success) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "None of the requested protocols was successful.");
+    }
+
+}

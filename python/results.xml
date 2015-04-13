@@ -1,0 +1,11 @@
+<transfer>
+  <target>vos://nvo.caltech!vospace/mydata1</target>
+  <direction>pullFromVoSpace</direction>
+  <view>ivo://ivoa.net/vospace/core#defaultview</view>
+  <protocol uri="ivo://ivoa.net/vospace/core#httpget">
+    <endpoint>http://localhost:8000/data/d27282305c6746889691e914abab9403</endpoint>
+  </protocol>
+  <protocol uri="ivo://ivoa.net/vospace/core#ftpget">
+    <endpoint>ftp://localhost:8000/data/0d4824049dd444a290f6a524323dbcd0</endpoint>
+  </protocol>
+</transfer>

@@ -1,0 +1,265 @@
+= VOSpace 2.0 reference implementation =
+
+VOSpace is the IVOA interface to distributed storage. It specifies how
+VO agents and applications can use network attached data stores to
+persist and exchange data in a standard way.
+
+VOSpace 2.0 [1] describes a RESTful version of the interface whilst
+offering the same functionality as the SOAP-based VOSpace 1.15 version [2]: 
+
+   * add or delete data objects
+   * manipulate metadata for the data objects (properties)
+   * obtain URIs through which the content of the data objects can be accessed
+   * group data in a hierarchical fashion (containers)
+   * federate distinct VOSpace services (links)
+   * expose data objects and collections through other interfaces (capabilities)
+   * extensive search ability with wildcard support (find)
+
+== 1. Design and implementation ==
+
+This section gives a brief overview of design and implementation
+decisions present in the implementation. This implementation consists of a number of units which
+manage different functional aspects of the system. These are:
+
+   * the web interface which handles the RESTful calls
+   * the resource managers which handle resource representations and operations - these form the bulk of the business logic of the service
+   * the persistence layer which interfaces with the underlying database used to store service data and object metadata 
+   * the job queue which manages the asynchronous operations
+   * the protocol handlers which actually perform the data transfers
+
+It has been implemented in Python, primarily to demonstrate service
+interoperability - reference implementations already exist in Java -
+in support of the IVOA standards process for the VOSpace 2.0 specification
+and to garner experience with RESTful services in Python. It should be
+noted that as a reference implementation, greater weight is given to
+correct behaviour (in terms of requests and responses) than to performance.
+
+=== Web interface ===
+
+There are a number of Python frameworks which support RESTful services
+with varying degrees of ease, functionality, and support. Some of these are layered on
+top of existing Python web frameworks, e.g., RestPy [3] with Twisted [4],
+whilst others are designed to be lightweight standalone solutions,
+e.g., RIP [5]. 
+
+CherryPy [6] is a flexible object-oriented web framework written in Python which affords easy low
+level access to HTTP protocol operations thus making it well-suited to
+supporting RESTful services. In particular, code can be written to
+directly deal with each of the HTTP verbs: GET, POST, PUT, and DELETE:
+
+{{{
+class Mapper():
+  """
+  Root class for service
+  """
+  exposed = True
+
+  def GET(self, *args, **kwargs):
+    """
+    Respond to HTTP GET requests
+    """
+
+  def POST(self, *args, **kwargs):
+    """ 
+    Respond to HTTP POST requests
+    ""
+
+  def PUT(self, *args, **kwargs):
+    """ 
+    Respond to HTTP PUT requests
+    ""
+
+  def DELETE(self, *args, **kwargs):
+    """ 
+    Respond to HTTP DELETE requests
+    ""
+}}}
+
+In this implementation (controller.py), each of these methods checks the basic validity of
+the service request - valid user, resource endpoint, etc. - and then maps the
+call to the appropriate resource manager. Any responses and/or errors
+are also returned to the client with the appropriate HTTP status code
+and entity body (as defined in the specification).
+
+=== Resources ===
+
+The VOSpace 2.0 RESTful binding exposes a number of the VOSpace data
+model elements as fully manipulable (read/write) web resources: nodes (and properties), transfers,
+and searches - as well as those which are purely retrievable
+(read-only): protocols and views. Operations relating to the former
+are handled by the appropriate resource managers. 
+
+==== Nodes ====
+
+The VOSpace 2.0 data model defines a hierarchy of node types:
+
+[[Image(http://www.ivoa.net/Documents/VOSpace/20101112/vospace-node-hierarchy.png)]]
+
+In this implementation, each node type has an equivalent Python object representation (in
+resources.py). Node instances can be created via a factory class
+(NodeFactory) and node operations involving persistence (creating, updating, deleting) are
+handled by a manager class (NodeManager). Properties are defined
+within the context of a node, although there are also lists kept of
+service-supported properties and all properties used in a service.
+
+==== Transfers ====
+
+In VOSpace, both internal (move, copy) and external
+(pushTo/pullTo/pushFrom/pullFrom) data transfers are represented as
+transfer resources specifying a transfer operation. In this
+implementation, there is an equivalent Python object class (in
+resources.py) and a manager class (TransferManager) which handles the
+business logic of the data transfer operations. 
+
+==== Searches ====
+
+As with transfers, there is a Python representation (search.py) for
+the data model component and a manager class (SearchManager) which
+handles the business logic for search operations.
+
+==== Protocols and views ====
+
+Equivalent Python object representations exist for the protocol (Protocol) and
+view (View) data model components. 
+
+=== DB schema ===
+
+The implementation uses a persistence layer (store.py) to provide an interface
+between the service and the underlying database used to store data and
+service metadata. All interactions with the database (queries,
+inserts, updates, deletes) are mediated by a manager class
+(LocalStoreManager). The database is structured thus:
+
+[[Image(VOSpace-ERD.gif)]]
+
+=== UWS ===
+
+In the specification, data transfer and search operations are modeled using the IVOA UWS
+design pattern [7] for asynchronous tasks. The UWS Job and JobList resources are implemented as
+equivalent Python class (Job and JobList) with a manager class
+(JobManager) to handle the various stages of job execution and
+monitoring via a job queue. Each Job is launched as a separate thread
+wrapped within a Future class. The queue is polled at a specified rate
+and changes in job status dealt with as appropriate (according to the
+UWS specification). Both the TransferManager and SearchManager classes
+post to the job queue via the JobManager when an valid resource
+request is received.
+
+== 2. Setup ==
+
+This section describes how to set up a VOSpace 2.0 instance based on
+the reference implementation code. This was written using Python 2.6.4
+(Enthought 32-bit distribution) on a MacBook Pro running Mac OS 10.6.6.
+
+=== Basic installation ===
+
+The basic installation process consists of:
+
+   * configuring the software environment (dependencies, etc),
+   * creating the appropriate database structures
+   * selecting an operating mode for the web server.
+
+We'll assume that the environment variable VOSPACE_DIR points to the
+direction containing the implementation code.
+
+==== Dependencies ====
+
+The implementation makes use of a number of Python modules that you
+need to ensure are installed on the machine on which you going to host
+the VOSpace service. These are:
+
+   * cherrypy [6] (for the web framework): ver. 3.1
+   * lxml [8] (for XML processing): ver. 2.0.5 
+   * PySQLPool [9] (for interfacing with MySQL): ver. 0.3.5 
+   * pycurl [10] (for handling HTTP-based transfers): ver. 7.20 
+
+Depending on the Python distribution running on the host machine, some
+of these may already be installed. You can check by:
+
+{{{
+> python
+>>> import cherrypy
+>>> import lxml
+>>> import PySQLPool
+>>> import pycurl
+}}}
+
+If any of them are missing then they can be downloaded and installed
+from the URLs given in the references below.
+
+Note also that the implementation has only been tested on Python
+2.6. Higher versions of Python 2.x should be fine.
+
+==== Database ====
+
+By default, MySQL [11] is used as the backend database. To create the
+necessary tables and database (called vospace) in an existing MySQL installation, just run the
+createdb.sql script:
+
+{{{
+> mysql -u root < createdb.sql
+}}}
+
+You may need to replace the root user with another one with
+adminstation privileges, depending on local site policies.
+
+If you wish to use another database for the backend, you will need to
+ensure that the appropriate SQL syntax is used in createdb.sql and store.py.
+
+The details for connecting to the database - host, port, username,
+password - are specified in config.py in the CONFIG class. These
+should be amended as appropriate.
+
+==== Web server ====
+
+CherryPy can run as a standalone web server (default behaviour) or behind an Apache
+installation. In standalone mode, the following parameters need to be
+set in config.py:
+
+   * HOST_URL - the base endpoint of the service, e.g., 'http://localhost'
+   * PORT - the port that the service will run on, e.g., 8000
+   * BASE_DIR - the directory where any static pages will be served from, e.g.,  '/Users/mjg/Projects/vospace/vospace-2.0/python/site'
+   * ROOT_NODE - the root node of the VOSpace, e.g., 'vos://nvo.caltech!vospace'
+   * TRANSFER_ENDPOINT - the base endpoint for HTTP-based transfer URLs, e.g., 'http://localhost:8000/data'
+
+Once these are set, the service can be started by simply typing:
+
+{{{
+> python controller.py
+}}}
+
+To run the service behind Apache...
+
+=== Customizing ===
+
+The basic implementation supports the default properties and views
+defined in the specification as well as the HTTP GET and PUT protocols
+for data transfer, both as a server (pushTo, pullFrom) and as a client (pullTo,
+pushFrom). 
+
+Properties
+Views
+Additional protocols
+Node types
+
+== 3. Tests ==
+
+=== Conformance matrix ===
+
+=== What is tested and expected response ===
+
+== 4. Security ==
+
+=== Running behind Apache ===
+=== Client-side SSL with CherryPy ===
+=== OpenID ===
+
+== References ==
+[1] VOSpace 2.0 specification
+[2] VOSpace 1.15 specification
+[3] RestPy
+[4] Twisted
+[5] RIP
+[6] CherryPy
+[7] UWS
+[8] MySQL

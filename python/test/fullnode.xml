@@ -1,0 +1,12 @@
+<node xmlns="http://www.ivoa.net/xml/VOSpace/v2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="vos:StructuredDataNode" uri="vos://nvo.caltech!vospace/node16" busy="false">
+  <properties>
+    <property uri="ivo://ivoa.net/vospace/core#description">My award winning images</property>
+  </properties>
+  <accepts>
+    <view uri="ivo://ivoa.net/vospace/core#votable"/>
+  </accepts>
+  <provides>
+    <view uri="ivo://ivoa.net/vospace/core#votable"/>
+  </provides>
+  <capabilities/>
+</node>

@@ -1,0 +1,414 @@
+/*******************************************************************************
+ * Copyright (c) 2011, Johns Hopkins University
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the Johns Hopkins University nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL Johns Hopkins University BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ******************************************************************************/
+package edu.jhu.pha.vospace.swiftapi;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.TreeMap;
+import org.apache.commons.configuration.Configuration;
+import org.apache.http.HttpException;
+import org.apache.log4j.Logger;
+import org.codehaus.jackson.JsonFactory;
+import org.codehaus.jackson.JsonGenerationException;
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.jdom.Element;
+import org.jdom.JDOMException;
+import org.jdom.Namespace;
+import org.jdom.input.SAXBuilder;
+import org.jdom.output.Format;
+import org.jdom.output.XMLOutputter;
+
+import com.rackspacecloud.client.cloudfiles.FilesAuthorizationException;
+import com.rackspacecloud.client.cloudfiles.FilesClient;
+import com.rackspacecloud.client.cloudfiles.FilesContainer;
+import com.rackspacecloud.client.cloudfiles.FilesException;
+import com.rackspacecloud.client.cloudfiles.FilesInvalidNameException;
+import com.rackspacecloud.client.cloudfiles.FilesNotFoundException;
+import com.rackspacecloud.client.cloudfiles.FilesObject;
+import com.sun.jersey.core.util.Base64;
+
+import edu.jhu.pha.vospace.api.*;
+import edu.jhu.pha.vospace.api.PathSeparator.NodePath;
+import edu.jhu.pha.vospace.api.exceptions.BadRequestException;
+import edu.jhu.pha.vospace.api.exceptions.InternalServerErrorException;
+import edu.jhu.pha.vospace.api.exceptions.NotFoundException;
+import edu.jhu.pha.vospace.api.exceptions.PermissionDeniedException;
+
+
+/**
+ * OpenStack Swift data storage backend connector for VOSpace (VOSpace API implementation)
+ * @author Dmitry Mishin
+ *
+ */
+public class SwiftClient implements VospaceConnector {
+	private static Configuration conf;
+	private static SAXBuilder xmlBuilder = new SAXBuilder();
+	private static Logger logger = Logger.getLogger(SwiftClient.class);
+
+	/**
+	 * Openstack Rackspace connector
+	 */
+	private FilesClient cli = null;
+
+	/**
+	 * @param conf Configuration object
+	 */
+	public SwiftClient(Configuration conf) {
+		if(null == SwiftClient.conf)
+			SwiftClient.conf = conf;
+	}
+	
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#authenticate(java.lang.String, java.lang.String, java.lang.String)
+	 */
+	@Override
+	public void authenticate(String endPoint, String userId, String password) {
+		if(null == cli) {
+			cli = new FilesClient(userId,password,endPoint);
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#authenticate(java.lang.String, java.lang.String, java.lang.String)
+	 */
+	@Override
+	public void authenticate(String endPoint, String jsonCredentials) {
+		try {	
+			if(null == cli) {
+				ObjectMapper m = new ObjectMapper();
+				JsonNode rootNode = m.readValue(jsonCredentials, JsonNode.class);
+				String username = rootNode.path("username").getTextValue();
+				String apikey = rootNode.path("apikey").getTextValue();
+				
+				cli = new FilesClient(username,apikey,endPoint);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e, "Error authenticating the client.");
+		}
+	}
+	
+	/**
+	 * @return OpenStack connector
+	 */
+	private FilesClient getClient() {
+		if(cli.isLoggedin()){
+			return cli;
+		}
+		if(null != cli.getUserName() && null != cli.getPassword()) {
+			try {
+				cli.login();
+				return cli;
+			} catch (HttpException e) {
+				e.printStackTrace();
+				throw new InternalServerErrorException(e, "Error authenticating the client.");
+			} catch (IOException e) {
+				e.printStackTrace();
+				throw new InternalServerErrorException(e, "Error authenticating the client.");
+			}
+		} else {
+			throw new InternalServerErrorException("You should be logged in. Please initialise with login and password first."+cli.getUserName() +" "+ cli.getPassword());
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#createNode(java.lang.String, java.lang.String)
+	 */
+	@Override
+	public String createNode(String nodeString, String nodeUrl) {
+		NodePath npath = PathSeparator.splitPath(nodeUrl, false);
+		try {
+			if(null != npath.getNodePath()) { // creating a node inside a first level container
+				if(!getClient().containerExists(npath.getContainerName()))
+					throw new NotFoundException("Container "+npath.getContainerName()+" not found.");
+				if(!getClient().listObjects(npath.getContainerName(), npath.getNodePath()).isEmpty()){
+					throw new BadRequestException("Node "+nodeString+" already exists.");
+				}
+			}
+
+			StringReader strRead = new StringReader(nodeString);
+			Element metaElm = xmlBuilder.build(strRead).getRootElement();
+			strRead.close();
+			
+			String nodeType = metaElm.getAttributeValue("type", Namespace.getNamespace(conf.getString("namespace.xml_schema")));
+			
+			if(nodeType.equals(conf.getString("core.nodetype.node")) || nodeType.equals(conf.getString("core.nodetype.data_node")) || nodeType.equals(conf.getString("core.nodetype.structured_data_node")) || nodeType.equals(conf.getString("core.nodetype.unstructured_data_node"))){
+				logger.debug("Creating file "+nodeUrl);
+				getClient().storeObject(npath.getContainerName(), new byte[]{}, "application/file", npath.getNodePath(), null);
+			} else if(nodeType.equals(conf.getString("core.nodetype.container_node"))) {
+				if(null != npath.getNodePath()){
+					logger.debug("Creating folder "+nodeUrl);
+					getClient().createFullPath(npath.getContainerName(), npath.getNodePath());
+				} else {
+					logger.debug("Creating container "+nodeUrl);
+					getClient().createContainer(npath.getContainerName());
+				}
+			}
+			
+			return getNode(nodeUrl);
+		} catch (JDOMException ex) {
+			ex.printStackTrace();
+			throw new InternalServerErrorException(ex);
+		} catch (IOException ex) {
+			ex.printStackTrace();
+			throw new InternalServerErrorException(ex);
+		} catch (HttpException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		}
+
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#moveNode(java.lang.String)
+	 */
+	@Override
+	public void moveNode(String nodeSourceUrl, String nodeDestinationUrl) {
+		// TODO Auto-generated method stub
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#copyNode(java.lang.String)
+	 */
+	@Override
+	public void copyNode(String nodeSourceUrl, String nodeDestinationUrl) {
+		// TODO Auto-generated method stub
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#deleteNode(java.lang.String)
+	 */
+	@Override
+	public void deleteNode(String nodeUrl) {
+		NodePath npath = PathSeparator.splitPath(nodeUrl, false);
+		logger.debug("Deleting "+npath.getContainerName()+" "+npath.getNodePath());
+		try {
+			if(null == npath.getNodePath()){
+				getClient().deleteContainer(npath.getContainerName());
+			} else {
+				getClient().deleteObject(npath.getContainerName(), npath.getNodePath());
+			}
+		} catch (FilesNotFoundException e) {
+			e.printStackTrace();
+			throw new NotFoundException(e);
+		} catch (FilesException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		} catch (HttpException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#getNode(java.lang.String)
+	 */
+	@Override
+	public String getNode(String nodeUrl) {
+		/**@todo get node metadata **/
+		return "";
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#getNodeSize(java.lang.String)
+	 */
+	@Override
+	public String getNodeSize(String nodeUrl) {
+		NodePath npath = PathSeparator.splitPath(nodeUrl, false);
+        
+        try {
+        	return getClient().getObjectMetaData(npath.getContainerName(), npath.getNodePath()).getContentLength();
+		} catch (FilesNotFoundException ex) {
+			ex.printStackTrace();
+			throw new InternalServerErrorException(ex);
+		} catch (FilesAuthorizationException ex) {
+			ex.printStackTrace();
+			throw new PermissionDeniedException(ex);
+		} catch (FilesInvalidNameException ex) {
+			ex.printStackTrace();
+			throw new InternalServerErrorException(ex);
+		} catch (HttpException ex) {
+			ex.printStackTrace();
+			throw new InternalServerErrorException(ex);
+		} catch (IOException ex) {
+			ex.printStackTrace();
+			throw new InternalServerErrorException(ex);
+		}
+	}
+
+	
+	
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#setNode(java.lang.String, java.lang.String)
+	 */
+	@Override
+	public void setNode(String nodeString, String nodeUrl) {
+		/**@todo set node metadata **/
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#findNodes(java.lang.String)
+	 */
+	@Override
+	public String findNodes(String nodeString) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#pushDataToStorage(java.lang.String, java.io.InputStream)
+	 */
+	@Override
+	public void pushDataToStorage(String nodeUrl, InputStream dataInput) {
+		logger.debug("pushing to "+nodeUrl);
+		
+		NodePath npath = PathSeparator.splitPath(nodeUrl, false);
+
+		try {
+			getClient().storeStreamedObject(npath.getContainerName(), dataInput, "application/file", npath.getNodePath(), null);
+		} catch (FilesException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		} catch (HttpException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		}
+	}
+	
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#getNodesList(java.lang.String, java.lang.String)
+	 */
+	public String getNodesList(String nodeUrl, String format) {
+		NodePath npath = PathSeparator.splitPath(nodeUrl, false);
+		
+		StringWriter writer = new StringWriter();
+		try {
+        	JsonFactory f = new JsonFactory();
+        	JsonGenerator g = f.createJsonGenerator(writer);
+        	 
+        	g.writeStartObject();
+        	g.writeStringField("label", "name");
+        	g.writeStringField("identifier", "id");
+
+        	g.writeArrayFieldStart("items");
+        	
+        	if(null == npath.getContainerName() || npath.getContainerName().isEmpty()) {
+				for(Iterator<FilesContainer> it = getClient().listContainers().iterator(); it.hasNext();){
+		        	FilesContainer filesContainer = it.next();
+		        	g.writeStartObject();
+		        	g.writeStringField("type", "container");
+		        	g.writeStringField("name", filesContainer.getName());
+		        	g.writeStringField("id", filesContainer.getName());
+		        	g.writeArrayFieldStart("children");
+		        	g.writeEndArray();
+		        	g.writeEndObject();
+		        }
+        	} else {
+        		if(null == npath.getNodePath())
+        			npath.setNodePath("");
+        		ArrayList<FilesObject> list = (ArrayList<FilesObject>)getClient().listObjects(npath.getContainerName(), npath.getNodePath(),'/');
+
+				for(Iterator<FilesObject> it = list.iterator(); it.hasNext();){
+					FilesObject fileObj = it.next();
+        			String nodeName = fileObj.getName().substring((null == npath.getNodePath() || npath.getNodePath().isEmpty())?0:npath.getNodePath().length()+1);
+
+	        		if(fileObj.isDirectory()){
+	    	        	g.writeStartObject();
+	    	        	g.writeStringField("type", "directory");
+	    	        	g.writeStringField("id", npath.getContainerName()+"/"+fileObj.getName());
+	    	        	g.writeStringField("name", nodeName);
+	    	        	g.writeArrayFieldStart("children");
+	
+	    	        	g.writeEndArray();
+	    				g.writeEndObject();
+	    			} else {
+	    	        	g.writeStartObject();
+	    	        	g.writeStringField("type", "file");
+	    	        	g.writeStringField("id", npath.getContainerName()+"/"+fileObj.getName());
+	    	        	g.writeStringField("name", nodeName);
+	    				g.writeEndObject();
+	    			}
+				}        		
+        	}
+        	g.writeEndArray();
+        	
+        	g.writeEndObject();
+
+        	g.close(); // important: will force flushing of output, close underlying output stream
+		} catch(Exception ex) {
+			ex.printStackTrace();
+			throw new InternalServerErrorException(ex);
+		}
+		return writer.getBuffer().toString();
+	}
+
+	/* (non-Javadoc)
+	 * @see edu.jhu.pha.vospace.api.VospaceConnector#downloadNode(java.lang.String)
+	 */
+	@Override
+	public InputStream downloadNode(String nodeUrl) {
+		NodePath npath = PathSeparator.splitPath(nodeUrl, false);
+		try {
+			logger.debug("Returning node data "+npath.getContainerName()+" "+npath.getNodePath());
+			return getClient().getObjectAsStream(npath.getContainerName(), npath.getNodePath());
+		} catch (FilesAuthorizationException e) {
+			e.printStackTrace();
+			throw new PermissionDeniedException(e);
+		} catch (FilesInvalidNameException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		} catch (FilesNotFoundException e) {
+			e.printStackTrace();
+			throw new NotFoundException(e);
+		} catch (HttpException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new InternalServerErrorException(e);
+		}
+	}
+}

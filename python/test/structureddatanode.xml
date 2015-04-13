@@ -1,0 +1,6 @@
+<node xmlns="http://www.ivoa.net/xml/VOSpace/v2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="vos:StructuredDataNode" uri="" busy="false">
+  <properties/>
+  <accepts/>
+  <provides/>
+  <capabilities/>
+</node>
