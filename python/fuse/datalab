@@ -4,17 +4,14 @@
 
 import sys
 from sys import platform
-import glob
 import os
 import logging
 import shutil
 import ConfigParser
-from lxml import etree
 from subprocess import Popen, PIPE
-from time import gmtime, strftime, sleep
+from time import gmtime, strftime
 from httplib2 import Http
 from urlparse import urlparse
-import numpy as np
 
 import myvos as vos
 import myfuse
@@ -22,9 +19,6 @@ from myfuse import FUSE
 from __version__ import version
 from myvofs import VOFS
 DAEMON_TIMEOUT = 60
-
-#SERVICE_URL = "http://localhost:7138"
-SERVICE_URL = "http://dldev1.tuc.noao.edu:7138"
 
 
 class Option:
@@ -110,13 +104,12 @@ class Task:
       
 
 class Login(Task):
-  # Log into the DataLab
   def __init__(self, datalab):
     Task.__init__(self, datalab, 'login', 'login to the DataLab')
     self.addOption("user", Option("user", "", "username of account in DataLab", required = True))
     self.addOption("password", Option("password", "", "password for account in DataLab", required = True))
     self.addOption("mount", Option("mount", "", "mountpoint of remove VOSpace"))
-    self.status = self.dl.get("login", "status")           
+    self.status = dl.get("login", "status")           
 
   def run(self):
     # Check if user already logged in
@@ -125,6 +118,7 @@ class Login(Task):
       return
     else:
       self.dl.save("login", "status", "loggedin")
+      self.dl.save("login", "user", self.user.value)
     # Log a user into the DataLab
     print "Welcome to the DataLab, %s" % self.user.value
     # Default parameters if mount requested
@@ -141,12 +135,12 @@ class Login(Task):
       mount.setOption('allow_other', False)
       mount.setOption('foreground', False)
       mount.run()
+      self.dl.save("vospace", "mount", self.mount.value)
 
 
 class Logout(Task):
-  # Logout out of the DataLab  
   def __init__(self, datalab):
-    Task.__init__(self, datalab, 'logout', 'logout of the DataLab')
+    Task.__init__(self, datalab, 'login', 'login to the DataLab')
     self.addOption("unmount", Option("unmount", "", "mountpoint of remove VOSpace"))
     self.status = self.dl.get("login", "status")           
 
@@ -155,165 +149,93 @@ class Logout(Task):
       print "No user is currently logged into the DataLab"
       return
     else:
-      if self.unmount.value != "":
-        print "Unmounting remote space"
-        cmd = "umount %s" % self.unmount.value
-        pipe = Popen(cmd, shell = True, stdout = PIPE)
-        output = pipe.stdout.read()
-        self.dl.save("vospace", "mount", "")
       self.dl.save("login", "status", "loggedout")
       print "You are now logged out of the DataLab"
-      
+    if self.unmount.value != "":
+      cmd = "umount %s" % self.unmount.value
+      subprocess.Popen(cmd, shell = True, stdout = PIPE)
+      output = pipe.stdout.read()
+      self.dl.save("vospace", "mount", "")
 
-class AddCapability(Task):
-  # Add a capability to a VOSpace container
+
+class Status(Task):
+  def __init__(self, datalab):
+    Task.__init__(self, datalab, "status", "report on the user status")
+
+  def run(self):
+    status = self.dl.get("login", "status")           
+    if status == "loggedout":
+      print "No user is currently logged into the DataLab"
+    else:
+      print "User %s is logged into the DataLab" % self.dl.get("login", "user")
+    if self.dl.get("vospace", "mount") != "":
+      if status != "loggedout":
+        print "The user's VOSpace is mounted at %s" % self.dl.get("vospace", "mount")
+      else:
+        print "The last user's VOSpace is still mounted at %s" % self.dl.get("vospace", "mount")
+
+        
+class Addcapability(Task):
   def __init__(self, datalab):
     Task.__init__(self, datalab, 'addcapability', 'activate a capability on a VOSpace container')
     self.addOption("fmt", Option("fmt", "", "the formats to accept", required = True))
     self.addOption("dir", Option("dir", "", "container name", required = True))
     self.addOption("cap", Option("cap", "", "capability name", required = True))
-    self.addOption("listcap", Option("listcap", "", "list available capabilities", default = False))
-    self.capsdir = "/Users/mjg/Projects/repos/vospace/python/caps"
     
   def run(self):
-    if self.listcap.value:
-      print "The available capabilities are: "
-      for file in glob.glob(self.capsdir):
-        print file[:file.index("_cap.conf")]
+    # Add a capability to a VOSpace container
+    mountpoint = self.dl.get('vospace', 'mount')
+    if mountpoint is None:
+      print("No mounted VOSpace can be found")
     else:
-      mountpoint = self.dl.get('vospace', 'mount')
-      if mountpoint is None:
-        print("No mounted VOSpace can be found")
-      else:
-        if not os.path.exists("%s/%s_cap.conf" % (self.capsdir, self.cap.value)):
-          print "The capability '%s' is not known" % self.cap.value
-        else:
-          shutil.copy("%s/%s_cap.conf" % (self.capsdir, self.cap.value), "%s/%s" % (mountpoint, self.dir.value))
+      shutil.copy("caps/%s_cap.conf" % self.cap.value, "%s/%s" % (mountpoint, self.dir.value))
 
 
-class ListCapability(Task):
-  # Add a capability to a VOSpace container
-  def __init__(self, datalab):
-    Task.__init__(self, datalab, 'listcapability', 'list the capabilities supported by this VOSpace')
-    self.capsdir = "/Users/mjg/Projects/repos/vospace/python/caps"
-    
-  def run(self):
-    print "The available capabilities are: "
-    for file in glob.glob("%s/*" % self.capsdir):
-      print "  %s" % file[file.rindex("/") + 1:file.index("_cap.conf")]
-
-          
 class Query(Task):
-  # Send a query to a remote query service
   def __init__(self, datalab):
-    Task.__init__(self, datalab, 'query', 'query a remote data service in the DataLab')
+    Task.__init__(self, datalab, 'query', 'query a remote db in the DataLab')
     self.addOption("uri", Option("uri", "", "database URI", required = True))
-    self.addOption("ofmt", Option("ofmt", "", "requested output format", required = False))
+    self.addOption("ofmt", Option("ofmt", "", "requested output format", required = True))
     self.addOption("out", Option("out", "", "output filename", required = True))
-    self.addOption("sql", Option("sql", "", "input SQL filename", required = False))
-    self.addOption("in", Option("in", "", "input filename", required = False))
-    self.addOption("addArgs", Option("addArgs", "", "additional arguments to pass to the query service", required = False))
+    self.addOption("sql", Option("sql", "", "input SQL filename", required = True))
                 
   def run(self):
+    # Send a query to the DataLab query service
     h = Http()
     url = urlparse(self.uri.value)
-    if url.scheme == 'dldb':
-      self.dbquery(h, url)
-    elif url.scheme == 'http':
-      self.httpquery(h, url)
-    elif url.scheme == 'ivo':
-      self.ivoquery(h, url)
+    if url.scheme != "dldb":
+      print "The 'uri' parameter does not begin with the 'dldb' scheme"
     else:
-      print "The 'uri' parameter does not begin with the a recognized scheme"
+      sql = open(self.sql.value).read()
+      headers = {'Content-Type': 'text/ascii'} # application/x-sql
+      parts = url.path[1:].strip().split("/")
+      user = parts[0]
+      if "dbs" in parts:
+        source = "db"
+      else:
+        source = "/".join(parts[1:])    
+      table = url.fragment
+      format = self.ofmt.value
+#      dburl = 'http://dldev1.tuc.noao.edu:7138/query?user=%s&source=%s&table=%s&fmt=%s' % (user, source, table, format)
+      dburl = 'http://localhost:7138/query?user=%s&source=%s&table=%s&fmt=%s' % (user, source, table, format)
+      resp, content = h.request(dburl, 'POST', body = sql, headers = headers)
+      print dburl, resp, content
+      file = open(self.out.value, 'wb')
+      file.write(content)
+      file.close()
+      
 
-  def dbquery(self, h, url):
-    # Query the DataLab query service
-    sql = open(self.sql.value).read()
-    headers = {'Content-Type': 'text/ascii'} # application/x-sql
-    parts = url.path[1:].strip().split("/")
-    user = parts[0]
-    if "dbs" in parts:
-      source = "db"
-    else:
-      source = "/".join(parts[1:])    
-    table = url.fragment
-    format = self.ofmt.value
-    dburl = '%s/query?user=%s&source=%s&table=%s&fmt=%s' % (SERVICE_URL, user, source, table, format)
-    resp, content = h.request(dburl, 'POST', body = sql, headers = headers)
-    file = open(self.out.value, 'wb')
-    file.write(content)
-    file.close()
-
-  def httpquery(self, h, url):
-    # Send a query to remote URL
-    # Hack for CoDR demo
-    sleep(3)
-    if "!" in self.out.value:
-      out = self.out.value.replace("vos://datalab.noao.edu!vospace/", "/tmp/vospace/")
-    elif "~" in self.out.value:
-      out = self.out.value.replace("vos://datalab.noao.edu~vospace/", "/tmp/vospace/")
-    shutil.copyfile("demo/NSA_s82_DES.vot", out)
-        
-  def ivoquery(self, h, url):
-    # Send a query to remote IVOA service
-    # Hack for CoDR demo
-    sleep(3)
-    if "!" in self.out.value:
-      out = self.out.value.replace("vos://datalab.noao.edu!vospace/", "/tmp/vospace/")
-    elif "~" in self.out.value:
-      out = self.out.value.replace("vos://datalab.noao.edu~vospace/", "/tmp/vospace/")
-    shutil.copyfile("demo/J_MNRAS_406_382_catalog.vot", out)
-
-    
 class LaunchJob(Task):
-  # Execute a remote processing job in the DataLab
   def __init__(self, datalab):
     Task.__init__(self, datalab, 'exec', 'launch a remote task in the DataLab')
     self.addOption("cmd", Option("cmd", "", "name of remote task to run", required = True))
-    self.addOption("urls", Option("urls", "", "a file containing a list of URLs to retrieve", required = True))
-    self.addOption("pos", Option("pos", "", "a list of positions to cutout in the retrieved images", required = True))
-    self.addOption("nthreads", Option("nthreads", "", "the number of server threads to use with this job"))
-    self.addOption("outdir", Option("outdir", "", "the directory to save results to"))
-    
-    
+
   def run(self):
-    if self.cmd.value == 'cutout':
-      # Get list of URLs to send to service
-      vot = etree.parse(self.urls.value)
-      namespace = {'vot': 'http://www.ivoa.net/xml/VOTable/v1.1'}
-      fields = vot.xpath("//vot:FIELD", namespaces = namespace)
-      reffield = vot.xpath("//vot:FIELD[@name = 'reference']", namespaces = namespace)
-      rafield = vot.xpath("//vot:FIELD[@name = 'ra']", namespaces = namespace)
-      decfield = vot.xpath("//vot:FIELD[@name = 'dec']", namespaces = namespace)
-      refcol = fields.index(reffield[0])
-      racol = fields.index(rafield[0])
-      deccol = fields.index(decfield[0])
-      urls = []
-      for row in vot.xpath("//vot:TR", namespaces = namespace):
-        cols = row.getchildren()
-        urls.append([cols[refcol].text, float(cols[racol].text), float(cols[deccol].text)])
-      # Get object positions
-#      pos = np.genfromtxt(self.pos.value)
-      delimiters = {'csv': ',', 'dat': ' ', 'txt': ' '}
-      delimiter = delimiters[self.pos.value[-3:]]
-      pos = np.genfromtxt(self.pos.value, delimiter = ",", dtype = None, skip_header = 1)
-      match = []
-      for i in range(len(pos)):
-        for j in range(len(urls)):
-          dist = np.sqrt((urls[j][1] - pos[i][0]) ** 2. + (urls[j][2] - pos[i][2]) ** 2.)
-          if dist < 1.1: match.append([urls[j][0], pos[i][0], pos[i][2], pos[i][1]])
-      print len(match)
-      # Send to service
-      h = Http()
-      headers = {'Content-Type': 'text/ascii'}
-      url = "%s/cutout?user=sarah&nthreads=%s&outdir=%s" % (SERVICE_URL, self.nthreads.value, self.outdir.value)
-      resp, content = h.request(url, 'POST', body = str(match), headers = headers)
-    else:
-      print "The remote task '%s' is not supported" % self.cmd.value
-      
-    
+    # Execute a remote processing job in the DataLab
+    pass
+
+
 class Mountvofs(Task):
-  # Mount a VOSpace via FUSE
   def __init__(self, datalab):
     Task.__init__(self, datalab, 'mount', 'mount the default VOSpace')
     self.addOption("vospace", Option("vospace", "", "VOSpace to mount", required = True, default = "vos:"))
@@ -321,7 +243,7 @@ class Mountvofs(Task):
     self.addOption("foreground", Option("foreground", "", "mount the filesystem as a foreground operation", default = False))
     self.addOption("cache_limit", Option("cache_limit", "", "upper limit on local diskspace to use for file caching (in MB)", default = 50 * 2 ** (10 + 10 + 10)))
     self.addOption("cache_dir", Option("cache_dir", "", "local directory to use for file caching", default = None))
-    self.addOption("readonly", Option("readonly", "", "mount VOSpace readonly", default = False))
+    self.addOption("readonly", Option("readonly", "", "mount VOSpace readonly"))
     self.addOption("cache_nodes", Option("cache_nodes", "", "cache dataNode Properties"))
     self.addOption("allow_other", Option("allow_other", "", "allow all users access to this mountpoint"))
     self.addOption("max_flush_threads", Option("max_flush_threads", "", "upper limit on number of flush (upload) threads", default = 10))
@@ -329,11 +251,11 @@ class Mountvofs(Task):
 
         
   def run(self):
-#    readonly = False
+    # Mount a VOSpace via FUSE
+    readonly = False
     conn = vos.Connection()
     root = self.vospace.value
     mount = os.path.abspath(self.mount.value)
-    self.dl.save('vospace', 'mount', mount)
     if self.cache_dir.value is None:
       self.cache_dir.value = os.path.normpath(os.path.join(
             os.getenv('HOME', '.'), root.replace(":", "_")))
@@ -349,7 +271,7 @@ class Mountvofs(Task):
                     volname=root,
                     defer_permissions=True,
                     daemon_timeout=DAEMON_TIMEOUT,
-                    readonly=self.readonly.value,
+                    readonly=readonly,
                     # auto_cache=True,
                     allow_other=self.allow_other.value,
                     noapplexattr=True,
@@ -363,16 +285,17 @@ class Mountvofs(Task):
                         secure_get=self.secure_get.value),
                     mount,
                     fsname=root,
-                    readonly=self.readonly.value,
+                    readonly=readonly,
                     allow_other=self.allow_other.value,
                     # auto_cache=True,
                     foreground=self.foreground.value)
+    self.dl.save('vospace', 'mount', mount)
 
 
 def parseArgs(task, args):
   # Parse task parameters  
   params = []
-  if "--help" in args:
+  if any(x in args for x in ['--help', '--h', '-h', 'help', '-help']):
     print "The '%s' task takes the following parameters:" % task.name
     for par in task.params:
       if getattr(task, par).required:
@@ -394,11 +317,17 @@ def parseArgs(task, args):
         sys.exit(-1)
     # Set logging
     task.setLogger()
-    # Check that required parameters are not missing
+    # Check that required parameters are not missing and prompt for those that are
     for par in task.params:
       if getattr(task, par).required and par not in params:
-        print "The parameter '%s' is not set but is required by this task" % par
-        sys.exit(-1)
+        opt = getattr(task, par)
+        var = raw_input("%s (default: %s): " % (par, opt.default))
+        if var == "":
+          opt.value = opt.default
+        else:
+          opt.value = var
+#        print "The parameter '%s' is not set but is required by this task" % par
+#        sys.exit(-1)
 
       
 if __name__ == "__main__":
@@ -409,14 +338,14 @@ if __name__ == "__main__":
   # supported tasks
   tasks = {'login': Login,
            'logout': Logout,
+           'status': Status,
            'mount': Mountvofs,
-           'addcapability': AddCapability,
-           'listcapability': ListCapability,
+           'addcapability': Addcapability,
            'query': Query,
            'exec': LaunchJob}
     
   # list tasks
-  if 'help' in sys.argv[1]:
+  if len(sys.argv) == 1 or "help" in sys.argv[1]:
     print "Syntax: datalab [task] where [task] is one of:"
     for task in tasks:
       print '  %s - %s' % (task, tasks[task](dl).description)
