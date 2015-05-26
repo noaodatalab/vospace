@@ -17,6 +17,18 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
+
 
 import uws.UWSException;
 import uws.job.JobThread;
@@ -92,7 +104,7 @@ public class TransferJob extends JobThread {
 		String uri = transfer.getView().getURI();
 		Views.View view = Views.fromValue(uri);
 		if (view == null) throw new UWSException(UWSException.BAD_REQUEST, "The service does not support the requested View");
-		if (!view.equals(Views.View.DEFAULT) && !manager.SPACE_ACCEPTS_IMAGE.contains(view) && !manager.SPACE_ACCEPTS_TABLE.contains(view) && !manager.SPACE_ACCEPTS_ARCHIVE.contains(view)) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "The service does not support the requested View");
+		if (!view.equals(Views.View.DEFAULT) && !manager.SPACE_ACCEPTS_IMAGE.contains(view) && !manager.SPACE_ACCEPTS_TABLE.contains(view) && !manager.SPACE_ACCEPTS_ARCHIVE.contains(view) && !manager.SPACE_ACCEPTS_OTHER.contains(view)) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "The service does not support the requested View");
 		// Protocols
 		if (direction.equals("pushFromVoSpace") || direction.equals("pullToVoSpace")) {
 		    checkProtocols(transfer.getProtocol(), manager.SPACE_SERVER_PROTOCOLS);
@@ -188,7 +200,8 @@ public class TransferJob extends JobThread {
 			String details = store.getResult(jobId);
 			file = details.substring(details.indexOf("<vos:target>") + 12, details.indexOf("</vos:target>"));
 			target = file;
-			file = file.replace("vos://nvo.caltech!vospace", manager.BASEURI); 
+//			file = file.replace("vos://nvo.caltech!vospace", manager.BASEURI); 
+			file = file.replace("vos://datalab.noao.edu!vospace", manager.BASEURI); 
 		    } catch (SQLException e) {
 			throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 		    }
@@ -238,8 +251,9 @@ public class TransferJob extends JobThread {
 	if (!direction.equals("pushFromVoSpace") && !direction.equals("pullFromVoSpace")) {
 	    try {
 		for (String capability: parent.getCapabilities()) {
-		    if (store.isActive(parent.getUri(), capability)) {
-			trigger(target, capability);
+		    int port = store.isActive(parent.getUri(), capability);
+		    if (port > 0) {
+			trigger(target, capability, port);
 		    }
 		    // Does this need to wait for any capabilities to finish?
 		}
@@ -256,13 +270,24 @@ public class TransferJob extends JobThread {
 	    try {
 		for (String capability: parent.getCapabilities()) {
 		    if (capability.endsWith(shortCap)) {
-			store.setActive(parent.getUri(), capability);
+			int port = store.getCapPort();
+			String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(port), "--config", getLocation(target)};
+			System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(port) + " " + "-config" + " " + getLocation(target));
+			Process p = Runtime.getRuntime().exec(cmdArgs);
+			manager.addProcess(target, p);
+			store.setActive(parent.getUri(), capability, port);
 		    }
 		}
-	    } catch (SQLException e) {
+	    } catch (Exception e) {
+		e.printStackTrace(System.err);
 		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-	    } catch (VOSpaceException e) {
-		throw new UWSException(e.getStatusCode(), e.getMessage());	          }  
+	    }
+//	    } catch (IOException e) {
+//		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+//	    } catch (SQLException e) {
+//		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+//	    } catch (VOSpaceException e) {
+//		throw new UWSException(e.getStatusCode(), e.getMessage());	 //         }  
 	}
 
 	if (isInterrupted()) {
@@ -739,11 +764,19 @@ public class TransferJob extends JobThread {
      * Trigger the specified capability on the specified container
      * @param identifier The identifier of the target node
      * @param capability The identifier of the parent capability to trigger
+     * @param port The port number to send the notification to
      */
-    private void trigger(String identifier, String capability) throws UWSException {
+    private void trigger(String identifier, String capability, int port) throws UWSException {
 	try {
-	    Capability cap = manager.CAPABILITIES.get(capability);
-	    cap.invoke(getLocation(identifier));
+	    //	    Capability cap = manager.CAPABILITIES.get(capability);
+	    //	    cap.invoke(getLocation(identifier));
+	    CloseableHttpClient client = HttpClients.createDefault();
+	    HttpPost post = new HttpPost("http://localhost:" + port + "/notify");
+	    List<NameValuePair> nvps = new ArrayList<NameValuePair>();
+	    nvps.add(new BasicNameValuePair("name", getLocation(identifier)));
+	    post.setEntity(new UrlEncodedFormEntity(nvps));
+	    CloseableHttpResponse response = client.execute(post);
+	    System.err.println(response.getStatusLine() + " " + getLocation(identifier) + " " + capability + " " + port);
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "The capability " + capability + " was unable to complete on node " + identifier);

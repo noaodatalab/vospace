@@ -33,9 +33,11 @@ public class NodeManager {
     private ArrayList<Views.View> SPACE_ACCEPTS_IMAGE;
     private ArrayList<Views.View> SPACE_ACCEPTS_TABLE;
     private ArrayList<Views.View> SPACE_ACCEPTS_ARCHIVE;
+    private ArrayList<Views.View> SPACE_ACCEPTS_OTHER;
     private ArrayList<Views.View> SPACE_PROVIDES_IMAGE;
     private ArrayList<Views.View> SPACE_PROVIDES_TABLE;
     private ArrayList<Views.View> SPACE_PROVIDES_ARCHIVE;
+    private ArrayList<Views.View> SPACE_PROVIDES_OTHER;
     private ArrayList<Capabilities.Capability> SPACE_CAPABILITIES;
 
     private String STAGING_LOCATION;
@@ -70,9 +72,11 @@ public class NodeManager {
 	    SPACE_ACCEPTS_IMAGE = getViewList(props.getProperty("space.accepts.image"));
             SPACE_ACCEPTS_TABLE = getViewList(props.getProperty("space.accepts.table"));
             SPACE_ACCEPTS_ARCHIVE = getViewList(props.getProperty("space.accepts.archive"));
+            SPACE_ACCEPTS_OTHER = getViewList(props.getProperty("space.accepts.other"));
             SPACE_PROVIDES_IMAGE = getViewList(props.getProperty("space.provides.image"));
             SPACE_PROVIDES_TABLE = getViewList(props.getProperty("space.provides.table"));
             SPACE_PROVIDES_ARCHIVE = getViewList(props.getProperty("space.provides.archive"));
+            SPACE_PROVIDES_OTHER = getViewList(props.getProperty("space.provides.other"));
 	    SPACE_CAPABILITIES = getCapabilityList(props.getProperty("space.capabilities"));
             SPACE_AUTH = props.containsKey("space.identifier") ? getId(props.getProperty("space.identifier")) : "vos://nvo.caltech!vospace";
             // Set metadata store
@@ -133,11 +137,17 @@ public class NodeManager {
 		    for (Views.View view: SPACE_ACCEPTS_TABLE) {
 			datanode.addAccepts(Views.get(view));
 		    }
+		    for (Views.View view: SPACE_ACCEPTS_OTHER) {
+			datanode.addAccepts(Views.get(view));
+		    }
 		    for (Views.View view: SPACE_PROVIDES_IMAGE) {
 			datanode.addProvides(Views.get(view));
 		    }
 		    for (Views.View view: SPACE_PROVIDES_TABLE) {
 			datanode.addProvides(Views.get(view));
+		    }
+		    for (Views.View view: SPACE_PROVIDES_OTHER) {
+			datanode.addAccepts(Views.get(view));
 		    }
 		}
 		// Set <accepts> for ContainerNode

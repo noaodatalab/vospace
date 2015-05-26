@@ -25,7 +25,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import javax.xml.bind.JAXBElement;
+import javax.xml.bind.JAXBElement; 
 
 import com.ximpleware.*;
 import com.ximpleware.xpath.*;
@@ -35,7 +35,8 @@ import edu.caltech.vao.vospace.xml.*;
 @Path("nodes")
 public class NodeResource extends VOSpaceResource {
 
-    private final String ROOTNODE = "vos://nvo.caltech!vospace";
+//    private final String ROOTNODE = "vos://nvo.caltech!vospace";
+    private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
 
     public NodeResource() throws VOSpaceException {
 	super();

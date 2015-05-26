@@ -1,4 +1,4 @@
-import sys
+
 import os
 import cPickle as pickle
 
@@ -30,7 +30,7 @@ class CacheMetaData(object):
         if os.path.exists(self.metaDataFile):
             f = open(self.metaDataFile, 'rU')
             persisted = pickle.load(f)
-            if(self.md5sum is None or persisted.md5sum == self.md5sum):
+            if self.md5sum is None or persisted.md5sum == self.md5sum:
                 #persisted bitmap still valid. Used that instead
                 self.bitmap = persisted.bitmap
                 self.size = persisted.size
@@ -38,15 +38,20 @@ class CacheMetaData(object):
             f.close()
 
         if self.bitmap is None:
-            self.bitmap = BitVector.BitVector(size = self.blocks)
+            self.bitmap = BitVector.BitVector(size=self.blocks)
 
     def __str__(self):
         """To create a print representation that is informative."""
-        return "CacheMetaData: metaDataFile=%r bitmap=%r md5sum=%r size=%r" % (self.metaDataFile, self.bitmap, self.md5sum, self.size)
+        return "CacheMetaData: metaDataFile=%r bitmap=%r md5sum=%r size=%r" % (self.metaDataFile,
+                                                                               self.bitmap,
+                                                                               self.md5sum,
+                                                                               self.size)
 
     def __repr__(self):
-        return "CacheMetaData(metaDataFile=%r, blocks=%r, md5sum=%r, size=%r)" % (self.metaDataFile, self.blocks, self.md5sum,self.size)
-
+        return "CacheMetaData(metaDataFile=%r, blocks=%r, md5sum=%r, size=%r)" % (self.metaDataFile,
+                                                                                  self.blocks,
+                                                                                  self.md5sum,
+                                                                                  self.size)
     def setReadBlocks(self, start, end):
         """ To mark several blocks as read (start and end inclusive). """
         startBlock = start

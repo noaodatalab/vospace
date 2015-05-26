@@ -29,7 +29,8 @@ import javax.ws.rs.core.Response.ResponseBuilder;
 @Path("data")
 public class DataResource extends VOSpaceResource {
 
-    private final String ROOTNODE = "vos://nvo.caltech!vospace";
+//    private final String ROOTNODE = "vos://nvo.caltech!vospace";
+    private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
     private StorageManager backend;
 
     public DataResource() throws VOSpaceException {
@@ -48,7 +49,7 @@ public class DataResource extends VOSpaceResource {
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response getData(@PathParam("fileid") String fileid) throws VOSpaceException {
 	try {
-	    String location = manager.resolveLocation(fileid);
+	    String location = manager.resolveLocation(fileid, true);
 	    manager.invalidateLocation(fileid);
 	    //	    System.err.println(fileid + " " + location);
 	    //	    return new File(new URI(location));
@@ -95,7 +96,7 @@ public class DataResource extends VOSpaceResource {
 	FileInputStream in = null;
         FileOutputStream out = null;
 	try {
-	    String location = manager.resolveLocation(fileid);
+	    String location = manager.resolveLocation(fileid, false);
             in = new FileInputStream(file);
 	    backend.putBytes(location, in);
 	    manager.updateSize(fileid, Long.toString(backend.size(location)));

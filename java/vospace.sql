@@ -27,7 +27,7 @@ DROP TABLE IF EXISTS `capabilities`;
 CREATE TABLE `capabilities` (
   `identifier` varchar(128) DEFAULT NULL,
   `capability` varchar(128) DEFAULT NULL,
-  `active` tinyint(4) DEFAULT NULL
+  `active` int(4) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

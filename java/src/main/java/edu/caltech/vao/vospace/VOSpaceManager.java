@@ -49,16 +49,20 @@ public class VOSpaceManager {
     protected ArrayList<Views.View> SPACE_ACCEPTS_IMAGE;
     protected ArrayList<Views.View> SPACE_ACCEPTS_TABLE;
     protected ArrayList<Views.View> SPACE_ACCEPTS_ARCHIVE;
+    protected ArrayList<Views.View> SPACE_ACCEPTS_OTHER;
     protected ArrayList<Views.View> SPACE_PROVIDES_IMAGE;
     protected ArrayList<Views.View> SPACE_PROVIDES_TABLE;
     protected ArrayList<Views.View> SPACE_PROVIDES_ARCHIVE;
+    protected ArrayList<Views.View> SPACE_PROVIDES_OTHER;
     protected ArrayList<Capability> SPACE_CAPABILITIES;
     protected HashMap<String, Capability> CAPABILITIES;
-
+    protected HashMap<String, Process> PROCESSES;
+    
     protected ArrayList<Protocol> SPACE_CLIENT_PROTOCOLS;
     protected ArrayList<Protocol> SPACE_SERVER_PROTOCOLS;
     protected HashMap<String, ProtocolHandler> PROTOCOLS;
 
+    protected String CAPABILITY_EXE;
     private String STAGING_LOCATION;
     private Pattern VOS_PATTERN;
     private String SPACE_AUTH;
@@ -99,9 +103,11 @@ public class VOSpaceManager {
 	    SPACE_ACCEPTS_IMAGE = getViewList(props.getProperty("space.accepts.image"));
             SPACE_ACCEPTS_TABLE = getViewList(props.getProperty("space.accepts.table"));
             SPACE_ACCEPTS_ARCHIVE = getViewList(props.getProperty("space.accepts.archive"));
+	    SPACE_ACCEPTS_OTHER = getViewList(props.getProperty("space.accepts.other")); 
             SPACE_PROVIDES_IMAGE = getViewList(props.getProperty("space.provides.image"));
             SPACE_PROVIDES_TABLE = getViewList(props.getProperty("space.provides.table"));
             SPACE_PROVIDES_ARCHIVE = getViewList(props.getProperty("space.provides.archive"));
+            SPACE_PROVIDES_OTHER = getViewList(props.getProperty("space.provides.other"));
 //	    SPACE_CAPABILITIES = getCapabilityList(props.getProperty("space.capabilities"));
             SPACE_AUTH = props.containsKey("space.identifier") ? getId(props.getProperty("space.identifier")) : "vos://nvo.caltech!vospace";
 	    registerProtocols(props);
@@ -175,10 +181,16 @@ public class VOSpaceManager {
 		    for (Views.View view: SPACE_ACCEPTS_TABLE) {
 			datanode.addAccepts(Views.get(view));
 		    }
+		    for (Views.View view: SPACE_ACCEPTS_OTHER) {
+			datanode.addAccepts(Views.get(view));
+		    }
 		    for (Views.View view: SPACE_PROVIDES_IMAGE) {
 			datanode.addProvides(Views.get(view));
 		    }
 		    for (Views.View view: SPACE_PROVIDES_TABLE) {
+			datanode.addProvides(Views.get(view));
+		    }
+		    for (Views.View view: SPACE_PROVIDES_OTHER) {
 			datanode.addProvides(Views.get(view));
 		    }
 		}
@@ -214,10 +226,11 @@ public class VOSpaceManager {
 	    // Set properties (date at least)
 	    if (!exists) {
 		node.setProperty(Props.get(Props.Property.DATE), new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()));
-		node.setProperty(Props.get(Props.Property.GROUPREAD), "");
-		node.setProperty(Props.get(Props.Property.GROUPWRITE), "");
+		node.setProperty(Props.get(Props.Property.GROUPREAD), "NONE");
+		node.setProperty(Props.get(Props.Property.GROUPWRITE), "NONE");
 		node.setProperty(Props.get(Props.Property.ISPUBLIC), "true");
 		node.setProperty(Props.get(Props.Property.LENGTH), "0");
+		node.setProperty(Props.get(Props.Property.MD5), "");
 		//	    node.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(getLocation(node.getUri()))));
 	    }
 	    // Store node
@@ -259,7 +272,7 @@ public class VOSpaceManager {
 	    ResultSet result = store.getData(new String[] {identifier}, null, limit);
 	    if (result.next()) {
 		Node node = nfactory.getNode(result.getString(1));
-		detail = (detail == null) ? "max" : detail;
+		detail = (detail == null) ? "max" : detail; // Try with min - MJG
 		if (!detail.equals("max")) {
 		    if (node instanceof DataNode) {
 			DataNode datanode = (DataNode) node;
@@ -288,6 +301,7 @@ public class VOSpaceManager {
 		}
 		// Set properties
 		node = setLength(node);
+		if (!(node instanceof ContainerNode)) node = setMD5(node);
 		return node;
 	    } else {
 		throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI");
@@ -315,6 +329,31 @@ public class VOSpaceManager {
     }
 
 
+    /**
+     * Set the MD5 property on the specified node
+     * Need to optimize this for large files where a stored value is better
+     */
+    public Node setMD5(Node node) throws VOSpaceException {
+	String md5 = Props.get(Props.Property.MD5);
+	String md5Uri = "/vos:node/vos:properties/vos:property[@uri = \"" + md5 + "\"]";
+	boolean setmd5 = false;
+	if (!node.has(md5Uri)) {
+	    setmd5 = true;
+	} else {
+	    String oldmd5 = node.get(md5Uri)[0];
+	    if (oldmd5.equals("") || oldmd5.equals("d41d8cd98f00b204e9800998ecf8427e")) {
+	    setmd5 = true;
+	    }
+	}
+	if (setmd5) {
+	    String md5val = backend.md5(getLocation(node.getUri()));
+	    if (md5val != null) node.setProperty(md5, md5val);
+	}
+	return node;
+    }
+
+
+    
     /** 
      * Delete the specified node
      * @param nodeid The identifier of the node to be deleted
@@ -431,9 +470,10 @@ public class VOSpaceManager {
     /**
      * Resolve the specified location for a file 
      * @param identifier The logical identifier for the file
+     * @param viewCheck Whether to check if a view transformation should happen
      * @return location The physical location for the file
      */
-    protected String resolveLocation(String identifier) throws VOSpaceException {
+    protected String resolveLocation(String identifier, boolean viewCheck) throws VOSpaceException {
 	String target = null;
 	String view = null;
 	try {
@@ -450,11 +490,10 @@ public class VOSpaceManager {
 			    String name = xsr.getLocalName();
 			    if (name == "target") {
 				target = xsr.getElementText();
-				break;
-			    }
-			    if (name == "view") { // Check view
+				//				break;
+			    } else if (name == "view") { // Check view
 				view = xsr.getAttributeValue(null, "uri");
-				break;
+				//				break;
 			    }
 			}
 		    } 
@@ -463,10 +502,12 @@ public class VOSpaceManager {
 		}
 		// View transformation
 		String location = store.getLocation(target);
-		if (!view.equals("ivo://ivoa.net/vospace/core#defaultview")) {
+		if (viewCheck && !view.equals("ivo://ivoa.net/vospace/core#defaultview")) {
 		    String oldView = store.getView(target);
 		    location = engine.transform(location, oldView, view);
 		}
+		// Make sure that a URI is returned 
+		if (!location.startsWith("file://")) location = "file://" + location;
 		return location;
 	    } else {
 		throw new VOSpaceException(VOSpaceException.NOT_FOUND, "The specified file cannot be found.");
@@ -597,8 +638,10 @@ public class VOSpaceManager {
      */
     private void registerCapabilities(Properties props) throws VOSpaceException {
         try {
+	    CAPABILITY_EXE = props.getProperty("space.capability.exe");
 	    CAPABILITIES = new HashMap<String, Capability>();
 	    SPACE_CAPABILITIES = new ArrayList<Capability>();
+	    PROCESSES = new HashMap<String, Process>();
             String[] capabilities = props.getProperty("space.capabilities").split(",");
             for (String capability : capabilities) {
       	        String capabilityClass = props.getProperty("space.capability." + capability.trim());
@@ -617,5 +660,13 @@ public class VOSpaceManager {
 
     protected MetaStore getMetaStore() {
 	return store;
+    }
+
+    protected void addProcess(String container, Process p) {
+	PROCESSES.put(container, p);
+    }
+
+    protected Process getProcess(String container) {
+	return PROCESSES.get(container);
     }
 }

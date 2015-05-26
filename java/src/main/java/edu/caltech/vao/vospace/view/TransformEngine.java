@@ -5,9 +5,9 @@
  *          0.2 - 10 April 2008 - Added tar/tar.gz support
  */
 
-package edu.caltech.nvo.vospace.view;
+package edu.caltech.vao.vospace.view;
 
-import edu.caltech.nvo.vospace.meta.MetaStore;
+import edu.caltech.vao.vospace.meta.MetaStore;
 
 import uk.ac.starlink.table.*;
 
@@ -95,6 +95,7 @@ public class TransformEngine {
 	    } else if (IMAGE_FORMATS.get(newFormat).equals("TIFF")) {
 		saver.saveAsTiff(newLocation);
 	    }
+	    /* commented out for the moment
 	} else if (ARCHIVE_FORMATS.containsKey(oldFormat)) {
 	    TarHandler handler = new TarHandler(meta, props);
 	    boolean compress = ARCHIVE_FORMATS.get(oldFormat).equals("TAR_GZ");
@@ -104,7 +105,8 @@ public class TransformEngine {
 	    newLocation = new URL(newLocation).getPath() + "_" + ARCHIVE_FORMATS.get(newFormat);
 	    boolean compress = ARCHIVE_FORMATS.get(newFormat).equals("TAR_GZ");
 	    handler.save(location, "file://" + newLocation, compress);
-        }
-	return "file://" + newLocation;
+	    */
+        } 
+	return newLocation;
     }
 }

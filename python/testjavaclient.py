@@ -1,7 +1,8 @@
 #!/usr/bin/python -u
 # 2010/04/21 - v0.1: Original version
-# 2014/10/24 - v0.2: Amended to be generic VOSpace test client - use schema validation
-#                    instead of direct XML document matching
+# 2014/10/24 - v0.2: Amended to be generic VOSpace test client - use schema
+#                    validation instead of direct XML document matching
+# 2015/04 - v0.3: Added capability and view testing
 #
 # testclient.py
 # Python code to (unit) test VOSpace operations
@@ -39,10 +40,10 @@ except ImportError:
         except ImportError:
           print("Failed to import ElementTree from any known place")
 
-#BASE_URI = 'http://localhost:8080/vospace-2.0/vospace/'
-#ROOT_NODE = 'vos://nvo.caltech!vospace'
-BASE_URI = 'http://dldev1.tuc.noao.edu:8080/vospace-2.0/vospace/'
-ROOT_NODE = 'vos://datalab.noao.edu!vospace'
+BASE_URI = 'http://localhost:8080/vospace-2.0/vospace/'
+ROOT_NODE = 'vos://nvo.caltech!vospace'
+#BASE_URI = 'http://dldev1.tuc.noao.edu:8080/vospace-2.0/vospace/'
+#ROOT_NODE = 'vos://datalab.noao.edu!vospace'
 XSI_NS = 'http://www.w3.org/2001/XMLSchema-instance'
 NODE = 'vos:Node'
 DATANODE =  'vos:DataNode'
@@ -78,8 +79,9 @@ def suite():
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PushToVoSpaceTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PullToVoSpaceTestCase))
   suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PullFromVoSpaceTestCase))
-  #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PushFromVoSpaceTestCase))
+#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PushFromVoSpaceTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(CapabilityTestCase))
+#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(ViewTestCase))
   return suite
 
 def set_node_uri(node, uri):
@@ -1603,10 +1605,11 @@ class PullFromVoSpaceTestCase(unittest.TestCase):
     """
     Test transferring data from the space: node12
     """
-#    set_transfer_target(self.transfer, ROOT_NODE + '/node12')
-    set_transfer_target(self.transfer, ROOT_NODE + '/sarah/ltg/c4d_131013_020509_ooi_i_d1._N5_J235714.77-003836.6.fits')
+    set_transfer_target(self.transfer, ROOT_NODE + '/node12')
+#    set_transfer_target(self.transfer, ROOT_NODE + '/sarah/ltg/c4d_131013_020509_ooi_i_d1._N5_J235714.77-003836.6.fits')
     set_transfer_direction(self.transfer, 'pullFromVoSpace')
-    set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
+#    set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
+    set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#defaultview')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget')
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     resp, content = self.h.request(BASE_URI + 'sync', 'POST', body = etree.tostring(self.transfer), headers = headers)
@@ -1760,10 +1763,10 @@ class CapabilityTestCase(unittest.TestCase):
     self.transfer = etree.parse('test/transfer.xml')
 
     
-  def handleTransfer(self, target, fileName):
+  def handleTransfer(self, target, fileName, view):
     set_transfer_target(self.transfer, ROOT_NODE + target)
     set_transfer_direction(self.transfer, 'pushToVoSpace')
-    set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
+    set_transfer_view(self.transfer, view)
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput')
     # Submit job
     resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/x-www-form-urlencoded'})
@@ -1795,9 +1798,79 @@ class CapabilityTestCase(unittest.TestCase):
     # Create container
     create_container(self.h, "testcon")
     # Activate capability
-    self.handleTransfer('/testcon/tableingester_cap.conf', 'test/tableingester_cap.conf')
+    self.handleTransfer('/testcon/tableingester_cap.conf', 'test/tableingester_cap.conf', 'ivo://ivoa.net/vospace/core#ascii')
     # Transfer file
-    self.handleTransfer('/testcon/test.vot', 'test/burbidge.vot')
+    self.handleTransfer('/testcon/test.vot', 'test/burbidge.vot', 'ivo://ivoa.net/vospace/core#votable')
+
+
+class ViewTestCase(unittest.TestCase):
+
+  def setUp(self):
+    """
+    Initialize the test case
+    """
+    self.h = httplib2.Http()
+    self.transfer = etree.parse('test/transfer.xml')
+    # Put test image in VOSpace if necessary
+    nodeuri = BASE_URI + 'nodes/test.fits'
+    resp, content = self.h.request(nodeuri)
+    if int(resp['status']) == 404:
+      set_transfer_target(self.transfer, ROOT_NODE + "/test.fits")
+      set_transfer_direction(self.transfer, 'pushToVoSpace')
+      set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/views/image#fits')
+      set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput')
+      # Submit job
+      resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/x-www-form-urlencoded'})
+      location = resp['location']
+      while int(resp['status']) != 200:
+        resp, content = self.h.request(location)
+      jobid = resp['content-location'].split('/')[6]
+      transfer = Transfer(content)
+      for protocol in transfer.protocols:
+        if protocol.uri == 'ivo://ivoa.net/vospace/core#httpput':
+          file = open("test/test.fits").read()
+          resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml', 'Content-Length': str(len(file))})
+      # Check for job completing (wait for timeout on transfer completion check)
+      count = 0
+      while content not in ['COMPLETED', 'ERROR'] and count < 30:
+        resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+        self.assertEqual(int(resp['status']), 200)
+        sleep(1)
+        count += 1
+      resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+      job = Job(content)
+      assert job.phase == 'COMPLETED'
+      
+    
+  def handleTransfer(self, target, format, view):
+    set_transfer_target(self.transfer, target)
+    set_transfer_direction(self.transfer, 'pullFromVoSpace')
+    set_transfer_view(self.transfer, view)
+    set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget')
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    resp, content = self.h.request(BASE_URI + 'sync', 'POST', body = etree.tostring(self.transfer), headers = headers)
+    location = resp['location']
+    while int(resp['status']) != 200:
+      resp, content = self.h.request(location)
+    transfer = Transfer(content)
+    resp, content = self.h.request(transfer.protocols[0].endpoint)
+    file = open('test/check.%s' % format, 'wb')
+    file.write(content)
+    file.close()
+    # Verify files
+    oldmd5 = md5('test/refimg.%s' % format)
+    newmd5 = md5('test/check.%s' % format)
+    self.assertEqual(oldmd5, newmd5)
+
+    
+  def testPNGView(self):
+    """
+    Test an image view to convert FITS to PNG
+    """
+    # Transfer file
+    format = 'png'
+    self.handleTransfer(ROOT_NODE + '/test.fits', format, 'ivo://ivoa.net/vospace/views/image#png')
+
     
 
 if __name__ == '__main__':

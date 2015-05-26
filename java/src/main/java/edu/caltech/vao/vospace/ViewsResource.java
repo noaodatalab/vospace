@@ -29,10 +29,12 @@ public class ViewsResource extends VOSpaceResource {
 	addViews(sbuf, manager.SPACE_ACCEPTS_IMAGE);
 	addViews(sbuf, manager.SPACE_ACCEPTS_TABLE);
 	addViews(sbuf, manager.SPACE_ACCEPTS_ARCHIVE);
+	addViews(sbuf, manager.SPACE_ACCEPTS_OTHER);
 	sbuf.append("</accepts><provides>");
 	addViews(sbuf, manager.SPACE_PROVIDES_IMAGE);
 	addViews(sbuf, manager.SPACE_PROVIDES_TABLE);
 	addViews(sbuf, manager.SPACE_PROVIDES_ARCHIVE);
+	addViews(sbuf, manager.SPACE_PROVIDES_OTHER);
 	sbuf.append("</provides></views>");
 	return sbuf.toString();
     }

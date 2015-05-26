@@ -6,7 +6,7 @@ import java.util.EnumMap;
 public class Views {
 
     public enum View { 
-	ANY, BINARY, DEFAULT, VOTABLE, JPEG, PNG, FITS, CSV, VOTABLE_1_1, FITS_TABLE, TAR 
+	ANY, BINARY, DEFAULT, VOTABLE, ASCII, JPEG, PNG, FITS, CSV, VOTABLE_1_1, FITS_TABLE, TAR 
     }
     
     private static EnumMap<View, String> viewMap; 
@@ -17,13 +17,14 @@ public class Views {
 	viewMap.put(View.BINARY, "ivo://ivoa.net/vospace/core#binaryview");
 	viewMap.put(View.DEFAULT, "ivo://ivoa.net/vospace/core#defaultview");
 	viewMap.put(View.VOTABLE, "ivo://ivoa.net/vospace/core#votable");
-	viewMap.put(View.JPEG, "ivo://ivoa.net/vospace/views#jpeg");
-	viewMap.put(View.PNG, "ivo://ivoa.net/vospace/views#png");
-	viewMap.put(View.FITS, "ivo://ivoa.net/vospace/views#fits");
-	viewMap.put(View.CSV, "ivo://ivoa.net/vospace/views#csv");
-	viewMap.put(View.VOTABLE_1_1, "ivo://ivoa.net/vospace/views#votable-1.1");
-	viewMap.put(View.FITS_TABLE, "ivo://ivoa.net/vospace/views#fits-table");
-	viewMap.put(View.TAR, "ivo://ivoa.net/vospace/views#tar");
+        viewMap.put(View.ASCII, "ivo://ivoa.net/vospace/core#ascii");
+	viewMap.put(View.JPEG, "ivo://ivoa.net/vospace/views/image#jpeg");
+	viewMap.put(View.PNG, "ivo://ivoa.net/vospace/views/image#png");
+	viewMap.put(View.FITS, "ivo://ivoa.net/vospace/views/image#fits");
+	viewMap.put(View.CSV, "ivo://ivoa.net/vospace/views/tabular#csv");
+	viewMap.put(View.VOTABLE_1_1, "ivo://ivoa.net/vospace/views/tabular#votable-1.1");
+	viewMap.put(View.FITS_TABLE, "ivo://ivoa.net/vospace/views/tabular#fits-table");
+	viewMap.put(View.TAR, "ivo://ivoa.net/vospace/views/archive#tar");
     }
 
     public static String get(View view) {

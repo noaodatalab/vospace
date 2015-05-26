@@ -1,7 +1,7 @@
 # A node cache class, extended from dict.
 
 import threading
-import myvos as vos
+import vos
 
 
 class NodeCache(dict):

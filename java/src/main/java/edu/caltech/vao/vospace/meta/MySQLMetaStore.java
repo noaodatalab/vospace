@@ -212,7 +212,7 @@ public class MySQLMetaStore implements MetaStore{
     public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException {
         Statement statement = getConnection().createStatement();
 	if (metadata instanceof String) {
-	    String query = "insert into nodes (identifier, type, view, owner, location, creationDate, node) values ('" + identifier + "', '" + type + "', '" + view + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')"; 
+	    String query = "insert into nodes (identifier, type, view, owner, location, creationDate, node) values ('" + identifier + "', '" + type + "', '" + view + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
 	    statement.executeUpdate(query);
 	    storeProperties((String) metadata);
 	}
@@ -296,7 +296,6 @@ public class MySQLMetaStore implements MetaStore{
 	query += whereQuery + " order by type ";
 	if (limit > 0) query += " limit " + limit;
 	if (offset > 0) query += " offset " + offset;
-	System.err.println(query);
         ResultSet result = execute(query);	
 	return result;
     }
@@ -638,11 +637,11 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Check the status of a capability (active or not)
      */
-    public boolean isActive(String identifier, String capability) throws SQLException {
-	boolean isActive = false;
+    public int isActive(String identifier, String capability) throws SQLException {
+	int isActive = 0;
 	String query = "select active from capabilities where identifier = '" + identifier + "' and capability = '" + capability + "'";
 	ResultSet result = execute(query);
-	if (result.next()) isActive = result.getBoolean(1);
+	if (result.next()) isActive = result.getInt(1);
 	return isActive;
     }
 
@@ -650,8 +649,8 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Set the status of a capability (active or not)
      */
-    public void setActive(String identifier, String capability) throws SQLException {
-	String query = "update capabilities set active = 1 where identifier = '" + identifier + "' and capability = '" + capability + "'";
+    public void setActive(String identifier, String capability, int port) throws SQLException {
+	String query = "update capabilities set active = " + port + " where identifier = '" + identifier + "' and capability = '" + capability + "'";
 	ResultSet result = execute(query);
     }
 
@@ -663,6 +662,22 @@ public class MySQLMetaStore implements MetaStore{
 	Statement statement = getConnection().createStatement();
 	String query = "insert capabilities values('" + identifier + "', '" + capability + "', 0)";
 	statement.executeUpdate(query);
+    }
+
+
+    /*
+     * Get next available capability port
+     */
+    public int getCapPort() throws SQLException {
+	int port = -1;
+	String query = "select max(active) from capabilities";
+	ResultSet result = execute(query);
+	if (result.next()) {
+	    port = result.getInt(1);
+	    if (port > 20000) port = port + 1;
+	    if (port == 0) port = 20001;
+	}
+	return port;
     }
 
     

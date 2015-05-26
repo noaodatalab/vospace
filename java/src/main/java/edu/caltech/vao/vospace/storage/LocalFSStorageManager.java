@@ -10,6 +10,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -171,4 +172,36 @@ public class LocalFSStorageManager implements StorageManager {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
 	}
     }
+
+    /**
+     * Retrieve the md5 sum of the data object at the specified location.
+     * @param location The location to check
+     * @return the md5 sum
+     */
+    public String md5(String location) throws VOSpaceException {
+	try {
+  	    StringBuffer md5 = new StringBuffer();
+	    if (size(location) > 0) {
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		FileInputStream fis = new FileInputStream(new File(new URI(location)));
+		byte[] dataBytes = new byte[1024];
+		int nread = 0;
+		while ((nread = fis.read(dataBytes)) != -1) {
+		    md.update(dataBytes, 0, nread);
+		}
+		byte[] mdbytes = md.digest();
+		for (int i = 0; i < mdbytes.length; i++) {
+		    md5.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+		}
+	    } else {
+		md5.append("d41d8cd98f00b204e9800998ecf8427e");
+	    }
+	    return md5.toString();
+	} catch (Exception e) {
+	    e.printStackTrace(System.err);
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	}
+    }
+
+
 }

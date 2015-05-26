@@ -76,4 +76,11 @@ public interface StorageManager {
      * @return how many bytes the location occupies
      */
     public long size(String location) throws VOSpaceException;
+
+    /**
+     * Retrieve the md5 sum of the data object at the specified location.
+     * @param location The location to check
+     * @return the md5 sum
+     */
+    public String md5(String location) throws VOSpaceException;
 }

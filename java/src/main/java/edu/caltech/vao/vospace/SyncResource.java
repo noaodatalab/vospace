@@ -151,7 +151,8 @@ public class SyncResource extends VOSpaceResource {
 	    dispatch.forward(newReq, runResp);	
 	    String location = runResp.getHeader("Location");
 	    String jobId = location.substring(location.lastIndexOf("/") + 1);
-	    resp.sendRedirect("http://localhost:8080/vospace-2.0/vospace/transfers/" + jobId + "/results/transferDetails");
+//	    resp.sendRedirect("http://localhost:8080/vospace-2.0/vospace/transfers/" + jobId + "/results/transferDetails");
+	    resp.sendRedirect("http://dldev1.tuc.noao.edu:8080/vospace-2.0/vospace/transfers/" + jobId + "/results/transferDetails");
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	}

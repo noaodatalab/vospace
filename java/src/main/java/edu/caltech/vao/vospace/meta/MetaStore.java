@@ -231,13 +231,13 @@ public interface MetaStore {
     /*
      * Check the status of a capability (active or not)
      */
-    public boolean isActive(String identifier, String capability) throws SQLException;
+    public int isActive(String identifier, String capability) throws SQLException;
 
 
     /*
      * Set the status of a capability (active or not)
      */
-    public void setActive(String identifier, String capability) throws SQLException;
+    public void setActive(String identifier, String capability, int port) throws SQLException;
 
 
     /*
@@ -245,6 +245,10 @@ public interface MetaStore {
      */
     public void registerCapability(String identifier, String capability) throws SQLException;
 
+    /*
+     * Get next available capability port
+     */
+    public int getCapPort() throws SQLException;
 
     /**
      * Check whether transfer associated with a Job exists
