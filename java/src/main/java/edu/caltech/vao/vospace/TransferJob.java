@@ -155,6 +155,7 @@ public class TransferJob extends JobThread {
 		parValue = (String) job.getAdditionalParameterValue("<transfer xmlns");
 		document = "<transfer xmlns=" + parValue;
 	    }
+	    System.err.println(document);
 	    transfer = new Transfer(document);
 	    validateTransfer();
 	} catch (VOSpaceException e) {
@@ -200,7 +201,7 @@ public class TransferJob extends JobThread {
 			String details = store.getResult(jobId);
 			file = details.substring(details.indexOf("<vos:target>") + 12, details.indexOf("</vos:target>"));
 			target = file;
-//			file = file.replace("vos://nvo.caltech!vospace", manager.BASEURI); 
+			//			file = file.replace("vos://nvo.caltech!vospace", manager.BASEURI); 
 			file = file.replace("vos://datalab.noao.edu!vospace", manager.BASEURI); 
 		    } catch (SQLException e) {
 			throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
@@ -308,6 +309,7 @@ public class TransferJob extends JobThread {
 	// Request details
 	Node node = null;
 	try {
+	    System.err.println(transfer.toString());
 	    String target = transfer.getTarget();
 	    // Create node (if necessary)
 	    if (!store.isStored(target)) {

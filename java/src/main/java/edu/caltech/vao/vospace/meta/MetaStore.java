@@ -172,6 +172,11 @@ public interface MetaStore {
     public String resolveTransfer(String endpoint) throws SQLException;
 
     /*
+     * Return the creation date of a transfer
+     */
+    public long getCreated(String endpoint) throws SQLException;
+    
+    /*
      * Return the identifier associated with the specified location
      */
     public String resolveIdentifier(String location) throws SQLException;

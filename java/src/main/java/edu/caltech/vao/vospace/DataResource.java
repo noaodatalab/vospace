@@ -50,7 +50,8 @@ public class DataResource extends VOSpaceResource {
     public Response getData(@PathParam("fileid") String fileid) throws VOSpaceException {
 	try {
 	    String location = manager.resolveLocation(fileid, true);
-	    manager.invalidateLocation(fileid);
+	    // Invalidating after an hour
+	    if (manager.hasExpired(fileid)) manager.invalidateLocation(fileid);
 	    //	    System.err.println(fileid + " " + location);
 	    //	    return new File(new URI(location));
 	    InputStream in = backend.getBytes(location);

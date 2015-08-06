@@ -35,7 +35,7 @@ import edu.caltech.vao.vospace.xml.*;
 @Path("nodes")
 public class NodeResource extends VOSpaceResource {
 
-//    private final String ROOTNODE = "vos://nvo.caltech!vospace";
+    //    private final String ROOTNODE = "vos://nvo.caltech!vospace";
     private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
 
     public NodeResource() throws VOSpaceException {

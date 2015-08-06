@@ -471,7 +471,7 @@ public class VOSpaceManager {
      * Resolve the specified location for a file 
      * @param identifier The logical identifier for the file
      * @param viewCheck Whether to check if a view transformation should happen
-     * @return location The physical location for the file
+     * @return the physical location for the file
      */
     protected String resolveLocation(String identifier, boolean viewCheck) throws VOSpaceException {
 	String target = null;
@@ -530,6 +530,23 @@ public class VOSpaceManager {
 	}
     }
 
+    /**
+     * Check whether the specified location has expired
+     * @param identifier The logical identifier for the file
+     * @return whether the location has expired or not
+     */
+    protected boolean hasExpired(String identifier) throws VOSpaceException {
+	boolean expired = false;
+	try {
+	    long created = store.getCreated(identifier);
+	    System.err.println(identifier + " " + Long.toString(created) + " " + (System.currentTimeMillis() - created));
+	    if (System.currentTimeMillis() - created > 3600000) expired = true;
+	    return expired;
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+	
 
     /**
      * Infer the view from the file extension

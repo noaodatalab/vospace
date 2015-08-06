@@ -149,7 +149,7 @@ class Login(Task):
       mount.setOption('secure_get', False)
       mount.setOption('allow_other', False)
       mount.setOption('foreground', False)
-      mount.setOption('nothreads', None)
+      mount.setOption('nothreads', True)
       mount.run()
 
 
