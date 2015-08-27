@@ -36,11 +36,13 @@ public class VOSpaceManager {
     private final static String AUTO_NODE = ".auto";
     private final static String NULL_NODE = ".null";
     private final static String BASE = "file:///tmp";
+    private final static String ROOT = "vos://";
     private final static boolean PRESERVE_DATA = false;
     private final static boolean OVERWRITE_DATA = true;
     private final static boolean STATUS_BUSY = true;
     private final static boolean STATUS_FREE = false;
     protected String BASE_URL = "http://localhost:8080/vospace";
+    protected String ROOT_NODE = "vos://";
     protected final static int PROPERTIES_SPACE_ACCEPTS = 1;
     protected final static int PROPERTIES_SPACE_PROVIDES = 2;
     protected final static int PROPERTIES_SPACE_CONTAINS = 4;
@@ -94,6 +96,7 @@ public class VOSpaceManager {
             Properties props = new Properties();
             props.load(new FileInputStream(propFile));
             // Set space properties
+	    ROOT_NODE = props.containsKey("space.rootnode") ? props.getProperty("space.rootnode") : ROOT; 							       
 	    BASEURI = props.containsKey("space.baseuri") ? props.getProperty("space.baseuri") : BASE; 
 	    STAGING_LOCATION = props.containsKey("space.staging_area") ? props.getProperty("space.staging_area") : BASE;
             structure = Boolean.parseBoolean(props.getProperty("space.supports.structure"));
@@ -109,7 +112,7 @@ public class VOSpaceManager {
             SPACE_PROVIDES_ARCHIVE = getViewList(props.getProperty("space.provides.archive"));
             SPACE_PROVIDES_OTHER = getViewList(props.getProperty("space.provides.other"));
 //	    SPACE_CAPABILITIES = getCapabilityList(props.getProperty("space.capabilities"));
-            SPACE_AUTH = props.containsKey("space.identifier") ? getId(props.getProperty("space.identifier")) : "vos://nvo.caltech!vospace";
+            SPACE_AUTH = props.containsKey("space.identifier") ? getId(props.getProperty("space.identifier")) : "vos://";
 	    registerProtocols(props);
 	    registerCapabilities(props);
             // Set metadata store

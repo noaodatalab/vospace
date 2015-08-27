@@ -6,15 +6,12 @@ import java.net.URISyntaxException;
 public class VOSpaceResource {
 
     protected final VOSpaceManager manager;
-//    private final String PROPFILE = "/Users/mjg/Projects/noao/vospace/java/vospace.properties";
-    private final String PROPFILE = "/home/graham/demo/java/vospace.properties";
 
     public VOSpaceResource() throws VOSpaceException {
 	// Get property file
 	try {
-	    //	    String propFile = this.getClass().getClassLoader().getResource("vospace.properties").toURI().getRawPath();
-	    manager = VOSpaceManager.getInstance(PROPFILE);
-	    //	} catch (URISyntaxException e) {
+	    String propFile = Thread.currentThread().getContextClassLoader().getResource("vospace.properties").toURI().getRawPath();
+	    manager = VOSpaceManager.getInstance(propFile);
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());

@@ -50,7 +50,7 @@ public class NodeResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
 	public Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
-	Node node = manager.getNode(ROOTNODE, detail, limit);
+	Node node = manager.getNode(manager.ROOT_NODE, detail, limit);
 	return node;
     }
 
@@ -117,7 +117,7 @@ public class NodeResource extends VOSpaceResource {
     }
 
     private String getId(String nodeid) {
-	return ROOTNODE + "/" + nodeid;
+	return manager.ROOT_NODE + "/" + nodeid;
     }
 
 }

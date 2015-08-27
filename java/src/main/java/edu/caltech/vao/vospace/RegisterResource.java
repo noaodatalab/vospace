@@ -32,7 +32,6 @@ import edu.caltech.vao.vospace.xml.*;
 @Path("register")
 public class RegisterResource extends VOSpaceResource {
 
-    private final String ROOTNODE = "vos://nvo.caltech!vospace";
     private StorageManager backend;
 
     public RegisterResource() throws VOSpaceException {

@@ -30,7 +30,7 @@ import javax.ws.rs.core.Response.ResponseBuilder;
 public class DataResource extends VOSpaceResource {
 
 //    private final String ROOTNODE = "vos://nvo.caltech!vospace";
-    private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
+//    private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
     private StorageManager backend;
 
     public DataResource() throws VOSpaceException {
