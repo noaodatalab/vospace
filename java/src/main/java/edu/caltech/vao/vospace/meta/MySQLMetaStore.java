@@ -112,7 +112,7 @@ public class MySQLMetaStore implements MetaStore{
     public boolean isStored(String identifier) throws SQLException {
 	boolean isStored = false;
         String query = "select identifier from nodes where identifier = '" + identifier + "'";
-	isStored = getAsBoolean(query);
+	isStored = extantEntry(query);
 	return isStored;
     }
 
@@ -136,7 +136,7 @@ public class MySQLMetaStore implements MetaStore{
     public boolean isKnownProperty(String identifier) throws SQLException{
 	boolean known = false;
         String query = "select * from metaproperties where identifier = '" + identifier + "'";
-	known = getAsBoolean(query);
+	known = extantEntry(query);
 	return known;
     }
 
@@ -377,7 +377,8 @@ public class MySQLMetaStore implements MetaStore{
     public void updateData(String identifier, String newIdentifier, Object metadata) throws SQLException {
 	if (metadata instanceof String) {
 	    String node = updateProperties((String) metadata);
-	    String query = "update nodes set identifier = '" + newIdentifier + "', node = '" + node + "' where identifier = '" + identifier + "'"; 
+	    String encode = node.replace("\"", "'");
+	    String query = "update nodes set identifier = '" + newIdentifier + "', node = \"" + encode + "\" where identifier = '" + identifier + "'"; 
 	    update(query);
 	}
     }
@@ -389,7 +390,8 @@ public class MySQLMetaStore implements MetaStore{
     public void updateData(String identifier, String newIdentifier, String newLocation, Object metadata) throws SQLException {
 	if (metadata instanceof String) {
 	    String node = updateProperties((String) metadata);
-	    String query = "update nodes set identifier = '" + newIdentifier + "', location = '" + newLocation + "', node = '" + node + "' where identifier = '" + identifier + "'"; 
+	    String encode = node.replace("\"", "'");
+	    String query = "update nodes set identifier = '" + newIdentifier + "', location = '" + newLocation + "', node = \"" + node + "\" where identifier = '" + identifier + "'";
 	    update(query);
 	}
     }
@@ -686,11 +688,23 @@ public class MySQLMetaStore implements MetaStore{
     private boolean getAsBoolean(String query) throws SQLException {
 	boolean ans = false;
 	ResultSet result = execute(query);	
-        if (result.next()) ans = true;
+        if (result.next()) ans = result.getBoolean(1);
 	connection.close();
 	return ans;
     }
 
+
+    /*
+     * Execute a query on the store
+     */
+    private boolean extantEntry(String query) throws SQLException {
+	boolean ans = false;
+	ResultSet result = execute(query);	
+        if (result.next()) ans = true;
+	connection.close();
+	return ans;
+    }
+    
 
     /*
      * Execute a query on the store
@@ -797,7 +811,7 @@ public class MySQLMetaStore implements MetaStore{
     public boolean isTransfer(String identifier) throws SQLException {
 	boolean transfer = false;
         String query = "select identifier from transfers where jobid = '" + identifier + "'";
-	transfer = getAsBoolean(query);
+	transfer = extantEntry(query);
 	return transfer;
     }
 }
