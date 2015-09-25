@@ -1732,7 +1732,7 @@ class Client:
             self.conn.session.post(job_url + "/phase",
                                    allow_redirects=False,
                                    data="PHASE=ABORT",
-                                   headers={"Content-type": 'text/text'})
+                                   headers={"Content-type": 'application/x-www-form-urlencoded'}) # MJG
             raise KeyboardInterrupt
         status = VOFile(phase_url, self.conn, method="GET",
                         follow_redirect=False).read()
@@ -1864,8 +1864,8 @@ class Client:
         data = str(node)
         size = len(data)
         self.conn.session.post(url,
-                               headers={'size': size},
-                               data=data)
+                               headers={'size': size, 'Content-type': 'text/xml'},
+                               data=data) # MJG
 
     def create(self, node):
         url = self.get_node_url(node.uri, method='PUT')
@@ -1903,12 +1903,13 @@ class Client:
             self.conn.session.post(transfer_url + "/phase",
                                    allow_redirects=False,
                                    data="PHASE=RUN",
-                                   headers={'Content-type': "text/text"})
+                                   headers={'Content-type': "application/x-www-form-urlencoded"}) # MJG
             self.get_transfer_error(transfer_url, node.uri)
         else:
             resp = self.conn.session.post(url,
                                           data=str(node),
-                                          allow_redirects=False)
+                                          allow_redirects=False,
+                                          headers={'Content-type': 'text/xml'}) # MJG
             logger.debug("update response: {0}".format(resp.content))
         return 0
 

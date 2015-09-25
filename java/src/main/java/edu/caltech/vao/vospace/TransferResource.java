@@ -168,7 +168,7 @@ public class TransferResource extends VOSpaceResource {
      * @return a Response instance indicating that the transfer job was created
      */
     @POST
-    //    @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
+    @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp) throws IOException {
 	executeRequest(req, resp);
