@@ -1,0 +1,6 @@
+name=tableingester
+version=1
+cmd={java -classpath stilts.jar:lib/drivers/mysql-connector-java.jar -Djdbc.drivers= uk.ac.starlink.ttools.Stilts tpipe in=$file omode=out out="jdbc:mysql://localhost/$db?user=$dbUser&password=$dbPwd#$table"}
+db=mydb
+dbUser=dba
+dbPwd=dba

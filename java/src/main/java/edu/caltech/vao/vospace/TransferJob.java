@@ -458,12 +458,11 @@ public class TransferJob extends JobThread {
 	String target = transfer.getTarget();
 	String direction = transfer.getDirection();
 	// Get node
-	ResultSet result = store.getData(new String[] {target}, null, 0);
+	String[] result = store.getData(new String[] {target}, null, 0);
+	if (result.length == 0) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Node not in metastore");
 	Node node = null;
-	if (result.next()) {
-	    node = factory.getNode(result.getString(1));	
-	} else {
-	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Node not in metastore");
+	for (String item: result) {
+	    node = factory.getNode(item);
 	}
 	// Check whether endpoint is reserved URI
 	if (direction.endsWith(".null")) {
@@ -515,12 +514,11 @@ public class TransferJob extends JobThread {
 	String target = transfer.getTarget();
 	String direction = transfer.getDirection();
 	// Get node
-	ResultSet result = store.getData(new String[] {target}, null, 0);
+	String[] result = store.getData(new String[] {target}, null, 0);
+	if (result.length == 0) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Node not in metastore");
 	Node node = null;
-	if (result.next()) {
-	    node = factory.getNode(result.getString(1));	
-	} else {
-	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Node not in metastore");
+	for (String item: result) {
+	    node = factory.getNode(item);	
 	}
 	// Check whether endpoint is reserved URI
 	if (direction.endsWith(".null")) {
@@ -696,9 +694,9 @@ public class TransferJob extends JobThread {
     public Node getNode(String identifier) throws UWSException {
 	Node node = null;
 	try {
-	    ResultSet result = store.getData(new String[] {identifier}, null, 0);
-	    if (result.next()) {
-		node = factory.getNode(result.getString(1));
+	    String[] result = store.getData(new String[] {identifier}, null, 0);
+	    for (String item: result) {
+		node = factory.getNode(item);
 	    } 
 	} catch (SQLException e) {
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);

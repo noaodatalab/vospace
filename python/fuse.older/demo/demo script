@@ -1,0 +1,29 @@
+[ON NOAO VPN]
+[START REMOTE FILE TRANSFER TO CALTECH]
+[cd /Users/mjg/Projects/repos/vospace/python/fuse]
+
+
+datalab login --user=sarah --password=herr1ng --mount=/tmp/vospace
+
+cd /tmp/vospace
+mkdir sarah
+mkdir sarah/ltg
+mkdir sarah/dbs
+datalab addcapability --dir=sarah/dbs --cap=tableingester --fmt=votable,fits,csv
+
+>>>vodata -X -O vos://datalab.noao.edu!vospace/sarah/dbs/sample.vot \ ivo://CDS.VizieR/J/MNRAS/406/382/catalog 0.0 0.0 180.
+[datalab query --uri=ivo://CDS.VizieR/J/MNRAS/406/382/catalog --out=vos://datalab.noao.edu~vospace/sarah/dbs/sample.vot --addArgs="0.0 0.0 180." ]
+
+[cd /tmp/vospace/sarah/ltg]
+[datalab query --uri=dldb://datalab.noao/sarah/dbs#sample --ofmt=ascii \ --out=ltg.csv (OR .txt) --sql=demo/ltg.sql]
+datalab query --uri=dldb://datalab.noao/sarah/dbs#sample --ofmt=csv --out=/tmp/vospace/sarah/ltg/ltg.csv --sql=demo/ltg.sql
+
+
+>>>vodata -O vos://datalab.noao.edu!vospace/sarah/ltg/img.vot \
+http://voserver.sdm.noao.edu:7001/?POS=0.0,0.0&SIZE=60.3 ltg.csv
+[datalab query --uri="http://voserver.sdm.noao.edu:7001/?POS=0.0,0.0&SIZE=60.3" --in=ltg.csv --out=vos://datalab.noao.edu~vospace/sarah/ltg/img.vot]
+datalab query --uri="http://voserver.sdm.noao.edu:7001/?POS=0.0,0.0&SIZE=60.3" --in=/tmp/vospace/sarah/ltg/ltg.csv --out=vos://datalab.noao.edu~vospace/sarah/ltg/img.vot
+
+
+>>>datalab exec --cmd=cutout --pos=ltg.csv --urls=img.vot --outdir=vos://datalab.noao.edu~vospace/sarah/ltg --nthreads=20
+datalab exec --cmd=cutout --pos=/tmp/vospace/sarah/ltg/ltg.csv --urls=/tmp/vospace/sarah/ltg/img.vot --outdir=vos://datalab.noao.edu~vospace/sarah/ltg --nthreads=20

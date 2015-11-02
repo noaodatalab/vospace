@@ -73,14 +73,14 @@ def suite():
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(MoveNodeTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(CopyNodeTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(DeleteNodeTestCase))
-#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(SetNodeTestCase))
+#    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(SetNodeTestCase))
 ##  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(GetNodeTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(FindNodesTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PushToVoSpaceTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PullToVoSpaceTestCase))
-  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PullFromVoSpaceTestCase))
+#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PullFromVoSpaceTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PushFromVoSpaceTestCase))
-#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(CapabilityTestCase))
+  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(CapabilityTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(ViewTestCase))
   return suite
 
@@ -377,6 +377,7 @@ class NodeTestCase(unittest.TestCase):
  
   def test_datanode(self):
     test = DataNode()
+    print test.tostring()
     self.xm.assert_xml_strings(test.tostring(), open('test/datanode.xml').read())
  
   def test_containernode(self):
@@ -612,6 +613,8 @@ class CreateNodeTestCase(unittest.TestCase):
     resp, content = self.h.request(BASE_URI + 'nodes/node1', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
     self.assertEqual(int(resp['status']), 201)
     test = Node(content)
+    print content
+    print test.tostring()
     self.schema.assertValid(etree.parse(StringIO(content)))
     self.xm.assert_xml_strings(content, test.tostring())
 
@@ -1050,6 +1053,7 @@ class DeleteNodeTestCase(unittest.TestCase):
     Test deleting a container: nodec1
     """
     resp, content = self.h.request(BASE_URI + 'nodes/nodec1', 'DELETE')
+    print content
     self.assertEqual(int(resp['status']), 204)
     
 

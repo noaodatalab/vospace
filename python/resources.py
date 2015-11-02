@@ -342,9 +342,9 @@ class DataNode(Node):
         node.set('busy', 'true')
       else:
         node.set('busy', 'false')
-      self.print_capabilities(node)
       self.print_accepts(node)
       self.print_provides(node)
+      self.print_capabilities(node)
     return etree.tostring(node)
 
   def add_accepts(self, uri):
@@ -407,9 +407,9 @@ class ContainerNode(DataNode):
         node.set('busy', 'true')
       else:
         node.set('busy', 'false')
-      self.print_capabilities(node)
       self.print_accepts(node)
       self.print_provides(node)
+      self.print_capabilities(node)
       self.print_nodes(node)
     return etree.tostring(node)
 

@@ -32,9 +32,9 @@ blankNode = '''<node xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns = "http://www.ivoa.net/xml/VOSpace/v2.0"
   xsi:type="" uri="">
   <properties/>
-  <capabilities/>
   <accepts/>
   <provides/>
+  <capabilities/>
 </node>'''
 
 class NodeFactory():

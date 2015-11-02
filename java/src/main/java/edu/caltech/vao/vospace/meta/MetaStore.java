@@ -61,7 +61,7 @@ public interface MetaStore {
      * Retrieve the metadata for the specified identifier at the specified level
      * of detail
      */
-    public ResultSet getData(String[] identifiers, String token, int limit) throws SQLException;
+    public String[] getData(String[] identifiers, String token, int limit) throws SQLException;
 
     /*
      * Remove the metadata for the specified identifier
@@ -134,12 +134,17 @@ public interface MetaStore {
     /*
      * Retrieve the job associated with the specified endpoint
      */
-    public ResultSet getTransfer(String endpoint) throws SQLException;
+    public String getTransfer(String endpoint) throws SQLException;
 
     /**
      * Check whether the specified transfer has completed
      */
     public boolean isCompleted(String jobid) throws SQLException;
+
+    /**
+     * Check whether the specified transfer has completed
+     */
+    public boolean isCompletedByEndpoint(String jobid) throws SQLException;
 
     /*
      * Store the original view of the specified object
@@ -189,7 +194,7 @@ public interface MetaStore {
     /*
      * Get the properties of the specified type
      */
-    public ResultSet getProperties(int type) throws SQLException;
+    public String[] getProperties(int type) throws SQLException;
 
     /*
      * Get the property type of the specified node
@@ -260,4 +265,8 @@ public interface MetaStore {
      */
     public boolean isTransfer(String identifier) throws SQLException;
 
+    /**
+     * Check whether transfer associated with a Job exists
+     */
+    public boolean isTransferByEndpoint(String identifier) throws SQLException;
 }

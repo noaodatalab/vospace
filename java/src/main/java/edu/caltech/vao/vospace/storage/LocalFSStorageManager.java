@@ -42,7 +42,6 @@ public class LocalFSStorageManager implements StorageManager {
      */
     public void createContainer(String location) throws VOSpaceException {
 	try {
-	    System.err.println(location);
 	    boolean success = (new File(new URI(location))).mkdir();
 	    if (!success) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Container cannot be created");
 	} catch (Exception e) {
@@ -77,7 +76,6 @@ public class LocalFSStorageManager implements StorageManager {
      */
     public void copyBytes(String oldLocation, String newLocation) throws VOSpaceException {
 	try {
-	    System.err.println(oldLocation + " " + newLocation);
 	    File oldFile = new File(new URI(oldLocation));
 	    if (oldFile.isFile()) {
 		FileUtils.copyFile(oldFile, new File(new URI(newLocation)));

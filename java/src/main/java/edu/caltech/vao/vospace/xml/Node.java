@@ -210,6 +210,6 @@ public class Node {
      * @return a string representation of the node
      */
     public String toString() {
-	return node.toString();
+	return node.toString().replace("'", "\"");
     }
 }

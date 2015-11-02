@@ -268,13 +268,15 @@ public class VOSpaceManager {
      * @return the retrieved node
      */
     public Node getNode(String identifier, String detail, int limit) throws VOSpaceException {
+	Node node = null;
 	// Is identifier syntactically valid?
 	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid."); 
 	// Retrieve original node
 	try {
-	    ResultSet result = store.getData(new String[] {identifier}, null, limit);
-	    if (result.next()) {
-		Node node = nfactory.getNode(result.getString(1));
+	    String[] result = store.getData(new String[] {identifier}, null, limit);
+	    if (result.length == 0) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI");
+	    for (String item: result) {
+		node = nfactory.getNode(item);
 		detail = (detail == null) ? "max" : detail; // Try with min - MJG
 		if (!detail.equals("max")) {
 		    if (node instanceof DataNode) {
@@ -305,13 +307,11 @@ public class VOSpaceManager {
 		// Set properties
 		node = setLength(node);
 		if (!(node instanceof ContainerNode)) node = setMD5(node);
-		return node;
-	    } else {
-		throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI");
-	    }   
+	    }
 	} catch (SQLException e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
+	return node;
     }
 
 
@@ -480,10 +480,9 @@ public class VOSpaceManager {
 	String target = null;
 	String view = null;
 	try {
-	    ResultSet result = store.getTransfer(identifier);
-	    if (result.next()) {
-		if (result.getDate(2) == null) {
-		    StringReader in = new StringReader(result.getString(1));
+	    if (store.isTransferByEndpoint(identifier)) {
+		if (!store.isCompletedByEndpoint(identifier)) {
+		    StringReader in = new StringReader(store.getTransfer(identifier));
 		    XMLInputFactory xif = XMLInputFactory.newInstance();
 		    XMLStreamReader2 xsr = (XMLStreamReader2) xif.createXMLStreamReader(in);
 		    xsr.nextTag(); // Advance to first element - <vos:transfer>
@@ -516,7 +515,6 @@ public class VOSpaceManager {
 		throw new VOSpaceException(VOSpaceException.NOT_FOUND, "The specified file cannot be found.");
 	    }
 	} catch (Exception e) {
-	    e.printStackTrace(System.err);
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
     }
@@ -580,9 +578,9 @@ public class VOSpaceManager {
      */
     public void updateSize(String endpoint, String size) throws VOSpaceException {
 	try {
-	    ResultSet result = store.getTransfer(endpoint);
-	    if (result.next()) {
-		Transfer transfer = new Transfer(result.getString(1));
+	    String result = store.getTransfer(endpoint);
+	    if (result != null) {
+		Transfer transfer = new Transfer(result);
 		String target = transfer.getTarget();
 		Node node = nfactory.getNode(store.getNode(target));
 		node.setProperty(Props.get(Props.Property.LENGTH), size);

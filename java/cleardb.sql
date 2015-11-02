@@ -17,5 +17,3 @@ insert into properties values('vos://nvo.caltech!vospace/node12', 'ivo://ivoa.ne
 insert into properties values('vos://nvo.caltech!vospace/node12', 'ivo://ivoa.net/vospace/core#ispublic', 'true');
 drop database mydb;
 create database mydb;
-
-
