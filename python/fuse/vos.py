@@ -5,13 +5,13 @@
    stored in a .pem file.
 """
 
+from contextlib import nested
 import copy
 import errno
 import fnmatch
 import hashlib
 from cStringIO import StringIO
 import requests
-requests.packages.urllib3.disable_warnings()
 import html2text
 import logging
 import mimetypes
@@ -27,6 +27,7 @@ from xml.etree import ElementTree
 from copy import deepcopy
 from NodeCache import NodeCache
 from __version__ import version
+import netrc
 
 try:
     _unicode = unicode
@@ -42,7 +43,7 @@ try:
 except ImportError:
     # Python 2
     import httplib as http_client
-http_client.HTTPConnection.debuglevel = 1
+#http_client.HTTPConnection.debuglevel = 1
 
 logger = logging.getLogger('vos')
 logger.setLevel(logging.ERROR)
@@ -62,6 +63,10 @@ HEADER_CONTENT_LENGTH = 'X-CADC-Content-Length'
 HEADER_PARTIAL_READ = 'X-CADC-Partial-Read'
 CONNECTION_COUNTER = 0
 
+CADC_GMS_PREFIX = ''
+
+requests.packages.urllib3.disable_warnings()
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 def convert_vospace_time_to_seconds(str_date):
     """A convenience method that takes a string from a vospace time field and converts it to seconds since epoch.
@@ -71,7 +76,7 @@ def convert_vospace_time_to_seconds(str_date):
     :return: A datetime object for the provided string date
     :rtype: datetime
     """
-    right = str_date.rfind(":")+3
+    right = str_date.rfind(":") + 3
     mtime = time.mktime(time.strptime(str_date[0:right], '%Y-%m-%dT%H:%M:%S'))
     return mtime - time.mktime(time.gmtime()) + time.mktime(time.localtime())
 
@@ -97,7 +102,7 @@ def compute_md5(filename, block_size=BUFSIZE):
     return md5.hexdigest()
 
 
-class URLParser:
+class URLParser(object):
     """ Parse out the structure of a URL.
 
     There is a difference between the 2.5 and 2.7 version of the
@@ -109,10 +114,12 @@ class URLParser:
         self.netloc = None
         self.args = None
         self.path = None
-        m = re.match("(^(?P<scheme>[a-zA-Z]*):)?(//(?P<netloc>[^/]*))?"
+        m = re.match("(^(?P<scheme>[a-zA-Z]*):)?(//(?P<netloc>(?P<server>[^!~]*)[!~](?P<service>[^/]*)))?"
                      "(?P<path>/?[^?]*)?(?P<args>\?.*)?", url)
         self.scheme = m.group('scheme')
         self.netloc = m.group('netloc')
+        self.server = m.group('server')
+        self.service = m.group('service')
         self.path = (m.group('path') is not None and m.group('path')) or ''
         self.args = (m.group('args') is not None and m.group('args')) or ''
 
@@ -121,7 +128,7 @@ class URLParser:
                                                        self.netloc, self.path)
 
 
-class Connection:
+class Connection(object):
     """Class to hold and act on the X509 certificate"""
 
     def __init__(self, vospace_certfile=None, vospace_token=None, http_debug=False):
@@ -151,7 +158,12 @@ class Connection:
         # create a requests session object that all requests will be made via.
         session = requests.Session()
         if self.vospace_certfile is not None:
-            session.cert = (self.vospace_certfile, self.vospace_certfile)
+            session.cert = self.vospace_certfile
+            session.verify = False
+        if self.vospace_certfile is None: # MJG look at this in operation
+            auth = netrc.netrc().authenticators(EndPoints.VOSPACE_WEBSERVICE)
+            if auth is not None:
+                session.auth = (auth[0], auth[2])
         if self.vospace_token is not None:
             session.headers.update({HEADER_DELEG_TOKEN: self.vospace_token})
 
@@ -205,7 +217,6 @@ class Node(object):
         self.target = None
         self.groupread = None
         self.groupwrite = None
-        self.is_locked = None
         self.is_public = None
         self.type = None
         self.props = {}
@@ -262,9 +273,7 @@ class Node(object):
         self.is_public = False
         if self.props.get('ispublic', 'false') == 'true':
             self.is_public = True
-        self.is_locked = False
-        if self.props.get(self.endpoints.islocked, 'false') == 'true':
-            self.is_locked = True
+        logger.debug("{0} {1} -> {2}".format(self.uri, self.endpoints.islocked, self.props))        
         self.groupwrite = self.props.get('groupwrite', '')
         self.groupread = self.props.get('groupread', '')
         logger.debug("Setting file attributes via setattr")
@@ -592,9 +601,19 @@ class Node(object):
             return True
         return False
 
+    @property
+    def is_locked(self):
+        return self.islocked()
+
+    @is_locked.setter
+    def is_locked(self, lock):
+        if lock == self.is_locked:
+            return
+        self.change_prop(self.endpoints.islocked, lock and "true" or "false")
+
     def islocked(self):
         """Check if target state is locked for update/delete."""
-        return self.props[self.endpoints.islocked] == "true"
+        return self.props.get(self.endpoints.islocked, "false") == "true"
 
     def get_info(self):
         """Organize some information about a node and return as dictionary"""
@@ -913,7 +932,7 @@ class VOFile(object):
                 self.resp = self.connector.session.send(self.request, stream=True)
                 self.checkstatus()
             except Exception as ex:
-                logger.debug("Error on read: {}".format(ex))
+                logger.debug("Error on read: {0}".format(ex))
                 raise ex
 
         if self.resp is None:
@@ -1026,8 +1045,8 @@ class EndPoints(object):
     NOAO_TEST_SERVER = "dldev1.tuc.noao.edu:8080/vospace-2.0"
     LOCAL_TEST_SERVER = "localhost:8080/vospace-2.0"
 #    DEFAULT_VOSPACE_URI = 'cadc.nrc.ca!vospace'
-#    DEFAULT_VOSPACE_URI = 'nvo.caltech!vospace'
-    DEFAULT_VOSPACE_URI = 'datalab.noao.edu!vospace'
+    DEFAULT_VOSPACE_URI = 'nvo.caltech!vospace'
+#    DEFAULT_VOSPACE_URI = 'datalab.noao.edu!vospace'
     VOSPACE_WEBSERVICE = os.getenv('VOSPACE_WEBSERVICE', None)
 
     VOServers = {'cadc.nrc.ca!vospace': CADC_SERVER,
@@ -1062,8 +1081,12 @@ class EndPoints(object):
 
         :param uri:
         """
-        self.netloc = URLParser(uri).netloc
+        self.uri_parts = URLParser(uri)
 
+    @property
+    def netloc(self):
+        return self.uri_parts.netloc
+        
     @property
     def properties(self):
         return "{0}/{1}".format(self.uri, EndPoints.VOProperties.get(self.server))
@@ -1077,12 +1100,16 @@ class EndPoints(object):
         return "{0}/view".format(self.uri)
 
     @property
+    def cutout(self):
+        return "ivo://{0}/{1}#{2}".format(self.uri_parts.server, 'view', 'cutout')  
+    
+    @property
     def core(self):
         return "{0}/core".format(self.uri)
 
     @property
     def islocked(self):
-        return "{0}#islocked".format(self.uri)
+        return "{0}#islocked".format(self.core)
 
     @property
     def server(self):
@@ -1103,7 +1130,7 @@ class EndPoints(object):
         if self.server in EndPoints.VOTransfer:
             end_point = EndPoints.VOTransfer[self.server]
         else:
-            end_point = "/vospace/synctrans"
+            end_point = "/vospace/auth/synctrans"
         return "{0}/{1}".format(self.server, end_point)
 
     @property
@@ -1115,7 +1142,7 @@ class EndPoints(object):
         return "{0}/{1}".format(self.server, EndPoints.VONodes)
 
 
-class Client:
+class Client(object):
     """The Client object does the work"""
 
     VO_HTTPGET_PROTOCOL = 'ivo://ivoa.net/vospace/core#httpget'
@@ -1131,7 +1158,7 @@ class Client:
     VOSPACE_CERTFILE = os.getenv("VOSPACE_CERTFILE", None)
     if VOSPACE_CERTFILE is None:
         for certfile in ['cadcproxy.pem', 'vospaceproxy.pem']:
-            certpath = os.path.join(os.getenv("HOME", "."), '.ssl/cadcproxy.pem')
+            certpath = os.path.join(os.getenv("HOME", "."), '.ssl')
             certfilepath = os.path.join(certpath, certfile)
             if os.access(certfilepath, os.R_OK):
                 VOSPACE_CERTFILE = certfilepath
@@ -1296,6 +1323,7 @@ class Client:
         destination_size = None
         destination_md5 = None
         source_md5 = None
+        get_node_url_retried = False
 
         if source[0:4] == "vos:":
             check_md5 = False
@@ -1309,30 +1337,51 @@ class Client:
                 cutout = None
                 check_md5 = True
                 source_md5 = self.get_node(source).props.get('MD5', 'd41d8cd98f00b204e9800998ecf8427e')
-
             get_urls = self.get_node_url(source, method='GET', cutout=cutout, view=view)
-            if not isinstance(get_urls, list):
-                get_urls = [get_urls]
-            for get_url in get_urls:
+            while not success:
+                # If there are no urls available, drop through to full negotiation if that wasn't already tried
+                if len(get_urls) == 0:
+                    if self.transfer_shortcut and not get_node_url_retried:
+                        get_urls = self.get_node_url(source, method='GET', cutout=cutout, view=view,
+                                                     full_negotiation=True)
+                        # remove the first one as we already tried that one.
+                        get_urls.pop(0)
+                        get_node_url_retried = True
+                    else:
+                        break
+                get_url = get_urls.pop(0)
                 try:
+                    response = self.conn.session.get(get_url, timeout=(2, 5), stream=True)
+                    source_md5 = response.headers.get('Content-MD5', source_md5)
+                    response.raise_for_status()
                     with open(destination, 'w') as fout:
-                        fout.write(self.conn.session.get(get_url).content)
+                        for chunk in response.iter_content(chunk_size=512 * 1024):
+                            if chunk:
+                                fout.write(chunk)
+                                fout.flush()
                     destination_size = os.stat(destination).st_size
                     if check_md5:
                         destination_md5 = compute_md5(destination)
+                        logger.debug("{0} {1}".format(source_md5, destination_md5))
                         assert destination_md5 == source_md5
+                    success = True
                 except Exception as ex:
                     logging.debug("Failed to GET {0}".format(get_url))
                     logging.debug("Got error {0}".format(ex))
                     continue
-                success = True
-                break
         else:
             source_md5 = compute_md5(source)
             put_urls = self.get_node_url(destination, 'PUT')
-            if not isinstance(put_urls, list):
-                put_urls = [put_urls]
-            for put_url in put_urls:
+            while not success:
+                if len(put_urls) == 0:
+                    if self.transfer_shortcut and not get_node_url_retried:
+                        put_urls = self.get_node_url(destination, method='PUT', full_negotiation=True)
+                        # remove the first one as we already tried that one.
+                        put_urls.pop(0)
+                        get_node_url_retried = True
+                    else:
+                        break
+                put_url = put_urls.pop(0)
                 try:
                     with open(source, 'r') as fin:
                         self.conn.session.put(put_url, data=fin)
@@ -1391,7 +1440,7 @@ class Client:
             host = EndPoints.DEFAULT_VOSPACE_URI
         path = os.path.normpath(path).strip('/')
         uri = "{0}://{1}/{2}{3}".format(parts.scheme, host, path, parts.args)
-        logger.debug("Returning URI: {}".format(uri))
+        logger.debug("Returning URI: {0}".format(uri))
         return uri
 
     def get_node(self, uri, limit=0, force=False):
@@ -1416,7 +1465,7 @@ class Client:
                 # If this is vospace URI then we can request the node info
                 # using the uri directly, but if this a URL then the metadata
                 # comes from the HTTP header.
-                if uri[0:4] == 'vos:':
+                if uri.startswith('vos:'):
                     vo_fobj = self.open(uri, os.O_RDONLY, limit=limit)
                     vo_xml_string = vo_fobj.read()
                     xml_file = StringIO(vo_xml_string)
@@ -1480,6 +1529,28 @@ class Client:
         :type full_negotiation: bool
         """
         uri = self.fix_uri(uri)
+
+        if view in ['data', 'cutout'] and method == 'GET':
+            node = self.get_node(uri, limit=0)
+            if node.islink():
+                target = node.node.findtext(Node.TARGET)
+                logger.debug("%s is a link to %s" % (node.uri, target))
+                if target is None:
+                    raise OSError(errno.ENOENT, "No target for link")
+                parts = URLParser(target)
+                if parts.scheme != "vos":
+                    # This is not a link to another VOSpace node so lets just return the target as the url
+                    url = target
+                    if cutout is not None:
+                        url = "{0}?cutout={1}".format(target, cutout)
+                        logger.debug("Line 3.1.2")
+                    logger.debug("Returning URL: {0}".format(url))
+                    return [url]
+                logger.debug("Getting URLs for: {0}".format(target))
+                return self.get_node_url(target, method=method, view=view, limit=limit, next_uri=next_uri,
+                                         cutout=cutout,
+                                         full_negotiation=full_negotiation)
+        
         logger.debug("Getting URL for: " + str(uri))
 
         endpoints = EndPoints(uri)
@@ -1579,7 +1650,7 @@ class Client:
                                      cutout=cutout)
 
         logger.debug("Sending short cut url: {0}".format(url))
-        return url
+        return [url]
 
     def link(self, src_uri, link_uri):
         """Make link_uri point to src_uri.
@@ -1591,15 +1662,20 @@ class Client:
         """
         link_uri = self.fix_uri(link_uri)
         src_uri = self.fix_uri(src_uri)
+
+        # if the link_uri points at an existing directory then we try and make a link into that directory        
         if self.isdir(link_uri):
             link_uri = os.path.join(link_uri, os.path.basename(src_uri))
-        with self.nodeCache.volatile(src_uri), self.nodeCache.volatile(link_uri):
+
+        with nested(self.nodeCache.volatile(src_uri), self.nodeCache.volatile(link_uri)):
             link_node = Node(link_uri, node_type="vos:LinkNode")
             ElementTree.SubElement(link_node.node, "target").text = src_uri
-        url = self.get_node_url(link_uri)
         data = str(link_node)
         size = len(data)
-        self.conn.session.put(url, data=data, size=size)
+
+        url = self.get_node_url(link_uri)
+        logger.debug("Got linkNode URL: {0}".format(url))        
+        self.conn.session.put(url, data=data, headers={'size': size})
         return True
 
     def move(self, src_uri, destination_uri):
@@ -1614,7 +1690,7 @@ class Client:
         """
         src_uri = self.fix_uri(src_uri)
         destination_uri = self.fix_uri(destination_uri)
-        with self.nodeCache.volatile(src_uri), self.nodeCache.volatile(destination_uri):
+        with nested(self.nodeCache.volatile(src_uri), self.nodeCache.volatile(destination_uri)):
             return self.transfer(src_uri, destination_uri, view='move')
 
     def _get(self, uri, view="defaultview", cutout=None):
@@ -1642,16 +1718,20 @@ class Client:
             if view == 'defaultview' or view == 'data': # MJG - data view not supported
                 ElementTree.SubElement(transfer_xml, "vos:view").attrib['uri'] = "ivo://ivoa.net/vospace/core#defaultview"
             elif view is not None:
-                ElementTree.SubElement(transfer_xml, "vos:view").attrib['uri'] = endpoints.view+"#{0}".format(view)
+                vos_view = ElementTree.SubElement(transfer_xml, "vos:view")
+                vos_view.attrib['uri'] = endpoints.view + "#{0}".format(view)
                 if cutout is not None and view == 'cutout':
-                    ElementTree.SubElement(transfer_xml, "cutout").attrib['uri'] = cutout
-            ElementTree.SubElement(transfer_xml, "vos:protocol").attrib['uri'] = "{0}#{1}".format(Node.IVOAURL,
-                                                                                                  protocol[direction])
+                    param = ElementTree.SubElement(vos_view, "vos:param")
+                    param.attrib['uri'] = endpoints.cutout
+                    param.text = cutout
+            protocol_element = ElementTree.SubElement(transfer_xml, "vos:protocol")
+            protocol_element.attrib['uri'] = "{0}#{1}".format(Node.IVOAURL, protocol[direction])
 
         logging.debug(ElementTree.tostring(transfer_xml))
         url = "{0}://{1}".format(self.protocol,
                                  endpoints.transfer)
-
+        logging.debug("Sending to : {}".format(url))
+        
         data = ElementTree.tostring(transfer_xml)
         resp = self.conn.session.post(url,
                                       data=data,
@@ -1662,6 +1742,10 @@ class Client:
         if resp.status_code != 303 and resp.status_code != 302: # MJG
             raise OSError(resp.status_code, "Failed to get transfer service response.")
         transfer_url = resp.headers.get('Location', None)
+
+        if self.conn.session.auth is not None and "auth" not in transfer_url:
+            transfer_url = transfer_url.replace('/vospace/', '/vospace/auth/')
+        
         logging.debug("Got back from transfer URL: %s" % transfer_url)
 
         # For a move this is the end of the transaction.
@@ -1669,9 +1753,15 @@ class Client:
             return not self.get_transfer_error(transfer_url, uri)
 
         # for get or put we need the protocol value
-        xml_string = self.conn.session.get(transfer_url).content
-        transfer_document = ElementTree.fromstring(xml_string)
+        xfer_resp = self.conn.session.get(transfer_url, allow_redirects=False)
+        xfer_url = xfer_resp.headers.get('Location', transfer_url) # MJG
+        if self.conn.session.auth is not None and "auth" not in xfer_url:
+            xfer_url = xfer_url.replace('/vospace/', '/vospace/auth/')
+        xml_string = self.conn.session.get(xfer_url).content
+        
         logging.debug("Transfer Document: %s" % xml_string)
+        transfer_document = ElementTree.fromstring(xml_string)
+        logging.debug("XML version: {0}".format(ElementTree.tostring(transfer_document)))
         all_protocols = transfer_document.findall(Node.PROTOCOL)
         if all_protocols is None or not len(all_protocols) > 0:
             return self.get_transfer_error(transfer_url, uri)
@@ -1680,6 +1770,10 @@ class Client:
         for protocol in all_protocols:
             for node in protocol.findall(Node.ENDPOINT):
                 result.append(node.text)
+        # if this is a connection to the 'rc' server then we reverse the
+        # urllist to test the fail-over process
+        if endpoints.server.startswith('rc'):
+            result.reverse()
         return result
 
     def get_transfer_error(self, url, uri):
@@ -1817,12 +1911,13 @@ class Client:
                     if target is None:
                         raise OSError(errno.ENOENT, "No target for link")
                     else:
-                        if re.search("^vos://(.+\.)+(.+)+[!~]vospace", target) is not None:
+                        parts = URLParser(target)
+                        if parts.scheme == 'vos':
                             # This is a link to another VOSpace node so lets open that instead.
                             return self.open(target, mode, view, head, url, limit,
                                              next_uri, size, cutout, byte_range)
                         else:
-                            # A target external to VOSpace, open the target directly
+                            # A target external link
                             # TODO Need a way of passing along authentication.
                             if cutout is not None:
                                 target = "{0}?cutout={1}".format(target, cutout)
@@ -1920,7 +2015,7 @@ class Client:
         if '?' in url: url = url[: url.rindex('?')] # MJG
         self.conn.session.headers['Content-type'] = 'text/xml' # MJG
         response = self.conn.session.put(url, data=str(node))
-        return response.status_code == 200
+        response.raise_for_status()
 
     def delete(self, uri):
         """Delete the node"""
@@ -1928,7 +2023,8 @@ class Client:
         logger.debug("delete {0}".format(uri))
         with self.nodeCache.volatile(uri):
             url = self.get_node_url(uri, method='GET')
-            return self.conn.session.delete(url)
+            response = self.conn.session.delete(url)
+            response.raise_for_status()
 
     def get_info_list(self, uri):
         """Retrieve a list of tuples of (NodeName, Info dict)"""
