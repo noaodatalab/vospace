@@ -39,7 +39,8 @@ public class MySQLMetaStore implements MetaStore{
     private String DB_UID;
     private String DB_PWD;
     private String connectionURL;
-    private Connection connection;
+    private int STOREID = 0;
+    private int CONNID = 0;
 
     /**
      * Construct a basic MySQLMetaStore
@@ -64,21 +65,28 @@ public class MySQLMetaStore implements MetaStore{
 	    Class.forName("org.apache.commons.dbcp.PoolingDriver");
 	    PoolingDriver driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
 	    driver.registerPool("connPool", connectionPool);
-	    // Get connection
-	    connection = getConnection();
         } catch (Exception e) {	
 	    e.printStackTrace();
 	    //	    log.error(e.getMessage());
 	}
     }
 
+
+    /*
+     * Set the id of the store
+     * @param id The id of the store
+     */
+    public void setStoreID(int id) {
+	STOREID = id;
+    }
+
+    
    /* 
     * Get a db connection
     */
     private Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) { 
-	    connection = DriverManager.getConnection("jdbc:apache:commons:dbcp:connPool");
-	} 
+       	Connection connection = DriverManager.getConnection("jdbc:apache:commons:dbcp:connPool");
+//	System.err.println("Getting connection: " + STOREID + "-" + ++CONNID);
 	return connection;
     }
 
@@ -211,18 +219,12 @@ public class MySQLMetaStore implements MetaStore{
             }
 	    if (i != identifiers.length - 1) whereQuery += " or ";
 	}
-	try {
-	    String query = "select count(identifier) from nodes " + whereQuery;
-	    ResultSet countResult = execute(query);
-	    countResult.next();
-	    int count = countResult.getInt(1); 
-	    if (limit < count) {
-		token = UUID.randomUUID().toString();
-		String createToken = "insert into listings (token, offset, count, whereQuery) values ('" + token + "', " + 0 + ", " + count + ", '" + whereQuery.replace("'", "\\'") + "')";
-		update(createToken);
-	    }
-	} finally {
-	    connection.close();
+	String query = "select count(identifier) from nodes " + whereQuery;
+	int count = getAsInt(query);
+	if (limit < count) {
+	    token = UUID.randomUUID().toString();
+	    String createToken = "insert into listings (token, offset, count, whereQuery) values ('" + token + "', " + 0 + ", " + count + ", '" + whereQuery.replace("'", "\\'") + "')";
+	    update(createToken);
 	}
 	return token;
     }
@@ -230,8 +232,9 @@ public class MySQLMetaStore implements MetaStore{
     public boolean getAllData(String token, int limit) throws SQLException {
 	boolean allData = false;
 	String query = "select offset, count from listings where token = '" + token + "'";
+	ResultSet result = null;
 	try {
-	    ResultSet result = execute(query);
+	    result = execute(query);
 	    result.next();
 	    int offset = result.getInt(1);
 	    int count = result.getInt(2);
@@ -242,7 +245,7 @@ public class MySQLMetaStore implements MetaStore{
 		update(updateOffset);
 	    }
 	} finally {
-	    connection.close();
+	    result.close();
 	}
 	return allData;
     }
@@ -252,7 +255,6 @@ public class MySQLMetaStore implements MetaStore{
      * level of detail
      */
     public String[] getData(String[] identifiers, String token, int limit) throws SQLException {
-	ArrayList<String> nodes = new ArrayList<String>();
 	String query = null, whereQuery = null;
 	int count = 0, offset = 0;
 	// Get count
@@ -265,11 +267,11 @@ public class MySQLMetaStore implements MetaStore{
             }
 	    if (i != identifiers.length - 1) whereQuery += " or ";
 	}
-	ResultSet result = null;
-	try {
-	    if (token != null) {
-		String tokenQuery = "select offset, count, updateDate, whereQuery from listings where token = '" + token + "'";
-		ResultSet tokenResult = execute(tokenQuery);
+	if (token != null) {
+	    String tokenQuery = "select offset, count, updateDate, whereQuery from listings where token = '" + token + "'";
+	    ResultSet tokenResult = null;
+	    try {
+		tokenResult = execute(tokenQuery);
 		if (tokenResult.next()) {
 		    offset = tokenResult.getInt(1);	
 		    count = tokenResult.getInt(2);
@@ -277,21 +279,18 @@ public class MySQLMetaStore implements MetaStore{
 		} else {
 		    throw new SQLException("Invalid token");
 		}
+	    } finally {
+		closeResult(tokenResult);
 	    }
-	    // Construct listing query
-	    query = "select node from nodes ";
-	    //	query += whereQuery + " order by identifier ";
-	    query += whereQuery + " order by type ";
-	    if (limit > 0) query += " limit " + limit;
-	    if (offset > 0) query += " offset " + offset;
-	    result = execute(query);
-	    while (result.next()) {
-		nodes.add(result.getString(1));
-	    }
-	} finally {
-	    result.close();
 	}
-	return nodes.toArray(new String[0]);
+	// Construct listing query
+	query = "select node from nodes ";
+	//	query += whereQuery + " order by identifier ";
+	query += whereQuery + " order by type ";
+	if (limit > 0) query += " limit " + limit;
+	if (offset > 0) query += " offset " + offset;
+	String[] nodes = getAsStringArray(query);
+	return nodes;
     }
 
     /*
@@ -311,14 +310,11 @@ public class MySQLMetaStore implements MetaStore{
     public String[] getChildren(String identifier) throws SQLException {
 	ArrayList<String> children = new ArrayList<String>();
 	String query = "select identifier from nodes where identifier like '" + identifier + "%'";
-	ResultSet result = execute(query);
-	while (result.next()) {
-	    String child = result.getString(1);
+	for (String child: getAsStringArray(query)) {
 	    if (!child.equals(identifier) && !child.substring(identifier.length() + 1).contains("/")) {
 		children.add(child);
 	    }
 	}
-	connection.close();
 	return children.toArray(new String[0]);
     }
 
@@ -327,34 +323,23 @@ public class MySQLMetaStore implements MetaStore{
      * Get the direct children nodes of the specified container node
      */
     public String[] getChildrenNodes(String identifier) throws SQLException {
-	ArrayList<String> children = new ArrayList<String>();
 	String query = "select node from nodes where identifier like '" + identifier + "/%' and identifier not like '" + identifier + "/%/%'";
-	ResultSet result = execute(query);
-	while (result.next()) {
-	    String child = result.getString(1);
-	    //	    if (!child.equals(identifier) && !child.substring(identifier.length() + 1).contains("/")) {
-	    children.add(child);
-	    //}
-	}
-	connection.close();
-	return children.toArray(new String[0]);
+	String[] children = getAsStringArray(query);
+	return children;
     }
 
     
     /*
      * Get all the children of the specified container node
      */
-    public String[] getAllChildren(String identifier) throws SQLException {
+    public String[] getAllChildren(String identifier) throws SQLException {	
 	ArrayList<String> children = new ArrayList<String>();
 	String query = "select identifier from nodes where identifier like '" + identifier + "%'";
-	ResultSet result = execute(query);
-	while (result.next()) {
-	    String child = result.getString(1);
+	for (String child : getAsStringArray(query)) {
 	    if (!child.equals(identifier)) {
 		children.add(child);
 	    }
 	}
-	connection.close();
 	return children.toArray(new String[0]);
     }
 
@@ -475,14 +460,8 @@ public class MySQLMetaStore implements MetaStore{
      * Retrieve the job associated with the specified endpoint
      */
     public String getTransfer(String endpoint) throws SQLException {
-	String job = null;
 	String query = "select details from results j, transfers t where t.jobid = j.identifier and t.endpoint like '%" + endpoint + "'";
-	try {
-	    ResultSet result = execute(query);
-	    if (result.next()) job = result.getString(1);
-	} finally {
-	    connection.close();
-	}
+	String job = getAsString(query);
 	return job;
     }
 
@@ -491,14 +470,8 @@ public class MySQLMetaStore implements MetaStore{
      */
     public boolean isCompleted(String jobid) throws SQLException {
 	boolean completed = false;
-	try {
-	    String query = "select completed from transfers where jobid = '" + jobid + "'";
-	    ResultSet result = execute(query);
-	    if (result.next()) 
-		if (result.getDate(1) != null) completed = true;
-	} finally {
-	    connection.close();
-	}
+	String query = "select completed from transfers where jobid = '" + jobid + "'";
+	if (getAsDate(query) != null) completed = true;
 	return completed;
     }
 
@@ -507,14 +480,8 @@ public class MySQLMetaStore implements MetaStore{
      */
     public boolean isCompletedByEndpoint(String endpoint) throws SQLException {
 	boolean completed = false;
-	try {
-	    String query = "select completed from transfers where endpoint like '%" + endpoint + "'";
-	    ResultSet result = execute(query);
-	    if (result.next()) 
-		if (result.getDate(1) != null) completed = true;
-	} finally {
-	    connection.close();
-	}
+	String query = "select completed from transfers where endpoint like '%" + endpoint + "'";
+	if (getAsDate(query) != null) completed = true;
 	return completed;
     }
 
@@ -553,9 +520,7 @@ public class MySQLMetaStore implements MetaStore{
     public long getCreated(String endpoint) throws SQLException {
 	long created = 0;
 	String query = "select created from transfers where locate('" + endpoint + "', endpoint) > 0";
-	ResultSet result = execute(query);
-	if (result.next()) created = result.getTimestamp(1).getTime();
-	connection.close();
+	created = getAsTime(query);
 	return created;
     }
 
@@ -625,13 +590,8 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String[] getProperties(int type) throws SQLException {
 	String query = "select identifier from metaproperties where type & "  + type + " = " + type;
-	ResultSet result = execute(query);
-        ArrayList<String> list = new ArrayList<String>(); 
-	while (result.next()) {
-	    list.add(result.getString("identifier"));
-	}
-	result.close();
-	return list.toArray(new String[0]);
+	String[] list = getAsStringArray(query);
+	return list;
     }
 
     /*
@@ -701,11 +661,12 @@ public class MySQLMetaStore implements MetaStore{
      */
     private String getAsString(String query) throws SQLException {
 	String ans = null;
+	ResultSet result = null;
 	try {
-    	    ResultSet result = execute(query);	
+    	    result = execute(query);	
             if (result.next()) ans = result.getString(1);
 	} finally {
-    	    connection.close();
+    	    closeResult(result);
 	}
 	return ans;
     }
@@ -716,11 +677,12 @@ public class MySQLMetaStore implements MetaStore{
      */
     private int getAsInt(String query) throws SQLException {
 	int ans = -1;
+	ResultSet result = null;
 	try {
-  	    ResultSet result = execute(query);	
+  	    result = execute(query);	
             if (result.next()) ans = result.getInt(1);
 	} finally {
-   	    connection.close();
+   	    closeResult(result);
 	}
 	return ans;
     }
@@ -731,11 +693,12 @@ public class MySQLMetaStore implements MetaStore{
      */
     private boolean getAsBoolean(String query) throws SQLException {
 	boolean ans = false;
+	ResultSet result = null;
 	try {
-	    ResultSet result = execute(query);	
+	    result = execute(query);	
             if (result.next()) ans = result.getBoolean(1);
 	} finally {
-	    connection.close();
+	    closeResult(result);
 	}
 	return ans;
     }
@@ -744,13 +707,66 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Execute a query on the store
      */
+    private Date getAsDate(String query) throws SQLException {
+	Date ans = null;
+	ResultSet result = null;
+	try {
+	    result = execute(query);	
+            if (result.next()) ans = result.getDate(1);
+	} finally {
+	    closeResult(result);
+	}
+	return ans;
+    }
+
+
+    /*
+     * Execute a query on the store
+     */
+    private long getAsTime(String query) throws SQLException {
+	long ans = 0;
+	ResultSet result = null;
+	try {
+	    result = execute(query);
+	    if (result.next()) ans = result.getTimestamp(1).getTime();
+	} finally {
+	    closeResult(result);
+	}
+	return ans;
+    }
+
+    
+    /*
+     * Execute a query on the store
+     */
+    private String[] getAsStringArray(String query) throws SQLException {
+	String[] ans = null;
+	ResultSet result = null;
+	try {
+	    ArrayList<String> list = new ArrayList<String>(); 
+    	    result = execute(query);	
+	    while (result.next()) {
+		list.add(result.getString(1));
+	    }
+	    ans = list.toArray(new String[0]);
+	} finally {
+	    closeResult(result);
+	}
+        return ans;
+    }
+
+
+    /*
+     * Execute a query on the store
+     */
     private boolean extantEntry(String query) throws SQLException {
 	boolean ans = false;
+	ResultSet result = null;
 	try {
-	    ResultSet result = execute(query);	
+	    result = execute(query);	
             if (result.next()) ans = true;
 	} finally {
-	    connection.close();
+	    closeResult(result);
 	}
 	return ans;
     }
@@ -771,20 +787,41 @@ public class MySQLMetaStore implements MetaStore{
      * Insert/update query on the store
      */
     private void update(String query) throws SQLException {
+	Connection connection = null;
+	Statement statement = null;
 	try {
-	    Statement statement = getConnection().createStatement();
+	    connection = getConnection();
+	    statement = connection.createStatement();
 	    statement.executeUpdate(query);
 	} finally {
+	    statement.close();
 	    connection.close();
+//	    System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
 	}
     }
+
     
+    /*
+     * Close all the db resources
+     */
+    private void closeResult(ResultSet result) throws SQLException {
+	if (result != null) {
+	    Statement statement = result.getStatement();
+	    Connection connection = statement.getConnection();
+	    result.close();
+	    if (statement != null) statement.close();
+	    if (connection != null) connection.close();
+	}
+//	System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
+    }
+
     
     /*
      * Extract and store the properties from the specified node description
      */
     private void storeProperties(String nodeAsString) throws SQLException {
-        Statement statement = getConnection().createStatement();
+	Connection connection = getConnection();
+        Statement statement = connection.createStatement();
 	try {
 	    Node node = new Node(nodeAsString.getBytes());
 	    String identifier = node.getUri();
@@ -802,7 +839,9 @@ public class MySQLMetaStore implements MetaStore{
 		} */
 	} catch (Exception e) {}
 	finally {
+	    statement.close();
 	    connection.close();
+//	    System.err.println("*** Closing db connection: "+ STOREID + "-" + CONNID);
 	}
     }
 
@@ -814,7 +853,8 @@ public class MySQLMetaStore implements MetaStore{
      */
     private String updateProperties(String nodeAsString) throws SQLException {
 	Node node = null;
-        Statement statement = getConnection().createStatement();
+	Connection connection = getConnection();
+        Statement statement = connection.createStatement();
 	try {
 	    node = new Node(nodeAsString.getBytes());
 	    String identifier = node.getUri();
@@ -832,7 +872,9 @@ public class MySQLMetaStore implements MetaStore{
 	    node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
 	} catch (Exception e) {}
 	finally {
+	    statement.close();
 	    connection.close();
+//	    System.err.println("*** Closing db connection: "+ STOREID + "-" + CONNID);
 	}
 	return node.toString();
     }
@@ -876,15 +918,17 @@ public class MySQLMetaStore implements MetaStore{
      */
     public boolean isTransferByEndpoint(String endpoint) throws SQLException {
 	boolean transfer = false;
-	try {
-	    String query = "select identifier from transfers where endpoint like '%" + endpoint + "'";
-	    ResultSet result = execute(query);
-	    if (result.next()) 
-		if (result.getString(1) != null) transfer = true;
-	} finally {
-	    connection.close();
-	}
+	String query = "select identifier from transfers where endpoint like '%" + endpoint + "'";
+	if (getAsString(query) != null) transfer = true;
 	return transfer;
     }
 
+    /**
+     * Get the last modification time of the node
+     */
+    public long getLastModTime(String identifier) throws SQLException {
+	String query = "select lastModificationTime from nodes where identifier = '" + identifier + "'";
+	long lastMod = getAsTime(query);
+	return lastMod;
+    }
 }

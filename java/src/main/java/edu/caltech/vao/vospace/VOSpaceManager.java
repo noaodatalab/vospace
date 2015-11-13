@@ -321,13 +321,15 @@ public class VOSpaceManager {
     public Node setLength(Node node) throws VOSpaceException {
 	String length = Props.get(Props.Property.LENGTH);
 	String lengthUri = "/vos:node/vos:properties/vos:property[@uri = \"" + length + "\"]";
-	boolean setLength = false;
-	if (!node.has(lengthUri)) {
-	    setLength = true;
-	} else if (node.get(lengthUri)[0].equals("0")) {
-	    setLength = true;
-	}
-	if (setLength) node.setProperty(length, Long.toString(backend.size(getLocation(node.getUri()))));
+//	boolean setLength = false;
+//	if (!node.has(lengthUri)) {
+//	    setLength = true;
+//	} else if (node.get(lengthUri)[0].equals("0")) {
+//	    setLength = true;
+//	}
+//	if (setLength) {
+	node.setProperty(length, Long.toString(backend.size(getLocation(node.getUri()))));
+//	}
 	return node;
     }
 
@@ -686,5 +688,20 @@ public class VOSpaceManager {
 
     protected Process getProcess(String container) {
 	return PROCESSES.get(container);
+    }
+
+    /**
+     * Check the update time of the node against the filesystem
+     */
+    public boolean hasBeenUpdated(String identifier) throws VOSpaceException {
+	boolean updated = false;
+	try {
+	    long dbTime = store.getLastModTime(identifier);
+	    long osTime = backend.lastModified(store.getLocation(identifier));
+	    if (osTime - dbTime > 0) updated = true;
+	} catch (SQLException e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+	return updated;
     }
 }

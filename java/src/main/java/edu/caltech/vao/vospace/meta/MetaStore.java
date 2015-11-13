@@ -6,7 +6,7 @@
 
 package edu.caltech.vao.vospace.meta;
 
-import java.sql.ResultSet;
+import org.apache.commons.pool.ObjectPool;
 import java.sql.SQLException;
 
 /**
@@ -20,6 +20,12 @@ public interface MetaStore {
      * @return The requested job or <i>null</i> if there is no job with the given ID.
      */
     public String getJob(String jobID) throws SQLException;
+
+    /*
+     * Set the id of the store
+     * @param id The id of the store
+     */
+    public void setStoreID(int id);
 
     /* 
      * Add the job with the specified identifier
@@ -269,4 +275,9 @@ public interface MetaStore {
      * Check whether transfer associated with a Job exists
      */
     public boolean isTransferByEndpoint(String identifier) throws SQLException;
+
+    /**
+     * Get the last modification time of the node
+     */
+    public long getLastModTime(String identifier) throws SQLException;
 }

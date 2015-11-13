@@ -23,6 +23,8 @@ public class MetaStoreFactory {
     private static MetaStoreFactory ref;
     private Map stores;
     static Properties props;
+    private int STORECOUNT = 0;
+    private MetaStore store;    
 
     /* 
      * Construct a basic MetaStoreFactory: load the properties file and
@@ -78,13 +80,16 @@ public class MetaStoreFactory {
      * Get a MetaStore
      */
     public MetaStore getMetaStore(String type) {
-	MetaStore ms = null;
-	try {
-	    ms = (MetaStore) Class.forName((String) stores.get(type)).getConstructor(Properties.class).newInstance(props);
+	//	MetaStore ms = null;
+  	try {
+	    if (store == null) {
+		store = (MetaStore) Class.forName((String) stores.get(type)).getConstructor(Properties.class).newInstance(props);
+	    }
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	}
-        return ms;
+	store.setStoreID(STORECOUNT++);
+        return store;
     }
 
     /*

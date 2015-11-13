@@ -187,11 +187,13 @@ public class TransferJob extends JobThread {
 		    moveNode();
 		}
 	    } catch (VOSpaceException e) {
+		e.printStackTrace(System.err);
 		throw new UWSException(e.getStatusCode(), e.getMessage());
 	    } catch (SQLException e) {
+		e.printStackTrace(System.err);
 		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 	    }
-	
+
 	    if (direction.equals("pushToVoSpace") || direction.equals("pullFromVoSpace")) {
 
 		String file = getLocation(target); 
@@ -224,25 +226,28 @@ public class TransferJob extends JobThread {
 		    } 
 		}
 
-		// Update length property for pushToVoSpace
-		if (direction.equals("pushToVoSpace")) {
-		    try {
+		// Update length property for pushToVoSpace		
+//		if (direction.equals("pushToVoSpace")) {
+		try {
+		    if (manager.hasBeenUpdated(target)) {
 			Node node = getNode(target);
 			node = manager.setLength(node);
 			store.updateData(target, node.toString());
-		    } catch (SQLException e) {
-			throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-		    } catch (VOSpaceException e) {
-			throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-		    } 
+		    }
+		} catch (SQLException e) {
+		    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+		} catch (VOSpaceException e) {
+		    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+		} catch (NullPointerException e) {
+		    System.err.println("No node for target: " + target);
 		}
-	    }
+	    } 
 
 	    if (!isInterrupted()) {
 		// Reset node status
 	        if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) { 
 		    Node node = getNode(target);
-		    setNodeStatus(node, STATUS_FREE);
+		    if (node != null) setNodeStatus(node, STATUS_FREE);
 		}
 	    }
 	}
@@ -280,7 +285,6 @@ public class TransferJob extends JobThread {
 		    }
 		}
 	    } catch (Exception e) {
-		e.printStackTrace(System.err);
 		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 	    }
 //	    } catch (IOException e) {

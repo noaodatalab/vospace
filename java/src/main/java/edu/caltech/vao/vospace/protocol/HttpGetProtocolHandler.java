@@ -54,7 +54,6 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
 		protocol.setEndpoint(BASE_URL + "/" + UUID.randomUUID());
 	    } else {
 		// Check url is valid
-		System.err.println(protocol.getEndpoint());
 		if (!Pattern.matches("^http\\://[a-zA-Z0-9\\-\\.]+\\.[a-zA-Z]{2,3}(/\\S*)?$", protocol.getEndpoint())) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Destination URI is invalid");
 	    }
 	    return protocol;
