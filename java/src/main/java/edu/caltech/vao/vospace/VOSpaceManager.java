@@ -694,11 +694,13 @@ public class VOSpaceManager {
      * Check the update time of the node against the filesystem
      */
     public boolean hasBeenUpdated(String identifier) throws VOSpaceException {
-	boolean updated = false;
+	boolean updated = true;
 	try {
 	    long dbTime = store.getLastModTime(identifier);
-	    long osTime = backend.lastModified(store.getLocation(identifier));
-	    if (osTime - dbTime > 0) updated = true;
+	    if (dbTime != 0) {
+		long osTime = backend.lastModified(store.getLocation(identifier));
+		if (osTime - dbTime < 0) updated = false;
+	    }
 	} catch (SQLException e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
