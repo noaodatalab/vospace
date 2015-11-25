@@ -7,7 +7,7 @@
 package edu.caltech.vao.vospace.capability;
 
 import java.util.List;
-
+import java.util.Map;
 import edu.caltech.vao.vospace.NodeType;
 import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.xml.Param;
@@ -31,7 +31,7 @@ public interface Capability {
      /*
       * Set the parameters for the capability
       */
-     public void setParams(Param[] params);
+     public void setParams(Map<String, String> params) throws VOSpaceException;
 
      
      /*

@@ -351,6 +351,14 @@ public class MySQLMetaStore implements MetaStore{
     public void removeData(String identifier) throws SQLException {
         String query = "delete from nodes where identifier like '" + identifier + "%'";
 	update(query);
+	query = "delete from properties where identifier like '" + identifier + "%'";
+	update(query);
+	if (identifier.endsWith("_cap.conf")) {
+	    String parent = identifier.substring(0, identifier.lastIndexOf("/"));
+	    String shortCap = identifier.substring(identifier.lastIndexOf("/") + 1, identifier.lastIndexOf("_cap.conf"));
+	    query = "update capabilities set active = 0 where identifier = '" + parent + "' and capability like '%" + shortCap + "'";
+	    update(query);
+	}
     }
 
     /*
@@ -650,8 +658,8 @@ public class MySQLMetaStore implements MetaStore{
 	int port = -1;
 	String query = "select max(active) from capabilities";
 	port = getAsInt(query);
-	if (port > 20000) port = port + 1;
-	if (port == 0) port = 20001;
+	//	if (port > 20000) port = port + 1;
+	//	if (port == 0) port = 20001;
 	return port;
     }
 
@@ -927,7 +935,7 @@ public class MySQLMetaStore implements MetaStore{
      * Get the last modification time of the node
      */
     public long getLastModTime(String identifier) throws SQLException {
-	String query = "select lastModificationTime from nodes where identifier = '" + identifier + "'";
+	String query = "select lastModificationDate from nodes where identifier = '" + identifier + "'";
 	long lastMod = getAsTime(query);
 	return lastMod;
     }

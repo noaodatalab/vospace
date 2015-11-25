@@ -277,11 +277,13 @@ public class TransferJob extends JobThread {
 		for (String capability: parent.getCapabilities()) {
 		    if (capability.endsWith(shortCap)) {
 			int port = store.getCapPort();
-			String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(port), "--config", getLocation(target)};
-			System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(port) + " " + "-config" + " " + getLocation(target));
-			Process p = Runtime.getRuntime().exec(cmdArgs);
-			manager.addProcess(target, p);
-			store.setActive(parent.getUri(), capability, port);
+			if (port == 0 && manager.PROCESSES.size() == 0) {
+			    String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(manager.CAPABILITY_PORT), "--config", getLocation(target)};
+			    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT) + " " + "-config" + " " + getLocation(target));
+			    Process p = Runtime.getRuntime().exec(cmdArgs);
+			    manager.addProcess(target, p);
+			}
+			store.setActive(parent.getUri(), capability, 1);
 		    }
 		}
 	    } catch (Exception e) {
@@ -772,15 +774,8 @@ public class TransferJob extends JobThread {
      */
     private void trigger(String identifier, String capability, int port) throws UWSException {
 	try {
-	    //	    Capability cap = manager.CAPABILITIES.get(capability);
-	    //	    cap.invoke(getLocation(identifier));
-	    CloseableHttpClient client = HttpClients.createDefault();
-	    HttpPost post = new HttpPost("http://localhost:" + port + "/notify");
-	    List<NameValuePair> nvps = new ArrayList<NameValuePair>();
-	    nvps.add(new BasicNameValuePair("name", getLocation(identifier)));
-	    post.setEntity(new UrlEncodedFormEntity(nvps));
-	    CloseableHttpResponse response = client.execute(post);
-	    System.err.println(response.getStatusLine() + " " + getLocation(identifier) + " " + capability + " " + port);
+	    Capability cap = manager.CAPABILITIES.get(capability);
+	    cap.invoke(getLocation(identifier));
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "The capability " + capability + " was unable to complete on node " + identifier);

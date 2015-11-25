@@ -13,6 +13,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -65,6 +67,7 @@ public class VOSpaceManager {
     protected HashMap<String, ProtocolHandler> PROTOCOLS;
 
     protected String CAPABILITY_EXE;
+    protected int CAPABILITY_PORT;
     private String STAGING_LOCATION;
     private Pattern VOS_PATTERN;
     private String SPACE_AUTH;
@@ -659,13 +662,24 @@ public class VOSpaceManager {
     private void registerCapabilities(Properties props) throws VOSpaceException {
         try {
 	    CAPABILITY_EXE = props.getProperty("space.capability.exe");
+	    CAPABILITY_PORT = Integer.parseInt(props.getProperty("space.capability.port"));
 	    CAPABILITIES = new HashMap<String, Capability>();
 	    SPACE_CAPABILITIES = new ArrayList<Capability>();
 	    PROCESSES = new HashMap<String, Process>();
             String[] capabilities = props.getProperty("space.capabilities").split(",");
             for (String capability : capabilities) {
-      	        String capabilityClass = props.getProperty("space.capability." + capability.trim());
+		String capKey = "space.capability." + capability.trim();
+      	        String capabilityClass = props.getProperty(capKey);
                 Capability capImpl = (Capability) Class.forName(capabilityClass).newInstance();
+		Map<String, String> params = new Hashtable<String, String>();
+		for (String key: props.stringPropertyNames()) {
+		    if (key.startsWith(capKey + ".")) {
+			String parName = key.substring(key.lastIndexOf(".") + 1);
+			String parValue = props.getProperty(key);
+			params.put(parName, parValue);
+		    }
+		}
+		capImpl.setParams(params);
 		CAPABILITIES.put(capImpl.getUri(), capImpl);
 		SPACE_CAPABILITIES.add(capImpl);
             }
