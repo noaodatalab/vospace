@@ -1,4 +1,4 @@
-#!/Users/mjg/anaconda/bin/python
+#!python
 """A FUSE based filesystem view of VOSpace."""
 
 from sys import platform
