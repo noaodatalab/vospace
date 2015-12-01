@@ -1045,8 +1045,8 @@ class EndPoints(object):
     NOAO_TEST_SERVER = "dldev1.tuc.noao.edu:8080/vospace-2.0"
     LOCAL_TEST_SERVER = "localhost:8080/vospace-2.0"
 #    DEFAULT_VOSPACE_URI = 'cadc.nrc.ca!vospace'
-    DEFAULT_VOSPACE_URI = 'nvo.caltech!vospace'
-#    DEFAULT_VOSPACE_URI = 'datalab.noao.edu!vospace'
+#    DEFAULT_VOSPACE_URI = 'nvo.caltech!vospace'
+    DEFAULT_VOSPACE_URI = 'datalab.noao.edu!vospace'
     VOSPACE_WEBSERVICE = os.getenv('VOSPACE_WEBSERVICE', None)
 
     VOServers = {'cadc.nrc.ca!vospace': CADC_SERVER,
