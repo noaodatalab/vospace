@@ -374,7 +374,11 @@ public class VOSpaceManager {
 	    boolean exists = store.isStored(identifier);
 	    if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI"); 
 	    // Remove node
-	    store.removeData(identifier);
+	    if (store.getType(identifier) == NodeType.CONTAINER_NODE.ordinal()) {
+	        store.removeData(identifier, true);
+	    } else {
+		store.removeData(identifier, false);
+	    }
 	    removeBytes(getLocation(identifier));
 	} catch (SQLException e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);

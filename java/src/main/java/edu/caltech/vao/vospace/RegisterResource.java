@@ -46,9 +46,11 @@ public class RegisterResource extends VOSpaceResource {
      */
     @Path("{nodeid: .*}")
     @PUT
-    public void putNode(@PathParam("nodeid") String nodeid, Node node, @QueryParam("location") String location) throws VOSpaceException {
+    public Response putNode(@PathParam("nodeid") String nodeid, Node node, @QueryParam("location") String location) throws VOSpaceException {
 	try {
             manager.registerNode(node, "file://" + location);
+	    URI nodeUri = new URI(node.getUri());
+	    return Response.created(nodeUri).build();
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);

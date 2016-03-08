@@ -347,11 +347,19 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Remove the metadata for the specified identifier
      * @param identifier The (root) identifier of the node(s) to delete
+     * @param containter Does the identifier refer to a container?
      */
-    public void removeData(String identifier) throws SQLException {
-        String query = "delete from nodes where identifier like '" + identifier + "%'";
+    public void removeData(String identifier, boolean container) throws SQLException {
+	String query = "";
+	if (container) {
+            query = "delete from nodes where identifier like '" + identifier + "/%'";
+	    update(query);
+	    query = "delete from properties where identifier like '" + identifier + "/%'";
+	    update(query);
+	}
+	query = "delete from nodes where identifier like '" + identifier + "'";
 	update(query);
-	query = "delete from properties where identifier like '" + identifier + "%'";
+	query = "delete from properties where identifier like '" + identifier + "'";
 	update(query);
 	if (identifier.endsWith("_cap.conf")) {
 	    String parent = identifier.substring(0, identifier.lastIndexOf("/"));

@@ -72,7 +72,7 @@ public interface MetaStore {
     /*
      * Remove the metadata for the specified identifier
      */
-    public void removeData(String identifier) throws SQLException;
+    public void removeData(String identifier, boolean container) throws SQLException;
  
     /*
      * Update the metadata for the specified identifier
