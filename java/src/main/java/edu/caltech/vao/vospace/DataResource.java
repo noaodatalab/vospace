@@ -101,7 +101,8 @@ public class DataResource extends VOSpaceResource {
             in = new FileInputStream(file);
 	    backend.putBytes(location, in);
 	    manager.updateSize(fileid, Long.toString(backend.size(location)));
-	    backend.removeBytes(location);
+	    // Remove bytes from temporary file
+	    backend.removeBytes("file://" + file.getAbsolutePath());
 	    /*
 	    out = new FileOutputStream(new File(new URI(location)));
 	    byte[] buffer = new byte[4096]; // To hold file contents

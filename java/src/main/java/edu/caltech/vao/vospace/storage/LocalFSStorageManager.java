@@ -165,7 +165,7 @@ public class LocalFSStorageManager implements StorageManager {
      */
     public long size(String location) throws VOSpaceException {
 	try {
-	    long size = new File(new URI(location)).length();
+            long size = new File(new URI(location)).length();
 	    return size;
 	} catch (Exception e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
