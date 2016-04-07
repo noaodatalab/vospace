@@ -37,6 +37,6 @@ public interface Capability {
      /*
       * Invoke the capability on the specified container
       */
-     public boolean invoke(String identifier) throws VOSpaceException;
+     public boolean invoke(String... args) throws VOSpaceException;
      
 }

@@ -278,8 +278,10 @@ public class TransferJob extends JobThread {
 		    if (capability.endsWith(shortCap)) {
 			int port = store.getCapPort();
 			if (port == 0 && manager.PROCESSES.size() == 0) {
-			    String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(manager.CAPABILITY_PORT), "--config", getLocation(target)};
-			    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT) + " " + "-config" + " " + getLocation(target));
+//			    String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(manager.CAPABILITY_PORT), "--config", getLocation(target)};
+//			    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT) + " " + "-config" + " " + getLocation(target));
+			    String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(manager.CAPABILITY_PORT)};
+			    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT));
 			    Process p = Runtime.getRuntime().exec(cmdArgs);
 			    manager.addProcess(target, p);
 			}
@@ -774,8 +776,9 @@ public class TransferJob extends JobThread {
      */
     private void trigger(String identifier, String capability, int port) throws UWSException {
 	try {
+	    System.err.println(identifier + " " + capability + " " + port);
 	    Capability cap = manager.CAPABILITIES.get(capability);
-	    cap.invoke(getLocation(identifier));
+	    cap.invoke(identifier, getLocation(identifier), capability);
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "The capability " + capability + " was unable to complete on node " + identifier);

@@ -60,7 +60,8 @@ public class TableIngester implements Capability {
      * Invoke the capability of the parent container on the specified
      * location
      */
-    public boolean invoke(String location) throws VOSpaceException {
+    public boolean invoke(String... args) throws VOSpaceException {
+	String location = args[1];
 	boolean success = false;
 	try {
 	    Properties config = parseConfig(location.substring(0, location.lastIndexOf("/")) + "/tableingester_cap.conf");

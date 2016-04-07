@@ -58,7 +58,6 @@ public class VOSpaceManager {
     protected ArrayList<Views.View> SPACE_PROVIDES_TABLE;
     protected ArrayList<Views.View> SPACE_PROVIDES_ARCHIVE;
     protected ArrayList<Views.View> SPACE_PROVIDES_OTHER;
-    protected ArrayList<Capability> SPACE_CAPABILITIES;
     protected HashMap<String, Capability> CAPABILITIES;
     protected HashMap<String, Process> PROCESSES;
     
@@ -114,7 +113,6 @@ public class VOSpaceManager {
             SPACE_PROVIDES_TABLE = getViewList(props.getProperty("space.provides.table"));
             SPACE_PROVIDES_ARCHIVE = getViewList(props.getProperty("space.provides.archive"));
             SPACE_PROVIDES_OTHER = getViewList(props.getProperty("space.provides.other"));
-//	    SPACE_CAPABILITIES = getCapabilityList(props.getProperty("space.capabilities"));
             SPACE_AUTH = props.containsKey("space.identifier") ? getId(props.getProperty("space.identifier")) : "vos://";
 	    registerProtocols(props);
 	    registerCapabilities(props);
@@ -213,12 +211,14 @@ public class VOSpaceManager {
 		    datanode.remove("/vos:node/vos:nodes/*");
 		}
 		// Set capabilities
-		if (SPACE_CAPABILITIES.size() > 0) {
-		    for (Capability cap: SPACE_CAPABILITIES) {
+		if (CAPABILITIES.size() > 0) {
+		    for (String capUri: CAPABILITIES.keySet()) {
+			Capability cap = (Capability) CAPABILITIES.get(capUri);
 			if (cap.getApplicability().contains(type)) {
-			    datanode.addCapabilities(cap.getUri());
+			    datanode.addCapabilities(capUri);
 			}
 		    }
+
 		}
 	    }
 	    // Link node
@@ -668,30 +668,53 @@ public class VOSpaceManager {
 	    CAPABILITY_EXE = props.getProperty("space.capability.exe");
 	    CAPABILITY_PORT = Integer.parseInt(props.getProperty("space.capability.port"));
 	    CAPABILITIES = new HashMap<String, Capability>();
-	    SPACE_CAPABILITIES = new ArrayList<Capability>();
 	    PROCESSES = new HashMap<String, Process>();
             String[] capabilities = props.getProperty("space.capabilities").split(",");
             for (String capability : capabilities) {
 		String capKey = "space.capability." + capability.trim();
-      	        String capabilityClass = props.getProperty(capKey);
-                Capability capImpl = (Capability) Class.forName(capabilityClass).newInstance();
-		Map<String, String> params = new Hashtable<String, String>();
-		for (String key: props.stringPropertyNames()) {
-		    if (key.startsWith(capKey + ".")) {
-			String parName = key.substring(key.lastIndexOf(".") + 1);
-			String parValue = props.getProperty(key);
-			params.put(parName, parValue);
+		String capUri = "";
+		Capability capImpl = null;
+		if (props.containsKey(capKey)) {
+		    String capabilityClass = props.getProperty(capKey);
+		    capImpl = getCapabilityImpl(capabilityClass, capKey, props);
+		    capUri = capImpl.getUri();
+		} else {
+		    String baseIVORN = props.getProperty("space.capability.baseivorn");
+		    String runnerClass = props.getProperty("space.capability.runner");
+		    if (CAPABILITIES.containsKey(baseIVORN + "#runner")) {
+			capImpl = (Capability) CAPABILITIES.get(baseIVORN + "#runner");
+		    } else {
+		        capImpl = getCapabilityImpl(runnerClass, "space.capability.runner", props);
 		    }
+		    capUri = baseIVORN + "#" + capability.trim();
 		}
-		capImpl.setParams(params);
-		CAPABILITIES.put(capImpl.getUri(), capImpl);
-		SPACE_CAPABILITIES.add(capImpl);
+		CAPABILITIES.put(capUri, capImpl);
             }
         } catch (Exception e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
-    } 
+    }
+
     
+    private Capability getCapabilityImpl(String className, String capKey, Properties props) throws VOSpaceException {
+	try {
+	    Capability capImpl = (Capability) Class.forName(className).newInstance();
+	    Map<String, String> params = new Hashtable<String, String>();
+	    for (String key: props.stringPropertyNames()) {
+		if (key.startsWith(capKey + ".")) {
+		    String parName = key.substring(key.lastIndexOf(".") + 1);
+		    String parValue = props.getProperty(key);
+		    params.put(parName, parValue);
+		}
+	    }
+	    capImpl.setParams(params);
+	    return capImpl;
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+
     protected StorageManager getStorageManager() {
 	return backend;
     }

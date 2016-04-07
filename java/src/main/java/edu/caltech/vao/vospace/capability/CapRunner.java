@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.Properties;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -26,6 +27,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
+import org.apache.http.util.EntityUtils;
 
 import edu.caltech.vao.vospace.NodeType;
 import edu.caltech.vao.vospace.VOSpaceException;
@@ -73,22 +75,34 @@ public class CapRunner implements Capability {
      * Invoke the capability of the parent container on the specified
      * location
      */
-    public boolean invoke(String location) throws VOSpaceException {
+    public boolean invoke(String... args) throws VOSpaceException {
+	String node = args[0];
+	String location = args[1];
+	String capability = args[2];
 	boolean success = false;
+	CloseableHttpClient client = null;
+	CloseableHttpResponse response = null;
 	try {
-	    CloseableHttpClient client = HttpClients.createDefault();
+	    client = HttpClients.createDefault();
 	    HttpPost post = new HttpPost("http://localhost:" + port + "/notify");
 	    List<NameValuePair> nvps = new ArrayList<NameValuePair>();
+	    nvps.add(new BasicNameValuePair("node", node));
 	    nvps.add(new BasicNameValuePair("name", location));
+	    nvps.add(new BasicNameValuePair("cap", capability));
 	    post.setEntity(new UrlEncodedFormEntity(nvps));
-	    CloseableHttpResponse response = client.execute(post);
-	    System.err.println(response.getStatusLine() + " " + location + " " + port);
+	    response = client.execute(post);
+	    HttpEntity entity = response.getEntity();
+	    String responseString = EntityUtils.toString(entity);
+	    System.err.println(response.getStatusLine() + " " + responseString + " " + location + " " + port);
 	    success = true;
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	} finally {
+	    IOUtils.closeQuietly(response);	    
+	    IOUtils.closeQuietly(client);
+	    return success;
 	}
-	return success;
     }
 
     
