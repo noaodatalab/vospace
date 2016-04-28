@@ -50,6 +50,20 @@ public class LocalFSStorageManager implements StorageManager {
     }
 
     /**
+     * Create a zero-byte file at the specified location in the current backend storage
+     * @param location The location of the file
+     */
+    public void touch(String location) throws VOSpaceException {
+	try {
+	    File file = new File(new URI(location));
+	    FileUtils.touch(file);
+	} catch (Exception e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	}
+    }
+
+    
+    /**
      * Move the bytes from the specified old location to the specified new location 
      * in the current backend storage
      * @param oldLocation The old location of the bytes

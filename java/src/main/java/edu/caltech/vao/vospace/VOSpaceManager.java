@@ -244,16 +244,22 @@ public class VOSpaceManager {
 		store.updateData(uri, node.toString());
 	    } else {
 		String view = getView(uri);
+		String location = getLocation(uri);
 	        //		store.storeData(uri, type.ordinal(), USER, getLocation(uri), node.toString());
-		store.storeData(uri, type.ordinal(), view, USER, getLocation(uri), node.toString());
+		store.storeData(uri, type.ordinal(), view, USER, location, node.toString());
 		for (String capUri: node.getCapabilities()) {
 		    store.registerCapability(uri, capUri);
 		}
+		if (type.equals(NodeType.CONTAINER_NODE)) {
+		    backend.createContainer(location);
+		} else {
+		    backend.touch(location);
+		}
 	    }
-	    if (type.equals(NodeType.CONTAINER_NODE) && !exists) {
+		    //	    if (type.equals(NodeType.CONTAINER_NODE) && !exists) {
 		// boolean success = (new File(new URI(getLocation(node.getUri())))).mkdir();
-		backend.createContainer(getLocation(node.getUri()));
-	    }
+		    //		backend.createContainer(getLocation(node.getUri()));
+		    //	    }
 	    // Check for deleted properties
 	    node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
 	} catch (Exception e) {

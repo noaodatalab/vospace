@@ -25,6 +25,12 @@ public interface StorageManager {
     public void createContainer(String location) throws VOSpaceException;
 
     /**
+     * Create a zero-byte file at the specified location in the current backend storage
+     * @param location The location of the file
+     */
+    public void touch(String location) throws VOSpaceException;
+    
+    /**
      * Move the bytes from the specified old location to the specified new location 
      * in the current backend storage
      * @param oldLocation The old location of the bytes

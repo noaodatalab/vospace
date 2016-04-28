@@ -309,7 +309,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String[] getChildren(String identifier) throws SQLException {
 	ArrayList<String> children = new ArrayList<String>();
-	String query = "select identifier from nodes where identifier like '" + identifier + "%'";
+	String query = "select identifier from nodes where identifier like '" + identifier + "/%'";
 	for (String child: getAsStringArray(query)) {
 	    if (!child.equals(identifier) && !child.substring(identifier.length() + 1).contains("/")) {
 		children.add(child);
@@ -334,7 +334,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String[] getAllChildren(String identifier) throws SQLException {	
 	ArrayList<String> children = new ArrayList<String>();
-	String query = "select identifier from nodes where identifier like '" + identifier + "%'";
+	String query = "select identifier from nodes where identifier like '" + identifier + "/%'";
 	for (String child : getAsStringArray(query)) {
 	    if (!child.equals(identifier)) {
 		children.add(child);

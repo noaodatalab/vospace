@@ -203,7 +203,6 @@ public class TransferJob extends JobThread {
 			String details = store.getResult(jobId);
 			file = details.substring(details.indexOf("<vos:target>") + 12, details.indexOf("</vos:target>"));
 			target = file;
-			//			file = file.replace("vos://nvo.caltech!vospace", manager.BASEURI); 
 			file = file.replace("vos://datalab.noao.edu!vospace", manager.BASEURI); 
 		    } catch (SQLException e) {
 			throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
@@ -216,7 +215,6 @@ public class TransferJob extends JobThread {
 		    try {
 			Thread.sleep(1000);
 			if (direction.equals("pushToVoSpace")) {
-//			    status = checkLocation(file, startInstance);
 			    status = store.isCompleted(jobId);
 			} else if (direction.equals("pullFromVoSpace")) {
 			    status = checkTime(startInstance);
@@ -226,8 +224,7 @@ public class TransferJob extends JobThread {
 		    } 
 		}
 
-		// Update length property for pushToVoSpace		
-//		if (direction.equals("pushToVoSpace")) {
+		// Update length property for pushToVoSpace	
 		try {
 		    if (manager.hasBeenUpdated(target)) {
 			Node node = getNode(target);
@@ -278,8 +275,6 @@ public class TransferJob extends JobThread {
 		    if (capability.endsWith(shortCap)) {
 			int port = store.getCapPort();
 			if (port == 0 && manager.PROCESSES.size() == 0) {
-//			    String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(manager.CAPABILITY_PORT), "--config", getLocation(target)};
-//			    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT) + " " + "-config" + " " + getLocation(target));
 			    String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(manager.CAPABILITY_PORT)};
 			    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT));
 			    Process p = Runtime.getRuntime().exec(cmdArgs);
@@ -290,13 +285,7 @@ public class TransferJob extends JobThread {
 		}
 	    } catch (Exception e) {
 		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-	    }
-//	    } catch (IOException e) {
-//		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-//	    } catch (SQLException e) {
-//		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-//	    } catch (VOSpaceException e) {
-//		throw new UWSException(e.getStatusCode(), e.getMessage());	 //         }  
+            }  
 	}
 
 	if (isInterrupted()) {
@@ -489,12 +478,6 @@ public class TransferJob extends JobThread {
 	    // Check if target is a container
 	    if (node instanceof ContainerNode) {
 	    // Move directory
-//	    try {
-//		System.err.println(target + " " + direction);
-//		backend.moveBytes(target, direction);
-//	    } catch (Exception e) {
-//		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-//	    }
 		// Update metadata
 		for (String child: store.getAllChildren(target)) {
 		    // Update uri
@@ -546,7 +529,6 @@ public class TransferJob extends JobThread {
 	    if (node instanceof ContainerNode) {
 		// Move directory
 		try {
-		    //FileUtils.copyDirectory(new File(new URI(target)), new File(new URI(direction)));
 		    backend.copyBytes(store.getLocation(target), newLocation);
 		} catch (Exception e) {
 		    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
@@ -776,7 +758,6 @@ public class TransferJob extends JobThread {
      */
     private void trigger(String identifier, String capability, int port) throws UWSException {
 	try {
-	    System.err.println(identifier + " " + capability + " " + port);
 	    Capability cap = manager.CAPABILITIES.get(capability);
 	    cap.invoke(identifier, getLocation(identifier), capability);
 	} catch (Exception e) {
