@@ -67,6 +67,7 @@ public class VOSpaceManager {
 
     protected String CAPABILITY_EXE;
     protected int CAPABILITY_PORT;
+    protected String CAPABILITY_BASE;
     private String STAGING_LOCATION;
     private Pattern VOS_PATTERN;
     private String SPACE_AUTH;
@@ -685,14 +686,14 @@ public class VOSpaceManager {
 		    capImpl = getCapabilityImpl(capabilityClass, capKey, props);
 		    capUri = capImpl.getUri();
 		} else {
-		    String baseIVORN = props.getProperty("space.capability.baseivorn");
+		    CAPABILITY_BASE = props.getProperty("space.capability.baseivorn");
 		    String runnerClass = props.getProperty("space.capability.runner");
-		    if (CAPABILITIES.containsKey(baseIVORN + "#runner")) {
-			capImpl = (Capability) CAPABILITIES.get(baseIVORN + "#runner");
+		    if (CAPABILITIES.containsKey(CAPABILITY_BASE + "#runner")) {
+			capImpl = (Capability) CAPABILITIES.get(CAPABILITY_BASE + "#runner");
 		    } else {
 		        capImpl = getCapabilityImpl(runnerClass, "space.capability.runner", props);
 		    }
-		    capUri = baseIVORN + "#" + capability.trim();
+		    capUri = CAPABILITY_BASE + "#" + capability.trim();
 		}
 		CAPABILITIES.put(capUri, capImpl);
             }
@@ -753,4 +754,5 @@ public class VOSpaceManager {
 	}
 	return updated;
     }
+
 }

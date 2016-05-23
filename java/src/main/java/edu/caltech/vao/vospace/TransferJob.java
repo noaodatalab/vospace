@@ -271,18 +271,19 @@ public class TransferJob extends JobThread {
 	if (target.endsWith("cap.conf")) {
 	    String shortCap = target.substring(target.lastIndexOf("/") + 1, target.lastIndexOf("cap.conf") - 1);
 	    try {
-		for (String capability: parent.getCapabilities()) {
-		    if (capability.endsWith(shortCap)) {
-			int port = store.getCapPort();
-			if (port == 0 && manager.PROCESSES.size() == 0) {
-			    String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(manager.CAPABILITY_PORT)};
-			    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT));
-			    Process p = Runtime.getRuntime().exec(cmdArgs);
-			    manager.addProcess(target, p);
-			}
-			store.setActive(parent.getUri(), capability, 1);
-		    }
-		}
+		String capability = manager.CAPABILITY_BASE + "#" + shortCap;
+		// Register if new capability
+		if (!store.isKnownCapability(capability)) store.registerCapability(parent.getUri(), capability);
+		// Set active
+		store.setActive(parent.getUri(), capability, 1);
+      		// Check whether capability service running
+		int port = store.getCapPort();
+		if (port == 0 && manager.PROCESSES.size() == 0) {
+		    String[] cmdArgs = new String[] {"python", manager.CAPABILITY_EXE, "--port", String.valueOf(manager.CAPABILITY_PORT)};
+		    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT));
+		    Process p = Runtime.getRuntime().exec(cmdArgs);
+		    manager.addProcess(target, p);
+		}		
 	    } catch (Exception e) {
 		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
             }  

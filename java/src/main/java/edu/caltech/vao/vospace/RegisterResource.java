@@ -39,6 +39,7 @@ public class RegisterResource extends VOSpaceResource {
 	backend = manager.getStorageManager();
     }
 
+    
     /**
      * This method registers the specified node.
      * 

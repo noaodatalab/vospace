@@ -660,6 +660,17 @@ public class MySQLMetaStore implements MetaStore{
 
 
     /*
+     * Check whether the capability is registered
+     */
+    public boolean isKnownCapability(String capability) throws SQLException {
+        boolean known = false;
+	String query = "select identifier from capabilities where capability = '" + capability + "'";
+        known = extantEntry(query);
+        return known;
+    }
+
+
+    /*
      * Get next available capability port
      */
     public int getCapPort() throws SQLException {

@@ -261,6 +261,11 @@ public interface MetaStore {
      */
     public void registerCapability(String identifier, String capability) throws SQLException;
 
+    /* 
+     * Check whether the capability is registered
+     */
+    public boolean isKnownCapability(String capability) throws SQLException;
+
     /*
      * Get next available capability port
      */
