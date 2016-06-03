@@ -33,7 +33,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import edu.caltech.vao.vospace.resource.*;
 import uws.UWSException;
 import uws.job.JobList;
 import uws.service.actions.UWSAction;
@@ -148,7 +147,7 @@ public class SyncResource extends VOSpaceResource {
 	    HttpServletRequest newReq = new FilteredRequest((HttpServletRequest) req, extraParams);
 	    RequestDispatcher dispatch = req.getRequestDispatcher("/vospace/transfers");
 	    FakeHttpServletResponse runResp = new FakeHttpServletResponse(resp.isCommitted(), resp.getContentType());
-	    dispatch.forward(newReq, runResp);	
+	    dispatch.forward(newReq, runResp);
 	    String location = runResp.getHeader("Location");
 	    String jobId = location.substring(location.lastIndexOf("/") + 1);
 	    //	    resp.sendRedirect("http://localhost:8080/vospace-2.0/vospace/transfers/" + jobId + "/results/transferDetails");

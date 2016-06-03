@@ -155,7 +155,7 @@ public class TransferJob extends JobThread {
 		parValue = (String) job.getAdditionalParameterValue("<transfer xmlns");
 		document = "<transfer xmlns=" + parValue;
 	    }
-	    System.err.println(document);
+	    //	    System.err.println(document);
 	    transfer = new Transfer(document);
 	    validateTransfer();
 	} catch (VOSpaceException e) {
@@ -263,7 +263,7 @@ public class TransferJob extends JobThread {
 	    } catch (SQLException e) {
 		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 	    } catch (VOSpaceException e) {
-		throw new UWSException(e.getStatusCode(), e.getMessage());	          }  
+		throw new UWSException(e.getStatusCode(), e.getMessage());	                   }  
 	}
 
 	// Check whether capability enabled - assumes naming convention
@@ -307,7 +307,6 @@ public class TransferJob extends JobThread {
 	// Request details
 	Node node = null;
 	try {
-	    System.err.println(transfer.toString());
 	    String target = transfer.getTarget();
 	    // Create node (if necessary)
 	    if (!store.isStored(target)) {
@@ -332,7 +331,7 @@ public class TransferJob extends JobThread {
 	    }
 	    getJob().addResult(new Result(getJob(), "transferDetails", manager.BASE_URL + "transfers/" + getJobId() + "/results/transferDetails"));
 	} catch (Exception e) {
-	    e.printStackTrace(System.err);
+	    //	    e.printStackTrace(System.err);
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 	}
     }

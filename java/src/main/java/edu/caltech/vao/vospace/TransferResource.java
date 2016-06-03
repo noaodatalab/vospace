@@ -34,6 +34,8 @@ import edu.caltech.vao.vospace.meta.MetaStoreFactory;
 import edu.caltech.vao.vospace.resource.*;
 import uws.UWSException;
 import uws.job.JobList;
+import uws.job.UWSJob;
+import uws.job.ExecutionPhase;
 import uws.service.actions.UWSAction;
 import uws.service.UWSFactory;
 import uws.service.UWSService;
@@ -143,17 +145,18 @@ public class TransferResource extends VOSpaceResource {
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public String getResultsDetails(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws VOSpaceException {
+	String details = null;
         try {
-            MetaStore store = MetaStoreFactory.getInstance().getMetaStore();
-	    String details = null;
-	    // Check whether transfer exists in db yet
-	    while (!store.isTransfer(id)) Thread.sleep(10);
-	    // Get details - loop if necessary (db latency issues)
-	    details = store.getResult(id);
-	    while (details == null) {
+	    // Check job status first
+	    UWSService uws = getUWS(req);
+	    JobList jobs = uws.getJobList("transfers");
+	    UWSJob job = jobs.getJob(id);
+	    MetaStore store = MetaStoreFactory.getInstance().getMetaStore();
+	    while (job.getPhase() == ExecutionPhase.EXECUTING && details == null) {
 		Thread.sleep(10);
 		details = store.getResult(id);
 	    }
+	    if (details == null) details = "<vos:transfer xmlns:vos=\"http://www.ivoa.net/xml/VOSpace/v2.0\"></vos:transfer>";
 	    return details;
         } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
@@ -203,4 +206,17 @@ public class TransferResource extends VOSpaceResource {
 	executeRequest(req, resp);
     }
 
+
+    /**
+     * This method retrieve the error summary of a transfer job.
+     *
+     * @param jobid The identifier for the transfer job to return.
+     * @return the transfer JAXB object
+     */
+    @Path("{jobid}/error")
+    @GET
+    @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
+    public void getError(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws IOException {
+	executeRequest(req, resp);
+    }    
 }
