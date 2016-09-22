@@ -8,12 +8,14 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.Map;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -36,7 +38,10 @@ import uws.UWSException;
 import uws.job.JobList;
 import uws.job.UWSJob;
 import uws.job.ExecutionPhase;
+import uws.job.user.JobOwner;
+import uws.job.user.DefaultJobOwner;
 import uws.service.actions.UWSAction;
+import uws.service.UserIdentifier;
 import uws.service.UWSFactory;
 import uws.service.UWSService;
 import uws.service.UWSUrl;
@@ -74,6 +79,26 @@ public class TransferResource extends VOSpaceResource {
 	    uws = new UWSService(factory, fileManager);
 	    uws.setDescription("This UWS aims to manage one (or more) JobList(s) of Transfers." + "Transfer is a kind of Job dealing with a data transfer within a VOSpace");
 
+	    // Attach the user identification method (based on the HTTP Header)
+	    uws.setUserIdentifier(new UserIdentifier() {
+		    private static final long serialVersionUID = 1L;
+
+		    @Override
+		    public JobOwner extractUserId(UWSUrl urlInterpreter, HttpServletRequest request) throws UWSException {
+			String token = request.getHeader("X-DL-AuthToken");
+			if (token == null) {
+			    return null;
+			} else {
+			    return new DefaultJobOwner(token);
+			}
+		    }
+
+		    public JobOwner restoreUser(String id, String pseudo, Map<String, Object> otherData) throws UWSException {
+			return new DefaultJobOwner(id);
+		    }
+	        }
+	    );
+	    
 	    // Create the job list
 	    uws.addJobList(new JobList("transfers"));
 //	    uws.addJobList(new JobList("sync"));
@@ -117,7 +142,8 @@ public class TransferResource extends VOSpaceResource {
     @Path("{jobid}")
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void getTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws IOException {
+    public void getTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
 
@@ -130,7 +156,8 @@ public class TransferResource extends VOSpaceResource {
     @Path("{jobid}/results")
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void getResults(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws IOException {
+    public void getResults(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
 
@@ -144,7 +171,8 @@ public class TransferResource extends VOSpaceResource {
     @Path("{jobid}/results/transferDetails")
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public String getResultsDetails(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws VOSpaceException {
+    public String getResultsDetails(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException, IOException {
+	validateToken(authToken, resp);
 	String details = null;
         try {
 	    // Check job status first
@@ -173,7 +201,8 @@ public class TransferResource extends VOSpaceResource {
     @POST
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp) throws IOException {
+    public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
 
@@ -188,7 +217,8 @@ public class TransferResource extends VOSpaceResource {
     @POST
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws IOException {
+    public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
 
@@ -202,7 +232,8 @@ public class TransferResource extends VOSpaceResource {
     @Path("{jobid}/phase")
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void getPhase(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws IOException {
+    public void getPhase(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
 
@@ -216,7 +247,18 @@ public class TransferResource extends VOSpaceResource {
     @Path("{jobid}/error")
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void getError(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws IOException {
+    public void getError(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }    
+
+
+    private void validateToken(String authToken, HttpServletResponse resp) throws IOException{
+	try {
+  	    manager.validateToken(authToken);
+	} catch (VOSpaceException e) {
+	    resp.sendError(e.getStatusCode(), e.getMessage());		
+	}	
+    }
+
 }

@@ -121,6 +121,11 @@ public interface MetaStore {
      */
     public int getType(String identifier) throws SQLException;
 
+    /*
+     * Get the owner of the object with the specified identifier
+     */
+    public String getOwner(String identifier) throws SQLException;
+    
     /* 
      * Check whether the specified property is known to the service
      */
@@ -206,11 +211,16 @@ public interface MetaStore {
      * Get the property type of the specified node
      */
     public String getPropertyType(String identifier) throws SQLException;
-
+    
     /*
      * Check whether the property is read/only
      */
     public boolean isReadOnly(String property) throws SQLException;
+
+    /*
+     * Get the value of a property
+     */
+    public String getPropertyValue(String identifier, String property) throws SQLException;
 
     /*
      * Get the direct children of the specified container node

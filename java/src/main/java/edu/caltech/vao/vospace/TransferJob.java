@@ -82,6 +82,16 @@ public class TransferJob extends JobThread {
 	    String target = transfer.getTarget();
 	    String direction = transfer.getDirection();
 	    boolean external = !direction.startsWith("vos");
+	    // Validate access
+	    String token = getToken();
+	    if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) {
+		manager.validateAccess(token, target, false); 
+	    } else if (direction.equals("pullFromVoSpace") || direction.equals("pushFromVoSpace")) {
+		manager.validateAccess(token, target, true);
+	    }
+	    //
+	    // NEED TO DO MOVE AND COPY AS WELL
+	    //
 	    // Syntactically valid target and direction (move, copy)
 	    if (!utils.validId(target)) throw new UWSException(UWSException.BAD_REQUEST, "The requested target URI is invalid");
 	    if (!external && !utils.validId(direction)) throw new UWSException(UWSException.BAD_REQUEST, "The requested direction URI is invalid");
@@ -312,7 +322,7 @@ public class TransferJob extends JobThread {
 	    if (!store.isStored(target)) {
 	        Node blankNode = factory.getDefaultNode();
 	        blankNode.setUri(target);
-	        node = manager.create(blankNode, false);
+	        node = manager.create(blankNode, getUser(), false);
 	    } else {
 	        node = getNode(target);
 	    }
@@ -363,7 +373,7 @@ public class TransferJob extends JobThread {
 	    if (!store.isStored(target)) {
 		Node blankNode = factory.getDefaultNode();
 		blankNode.setUri(target);
-		node = manager.create(blankNode, false);
+		node = manager.create(blankNode, getUser(), false);
 	    } else {
 		node = getNode(target);
 	    }
@@ -524,7 +534,7 @@ public class TransferJob extends JobThread {
 	    String newLocation = getLocation(direction);
 	    if (!copyBytes(store.getLocation(target), newLocation)) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Unable to move bytes between target and direction");
 	    // Store new node
-	    store.storeData(direction, getType(node.getType()), USER, newLocation, node.toString());
+	    store.storeData(direction, getType(node.getType()), getUser(), newLocation, node.toString());
 	    // Check if target is a container
 	    if (node instanceof ContainerNode) {
 		// Move directory
@@ -541,7 +551,7 @@ public class TransferJob extends JobThread {
 		    // Get new location
 		    newLocation = getLocation(childNode.getUri());
 		    // Store copy node
-		    store.storeData(childNode.getUri(), getType(childNode.getType()), USER, getLocation(childNode.getUri()), childNode.toString());
+		    store.storeData(childNode.getUri(), getType(childNode.getType()), getUser(), getLocation(childNode.getUri()), childNode.toString());
 		}
 	    }
 	}
@@ -724,7 +734,24 @@ public class TransferJob extends JobThread {
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 	}
     }
-    
+
+    /**
+     * Get the authority token associated with the job
+     */
+    private String getToken() {
+	String token = getJob().getOwner().getID();
+	return token;
+    }
+
+    /**
+     * Get the user
+     */
+    private String getUser() {
+	String token = getToken();
+	String[] parts = token.split("\\.");
+	String user = parts[0];
+	return user;
+    }
 
     /**
      * Perform the transfer using the negotiated protocols

@@ -18,7 +18,6 @@ public class VOSpaceResource {
 	}
     }
 
-
     public static void main(String args[]) {
 	try {
 	    VOSpaceResource res = new VOSpaceResource();

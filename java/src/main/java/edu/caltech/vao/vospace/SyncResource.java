@@ -18,6 +18,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -106,7 +107,12 @@ public class SyncResource extends VOSpaceResource {
     @Path("{jobid}")
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void getTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws IOException {
+    public void getTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	try {
+	    manager.validateToken(authToken);
+	} catch (VOSpaceException e) {
+	    throw new IOException(e.getMessage());
+	}
 	executeRequest(req, resp);
     }
 
@@ -120,7 +126,7 @@ public class SyncResource extends VOSpaceResource {
     @POST
 //    @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp) throws IOException {
+    public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
 	/*
 	FakeHttpServletResponse runResp = new FakeHttpServletResponse(resp.isCommitted(), resp.getContentType());
 	FakeHttpServletRequest firstReq = new FakeHttpServletRequest("POST", new UrlInfo("http://localhost:8080/", "vospace-2.0/vospace/", "transfers"), req.getSession(), req.getRemoteAddr(), req.getScheme(), req.getServerName(), req.getServerPort(), req.getHeader("User-Agent"));
@@ -141,6 +147,11 @@ public class SyncResource extends VOSpaceResource {
 	runReq.setParameters(params);
 	executeRequest(runReq, resp);
 	*/
+	try {
+	    manager.validateToken(authToken);
+	} catch (VOSpaceException e) {
+	    throw new IOException(e.getMessage());
+	}
 	try {
 	    Map<String, String[]> extraParams = new TreeMap<String, String[]>();
 	    extraParams.put("PHASE", new String[] {"RUN"});
@@ -168,7 +179,12 @@ public class SyncResource extends VOSpaceResource {
     @Path("{jobid}/phase")
     @POST
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id) throws IOException {
+    public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	try {
+	    manager.validateToken(authToken);
+	} catch (VOSpaceException e) {
+	    throw new IOException(e.getMessage());
+	}
 	executeRequest(req, resp);
     }
 }

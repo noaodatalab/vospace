@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.URI;
 
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -33,7 +34,8 @@ public class ResultsResource extends VOSpaceResource {
     @Path("{jobid}")
     @GET
     @Produces(MediaType.APPLICATION_XML)
-    public String getDetails(@PathParam("jobid") String jobid) throws VOSpaceException {
+    public String getDetails(@PathParam("jobid") String jobid, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+	manager.validateToken(authToken);
 	try {
 	    MetaStore store = MetaStoreFactory.getInstance().getMetaStore();
             String details = store.getResult(jobid);

@@ -11,6 +11,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -49,7 +50,7 @@ public class NodeResource extends VOSpaceResource {
      */
     @GET
     @Produces(MediaType.APPLICATION_XML)
-	public Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
+    public Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
 	Node node = manager.getNode(manager.ROOT_NODE, detail, limit);
 	return node;
     }
@@ -63,8 +64,10 @@ public class NodeResource extends VOSpaceResource {
     @Path("{nodeid: .*}")
     @GET
     @Produces(MediaType.APPLICATION_XML)
-	public Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
-	    Node node = manager.getNode(getId(nodeid), detail, limit);
+    public Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+	String id = getId(nodeid);
+	manager.validateAccess(authToken, id, true);
+	Node node = manager.getNode(id, detail, limit);
 	return node;
     }
 
@@ -78,10 +81,16 @@ public class NodeResource extends VOSpaceResource {
     @POST
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces(MediaType.APPLICATION_XML)
-    public Node updateNode(@PathParam("nodeid") String nodeid, Node node) throws VOSpaceException {
-	if (!node.getUri().equals(getId(nodeid))) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "A specified URI is invalid");
-	Node newNode = manager.create(node, true);
-	return newNode;
+    public Node updateNode(@PathParam("nodeid") String nodeid, Node node, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+	String id = getId(nodeid);
+	manager.validateAccess(authToken, id, false);
+	if (!node.getUri().equals(id)) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "A specified URI is invalid");
+	try {
+	    Node newNode = manager.create(node, getUser(authToken), true); 
+	    return newNode;
+	} catch (Exception e) {
+	    throw new VOSpaceException(e.getMessage());
+	}
     }
 
     /**
@@ -94,9 +103,11 @@ public class NodeResource extends VOSpaceResource {
     @PUT
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces(MediaType.APPLICATION_XML)
-    public Response putNode(@PathParam("nodeid") String nodeid, Node node) throws VOSpaceException {	
-	if (!node.getUri().equals(getId(nodeid))) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "A specified URI is invalid");
-	Node newNode = manager.create(node, false);
+    public Response putNode(@PathParam("nodeid") String nodeid, Node node, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {	
+	String id = getId(nodeid);
+	manager.validateAccess(authToken, id, false);
+	if (!node.getUri().equals(id)) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "A specified URI is invalid");
+	Node newNode = manager.create(node, getUser(authToken), false);
 	try {
 	    URI nodeUri = new URI(newNode.getUri());
   	    return Response.created(nodeUri).entity(newNode).build();
@@ -112,12 +123,18 @@ public class NodeResource extends VOSpaceResource {
      */
     @Path("{nodeid: .*}")
     @DELETE
-    public void deleteNode(@PathParam("nodeid") String nodeid) throws VOSpaceException {
-	manager.delete(getId(nodeid));
+    public void deleteNode(@PathParam("nodeid") String nodeid, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+	String id = getId(nodeid);
+	manager.validateAccess(authToken, id, false);
+	manager.delete(id);
     }
 
     private String getId(String nodeid) {
 	return manager.ROOT_NODE + "/" + nodeid;
     }
 
+    private String getUser(String authToken) {
+	String[] parts = authToken.split("\\.");
+	return parts[0];
+    }
 }

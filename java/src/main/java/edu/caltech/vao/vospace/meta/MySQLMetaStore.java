@@ -129,7 +129,7 @@ public class MySQLMetaStore implements MetaStore{
      * @param identifier The ID of the node 
      * @return the type of the node
      */
-    public int getType(String identifier) throws SQLException{
+    public int getType(String identifier) throws SQLException {
 	int type = -1;
         String query = "select type from nodes where identifier = '" + identifier + "'";
 	type = getAsInt(query);
@@ -137,11 +137,23 @@ public class MySQLMetaStore implements MetaStore{
     }
 
     /*
+     * Get the owner of the object with the specified identifier
+     * @param identifier The Id of the node
+     * @return the owner of the node
+     */
+    public String getOwner(String identifier) throws SQLException {
+	String owner = "";
+	String query = "select owner from nodes where identifier = '" + identifier + "'";
+	owner = getAsString(query);
+	return owner;
+    }
+    
+    /*
      * Check whether the specified property is known to the service
      * @param identifier The ID of the property
      * @return whether the property is known
      */
-    public boolean isKnownProperty(String identifier) throws SQLException{
+    public boolean isKnownProperty(String identifier) throws SQLException {
 	boolean known = false;
         String query = "select * from metaproperties where identifier = '" + identifier + "'";
 	known = extantEntry(query);
@@ -391,6 +403,8 @@ public class MySQLMetaStore implements MetaStore{
 	    String encode = node.replace("\"", "'");
 	    String query = "update nodes set identifier = '" + newIdentifier + "', node = \"" + encode + "\" where identifier = '" + identifier + "'"; 
 	    update(query);
+	    query = "update properties set identifier = '" + newIdentifier + "' where identifier = '" + identifier + "'"; 
+	    update(query);
 	}
     }
 
@@ -403,6 +417,8 @@ public class MySQLMetaStore implements MetaStore{
 	    String node = updateProperties((String) metadata);
 	    String encode = node.replace("\"", "'");
 	    String query = "update nodes set identifier = '" + newIdentifier + "', location = '" + newLocation + "', node = \"" + encode + "\" where identifier = '" + identifier + "'";
+	    update(query);
+	    query = "update properties set identifier = '" + newIdentifier + "' where identifier = '" + identifier + "'"; 
 	    update(query);
 	}
     }
@@ -630,6 +646,16 @@ public class MySQLMetaStore implements MetaStore{
 	return readOnly;
     }
 
+    /*
+     * Get the value of a property
+     */
+    public String getPropertyValue(String identifier, String property) throws SQLException {
+	String value = null;
+	String query = "select value from properties where identifier = '" + identifier + "'" + " and property = '" + property + "'";
+	value = getAsString(query);
+	return value;
+    }
+    
     /*
      * Check the status of a capability (active or not)
      */

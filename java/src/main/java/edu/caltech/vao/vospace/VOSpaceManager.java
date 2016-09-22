@@ -3,6 +3,7 @@ package edu.caltech.vao.vospace;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.StringReader;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -22,6 +23,10 @@ import java.util.regex.Matcher;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.events.XMLEvent;
+
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.httpclient.HttpStatus;
 
 import org.codehaus.stax2.XMLStreamReader2;
 
@@ -71,6 +76,7 @@ public class VOSpaceManager {
     private String STAGING_LOCATION;
     private Pattern VOS_PATTERN;
     private String SPACE_AUTH;
+    private String AUTH_URL;
     private MetaStore store;
     private StorageManager backend;
     private TransformEngine engine;
@@ -106,6 +112,7 @@ public class VOSpaceManager {
             if (structure) engine = new TransformEngine(STAGING_LOCATION);
 	    String httpUrl = props.getProperty("server.http.url");
 	    BASE_URL = httpUrl.substring(0, httpUrl.lastIndexOf("/") + 1);
+	    AUTH_URL = props.containsKey("server.auth.url") ? props.getProperty("server.auth.url") : "";
 	    SPACE_ACCEPTS_IMAGE = getViewList(props.getProperty("space.accepts.image"));
             SPACE_ACCEPTS_TABLE = getViewList(props.getProperty("space.accepts.table"));
             SPACE_ACCEPTS_ARCHIVE = getViewList(props.getProperty("space.accepts.archive"));
@@ -142,9 +149,11 @@ public class VOSpaceManager {
     /** 
      * Create the specified node
      * @param node The node to be created
+     * @param owner The owner of the node
+     * @param overwrite Whether to overwrite the node
      * @return The created node
      */
-    public Node create(Node node, boolean overwrite) throws VOSpaceException {
+    public Node create(Node node, String owner, boolean overwrite) throws VOSpaceException {
 	String uri = node.getUri();
 	// Is identifier syntactically valid?
 	if (!validId(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid"); 
@@ -233,8 +242,8 @@ public class VOSpaceManager {
 	    // Set properties (date at least)
 	    if (!exists) {
 		node.setProperty(Props.get(Props.Property.DATE), new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()));
-		node.setProperty(Props.get(Props.Property.GROUPREAD), "NONE");
-		node.setProperty(Props.get(Props.Property.GROUPWRITE), "NONE");
+		node.setProperty(Props.get(Props.Property.GROUPREAD), "");
+		node.setProperty(Props.get(Props.Property.GROUPWRITE), "");
 		node.setProperty(Props.get(Props.Property.ISPUBLIC), "true");
 		node.setProperty(Props.get(Props.Property.LENGTH), "0");
 		node.setProperty(Props.get(Props.Property.MD5), "");
@@ -247,7 +256,7 @@ public class VOSpaceManager {
 		String view = getView(uri);
 		String location = getLocation(uri);
 	        //		store.storeData(uri, type.ordinal(), USER, getLocation(uri), node.toString());
-		store.storeData(uri, type.ordinal(), view, USER, location, node.toString());
+		store.storeData(uri, type.ordinal(), view, owner, location, node.toString());
 		for (String capUri: node.getCapabilities()) {
 		    store.registerCapability(uri, capUri);
 		}
@@ -612,9 +621,9 @@ public class VOSpaceManager {
     /**
      * Register a node
      */
-    public void registerNode(Node node, String location) throws VOSpaceException {
+    public void registerNode(Node node, String user, String location) throws VOSpaceException {
         try {
-            Node newNode = create(node, false);
+            Node newNode = create(node, user, false);
 	    newNode.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(location)));
 	    store.updateData(newNode.getUri(), newNode.toString());
 	} catch (Exception e) {
@@ -753,6 +762,57 @@ public class VOSpaceManager {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
 	return updated;
+    }
+
+
+    /**
+     * Validate the provided DataLab token
+     */
+    public void validateToken(String authToken) throws VOSpaceException {
+        // Validates a security token
+	HttpClient client = new HttpClient();
+	GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
+	try {
+   	    int statusCode = client.executeMethod(get);
+	    if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOSpaceException.PERMISSION_DENIED, "The provided DataLab token is invalid");
+	} catch (IOException e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
+    }
+
+    
+    /**
+     * Validate the requested access associated with the given DataLab token
+     * @param authToken The authority token associated with the user 
+     * @param node The identifier of the node being accessed
+     * @param isRead The mode of access - read/write
+     */
+    public void validateAccess(String authToken, String node, boolean isRead) throws VOSpaceException {
+	try {
+	    // If node does not exist, check write access to parent
+	    boolean exists = store.isStored(node);
+	    if (!exists) {
+ 	        String parent = node.substring(0, node.lastIndexOf("/"));
+	        node = parent;
+	    }
+	    // Get owner and groups for requested node
+	    String groups = "";
+	    if (isRead) {
+		groups = store.getPropertyValue(node, Props.get(Props.Property.GROUPREAD));
+	    } else {
+		groups = store.getPropertyValue(node, Props.get(Props.Property.GROUPWRITE));
+	    }
+	    String owner = store.getOwner(node);
+	    // Validates the access request
+	    HttpClient client = new HttpClient();
+	    GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + authToken + "&owner=" + owner + "&groups=" + groups);
+   	    int statusCode = client.executeMethod(get);
+	    if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOSpaceException.PERMISSION_DENIED, "The user does not have sufficient access privileges for this operation");
+	} catch (IOException e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	} catch (SQLException e) {
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	}
     }
 
 }
