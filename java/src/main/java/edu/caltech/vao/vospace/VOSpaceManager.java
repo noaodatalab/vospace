@@ -269,7 +269,7 @@ public class VOSpaceManager {
 		for (String capUri: node.getCapabilities()) {
 		    store.registerCapability(uri, capUri);
 		}
-		if (type.equals(NodeType.CONTAINER_NODE)) {
+		if (type.equals(NodeType.CONTAINER_NODE) && overwrite) {
 		    backend.createContainer(location);
 		} else {
 		    backend.touch(location);
