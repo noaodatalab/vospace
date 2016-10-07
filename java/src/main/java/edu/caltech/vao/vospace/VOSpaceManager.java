@@ -242,9 +242,18 @@ public class VOSpaceManager {
 	    // Set properties (date at least)
 	    if (!exists) {
 		node.setProperty(Props.get(Props.Property.DATE), new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()));
-		node.setProperty(Props.get(Props.Property.GROUPREAD), "");
-		node.setProperty(Props.get(Props.Property.GROUPWRITE), "");
-		node.setProperty(Props.get(Props.Property.ISPUBLIC), "true");
+		// Inherit permissions from parent if none set
+		HashMap<String, String> nodeProps = node.getProperties();
+		String parent = uri.substring(0, uri.lastIndexOf("/"));
+		String grpRd = Props.get(Props.Property.GROUPREAD);
+		String grpWr = Props.get(Props.Property.GROUPWRITE);
+		String isPub = Props.get(Props.Property.ISPUBLIC);
+		String parentGrpRd = store.getPropertyValue(parent, grpRd);
+		String parentGrpWr = store.getPropertyValue(parent, grpWr);
+		String parentIsPub = store.getPropertyValue(parent, isPub);
+		if (nodeProps.get(grpRd) == "") node.setProperty(grpRd, parentGrpRd);
+		if (nodeProps.get(grpWr) == "") node.setProperty(grpWr, parentGrpWr);
+		if (nodeProps.get(isPub) == "") node.setProperty(isPub, parentIsPub);
 		node.setProperty(Props.get(Props.Property.LENGTH), "0");
 		node.setProperty(Props.get(Props.Property.MD5), "");
 		//	    node.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(getLocation(node.getUri()))));

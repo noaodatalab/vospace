@@ -51,7 +51,8 @@ public class RegisterResource extends VOSpaceResource {
     public Response putNode(@PathParam("nodeid") String nodeid, Node node, @QueryParam("location") String location, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
 	try {
 	    manager.validateToken(authToken);
-            manager.registerNode(node, "file://" + location);
+	    String user = authToken.split("\\.")[0];
+            manager.registerNode(node, user, "file://" + location);
 	    URI nodeUri = new URI(node.getUri());
 	    return Response.created(nodeUri).build();
 	} catch (Exception e) {
