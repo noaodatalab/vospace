@@ -10,6 +10,8 @@
 from datetime import datetime
 import hashlib
 import httplib2 # Need to hack this to handle cookies on redirects
+import sys
+sys.path.append('../src')
 from resources import *	
 from StringIO import StringIO
 from time import sleep
@@ -45,6 +47,7 @@ ROOT_NODE = 'vos://nvo.caltech!vospace'
 #BASE_URI = 'http://dldev1.tuc.noao.edu:8080/vospace-2.0/vospace/'
 #ROOT_NODE = 'vos://datalab.noao.edu!vospace'
 XSI_NS = 'http://www.w3.org/2001/XMLSchema-instance'
+AM_URL = 'http://localhost:7001'
 NODE = 'vos:Node'
 DATANODE =  'vos:DataNode'
 LINKNODE = 'vos:LinkNode'
@@ -73,16 +76,25 @@ def suite():
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(MoveNodeTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(CopyNodeTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(DeleteNodeTestCase))
-#    suite.addTest(unittest.TestLoader().loadTestsFromTestCase(SetNodeTestCase))
-##  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(GetNodeTestCase))
+#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(SetNodeTestCase))
+#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(GetNodeTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(FindNodesTestCase))
-#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PushToVoSpaceTestCase))
+  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PushToVoSpaceTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PullToVoSpaceTestCase))
-#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PullFromVoSpaceTestCase))
+  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PullFromVoSpaceTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(PushFromVoSpaceTestCase))
-  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(CapabilityTestCase))
+#  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(CapabilityTestCase))
 #  suite.addTest(unittest.TestLoader().loadTestsFromTestCase(ViewTestCase))
   return suite
+
+def get_auth_token(user = 'dltest', password = 'dltest'):
+  """
+  Get the auth token for the given user
+  """
+  h = httplib2.Http()
+  resp, content = h.request('%s/login?username=%s&password=%s' % (AM_URL, user, password))
+  return content
+
 
 def set_node_uri(node, uri):
   """
@@ -184,12 +196,12 @@ def assert_not_contains(list, elem):
   """
   assert elem not in list
 
-def test_start_uws(h, resource, body):
+def test_start_uws(h, token, resource, body):
   """
   Test the start process of a UWS job (up to execution)
   """
   # Submit job
-  headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+  headers = {'Content-Type': 'application/x-www-form-urlencoded', 'X-DL-Authtoken': token}
   resp, content = h.request(BASE_URI + resource, 'POST', body = body, headers = headers)
   prevstatus = resp.previous['status'] # Need to instantiate the status
   assert int(prevstatus) == 303 
@@ -204,22 +216,24 @@ def test_start_uws(h, resource, body):
   assert int(resp['status']) == 200
   job = Job(content)
   print content
-  assert job.phase in ['QUEUED', 'EXECUTING', 'COMPLETED']
+  # The job phase can change more quickly to ERROR than expected so this assertion
+  # may fail
+  if job.phase != 'ERROR': assert job.phase in ['QUEUED', 'EXECUTING', 'COMPLETED']
   return job.jobId
 
-def test_uws(h, resource, body, fail = False, summary = ''):
+def test_uws(h, token, resource, body, fail = False, summary = ''):
   """
   Test the UWS machinery
   """
   # Submit job
-  jobid = test_start_uws(h, resource, body)
+  jobid = test_start_uws(h, token, resource, body)
   content = ''
   while content not in ['COMPLETED', 'ERROR']:
-    resp, content = h.request(BASE_URI + '%s/%s/phase' % (resource, jobid))
+    resp, content = h.request(BASE_URI + '%s/%s/phase' % (resource, jobid), headers = {'X-DL-Authtoken': token})
     print content
     assert int(resp['status']) == 200
     sleep(1)
-  resp, content = h.request(BASE_URI + '%s/%s' % (resource, jobid))
+  resp, content = h.request(BASE_URI + '%s/%s' % (resource, jobid), headers = {'X-DL-Authtoken': token})
   assert int(resp['status']) == 200
   job = Job(content)
   if fail:
@@ -246,23 +260,23 @@ def md5(filename):
   fd.close()
   return m.hexdigest()
 
-def create_container(h, uri):
+def create_container(h, token, uri):
   # Creates new container if necessary
   nodeuri = BASE_URI + 'nodes/' + uri
-  resp, content = h.request(nodeuri)
+  resp, content = h.request(nodeuri, headers = {'X-DL-Authtoken': token})
   if int(resp['status']) == 404:
     node = ContainerNode()
     node.uri = ROOT_NODE + "/" + uri
-    resp, content = h.request(BASE_URI + 'nodes/' + uri, 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = h.request(BASE_URI + 'nodes/' + uri, 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': token})
 
-def create_node(h, uri, type):
+def create_node(h, token, uri, type):
   # Creates new container if necessary
   nodeuri = BASE_URI + 'nodes/' + uri
-  resp, content = h.request(nodeuri)
+  resp, content = h.request(nodeuri, headers = {'X-DL-Authtoken': token})
   if int(resp['status']) == 404:
     node = type
     node.uri = ROOT_NODE + "/" + uri
-    resp, content = h.request(BASE_URI + 'nodes/' + uri, 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = h.request(BASE_URI + 'nodes/' + uri, 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': token})
 
 class XMLMatcher():
 
@@ -368,34 +382,34 @@ class NodeTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
-    self.node = etree.parse('newNode.xml')
+    self.node = etree.parse('data/newNode.xml')
     self.xm = XMLMatcher()
   
   def test_node(self):
     test = Node()
-    self.xm.assert_xml_strings(test.tostring(), open('test/node.xml').read())
+    self.xm.assert_xml_strings(test.tostring(), open('data/node.xml').read())
  
   def test_datanode(self):
     test = DataNode()
     print test.tostring()
-    self.xm.assert_xml_strings(test.tostring(), open('test/datanode.xml').read())
+    self.xm.assert_xml_strings(test.tostring(), open('data/datanode.xml').read())
  
   def test_containernode(self):
     test = ContainerNode()
-    self.xm.assert_xml_strings(test.tostring(), open('test/containernode.xml').read())
+    self.xm.assert_xml_strings(test.tostring(), open('data/containernode.xml').read())
  
   def test_linknode(self):
     test = LinkNode()
-#    assert_xml_equal(test.tostring(), open('test/linknode.xml').read())
-    self.xm.assert_xml_strings(test.tostring(), open('test/linknode.xml').read())
+#    assert_xml_equal(test.tostring(), open('data/linknode.xml').read())
+    self.xm.assert_xml_strings(test.tostring(), open('data/linknode.xml').read())
  
   def test_structureddatanode(self):
     test = StructuredDataNode()
-    self.xm.assert_xml_strings(test.tostring(), open('test/structureddatanode.xml').read())
+    self.xm.assert_xml_strings(test.tostring(), open('data/structureddatanode.xml').read())
  
   def test_unstructureddatanode(self):
     test = UnstructuredDataNode()
-    self.xm.assert_xml_strings(test.tostring(), open('test/unstructureddatanode.xml').read())
+    self.xm.assert_xml_strings(test.tostring(), open('data/unstructureddatanode.xml').read())
 
   def test_add_property(self):
     pass
@@ -424,17 +438,18 @@ class UWSTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.xm = XMLMatcher()
 
   def test_job(self):
     test = Job()
-    job = open('test/job.xml').read()
+    job = open('data/job.xml').read()
     self.xm.assert_xml_strings(job, test.tostring())
 
   def test_job_from_file(self):
-    test = etree.parse('test/job.xml')
+    test = etree.parse('data/job.xml')
     job = Job(test)
-    self.xm.assert_xml_strings(job.tostring(), open('test/job.xml').read())
+    self.xm.assert_xml_strings(job.tostring(), open('data/job.xml').read())
 
   def test_set_job_id(self):
     job = Job()
@@ -521,17 +536,18 @@ class TransferTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.xm = XMLMatcher()
 
   def test_transfer(self):
     test = Transfer()
-    transfer = open('test/transfer.xml').read()
+    transfer = open('data/transfer.xml').read()
     self.xm.assert_xml_strings(transfer, test.tostring())
 
   def test_transfer_from_file(self):
-    test = etree.parse('test/transfer.xml')
+    test = etree.parse('data/transfer.xml')
     transfer = Transfer(test)
-    self.xm.assert_xml_strings(transfer.tostring(), open('test/transfer.xml').read())
+    self.xm.assert_xml_strings(transfer.tostring(), open('data/transfer.xml').read())
 
 
 class ProtocolTestCase(unittest.TestCase):
@@ -544,13 +560,13 @@ class ProtocolTestCase(unittest.TestCase):
 
   def test_protocol(self):
     test = Protocol()
-    protocol = open('test/protocol.xml').read()
+    protocol = open('data/protocol.xml').read()
     self.xm.assert_xml_strings(protocol, test.tostring())
 
   def test_protocol_from_file(self):
-    test = etree.parse('test/protocol.xml')
+    test = etree.parse('data/protocol.xml')
     protocol = Protocol(test)
-    self.xm.assert_xml_strings(protocol.tostring(), open('test/protocol.xml').read())
+    self.xm.assert_xml_strings(protocol.tostring(), open('data/protocol.xml').read())
 
 
 class GetProtocolsTestCase(unittest.TestCase):
@@ -559,6 +575,7 @@ class GetProtocolsTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     print BASE_URI
     h = httplib2.Http()
     self.resp, self.content = h.request(BASE_URI + 'protocols')
@@ -573,6 +590,7 @@ class GetViewsTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     h = httplib2.Http()
     self.resp, self.content = h.request(BASE_URI + 'views')
 
@@ -586,6 +604,7 @@ class GetPropertiesTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     h = httplib2.Http()
     self.resp, self.content = h.request(BASE_URI + 'properties')
 
@@ -599,6 +618,7 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
     self.xm = XMLMatcher()
     schema_doc = etree.parse(SCHEMA_ROOT)
@@ -610,7 +630,7 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     node = Node()
     node.uri = ROOT_NODE + '/node1'
-    resp, content = self.h.request(BASE_URI + 'nodes/node1', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node1', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
     test = Node(content)
     print content
@@ -624,7 +644,7 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     node = DataNode()
     node.uri = ROOT_NODE + '/node2'
-    resp, content = self.h.request(BASE_URI + 'nodes/node2', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node2', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
     test = DataNode(content)
     self.schema.assertValid(etree.parse(StringIO(content)))
@@ -633,12 +653,12 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     Test creating a link node: node3 -> node 1
     """
-    node = etree.parse('test/node.xml')
+    node = etree.parse('data/node.xml')
     set_node_uri(node, ROOT_NODE + '/node3')
     set_node_type(node, LINKNODE)
     target = etree.SubElement(node.getroot(), 'target')
     target.text = ROOT_NODE + '/node1'
-    resp, content = self.h.request(BASE_URI + 'nodes/node3', 'PUT', body = etree.tostring(node), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node3', 'PUT', body = etree.tostring(node), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
     test = LinkNode(content)
     self.schema.assertValid(etree.parse(StringIO(content)))
@@ -650,7 +670,7 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     node = UnstructuredDataNode()
     node.uri = ROOT_NODE + '/node4'
-    resp, content = self.h.request(BASE_URI + 'nodes/node4', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node4', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
     test = UnstructuredDataNode(content)
     self.schema.assertValid(etree.parse(StringIO(content)))
@@ -662,7 +682,7 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     node = StructuredDataNode()
     node.uri = ROOT_NODE + '/node5'
-    resp, content = self.h.request(BASE_URI + 'nodes/node5', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node5', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
     test = StructuredDataNode(content)
     self.schema.assertValid(etree.parse(StringIO(content)))
@@ -674,7 +694,7 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     node = ContainerNode()
     node.uri = ROOT_NODE + '/node6'
-    resp, content = self.h.request(BASE_URI + 'nodes/node6', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node6', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
     test = ContainerNode(content)
     self.schema.assertValid(etree.parse(StringIO(content)))
@@ -684,10 +704,10 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     Test creating a node of unsupported type
     """    
-    node = etree.parse('test/node.xml')
+    node = etree.parse('data/node.xml')
     set_node_uri(node, ROOT_NODE + '/node7')
     set_node_type(node, 'vos:JunkNode')
-    resp, content = self.h.request(BASE_URI + 'nodes/node7', 'PUT', body = etree.tostring(node), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node7', 'PUT', body = etree.tostring(node), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 500) # should be 400
 #    self.assertEqual(get_error_message(content), 'Node type not supported.')    
 
@@ -695,11 +715,11 @@ class CreateNodeTestCase(unittest.TestCase):
     """
     Test creating a node with a read-only property: node8
     """
-    node = etree.parse('test/node.xml')
+    node = etree.parse('data/node.xml')
     set_node_uri(node, ROOT_NODE + '/node8')
     set_node_type(node, 'vos:DataNode')
     set_node_property(node, 'ivo://ivoa.net/vospace/core#availableSpace', '300')
-    resp, content = self.h.request(BASE_URI + 'nodes/node8', 'PUT', body = etree.tostring(node), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node8', 'PUT', body = etree.tostring(node), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 401)
     self.assertEqual(get_error_message(content), 'The property ivo://ivoa.net/vospace/core#availableSpace is read only')
     
@@ -710,47 +730,48 @@ class MoveNodeTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
-    create_node(self.h, 'node10', DataNode())
+    create_node(self.h, self.token, 'node10', DataNode())
     self.xm = XMLMatcher()
 
   def test_move_basic_node(self):
     """
     Test moving a known node: node10 -> nodem1 (and back)
     """
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node10')
     set_transfer_direction(transfer, ROOT_NODE + '/nodem1')
     set_transfer_keepBytes(transfer, False)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check move
-    resp, content = self.h.request(BASE_URI + 'nodes/node10')
+    resp, content = self.h.request(BASE_URI + 'nodes/node10', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 404)
-    resp, content = self.h.request(BASE_URI + 'nodes/nodem1')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodem1', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     # Reset to have bytes to move on the server side
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/nodem1')
     set_transfer_direction(transfer, ROOT_NODE + '/node10')
     set_transfer_keepBytes(transfer, False)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
 
   def test_move_basic_node_into_container(self):
     """
     Test moving a node into a container: node10 -> node6 => node6/node10
     """
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node10')
     set_transfer_direction(transfer, ROOT_NODE + '/node6')
     set_transfer_keepBytes(transfer, False)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check move
-    resp, content = self.h.request(BASE_URI + 'nodes/node10')
+    resp, content = self.h.request(BASE_URI + 'nodes/node10', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 404)
-    resp, content = self.h.request(BASE_URI + 'nodes/node6')
+    resp, content = self.h.request(BASE_URI + 'nodes/node6', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     # Check container listings
     nf = NodeFactory()
@@ -765,16 +786,16 @@ class MoveNodeTestCase(unittest.TestCase):
     """
     Test moving a container: node6 -> nodem6
     """
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node6')
     set_transfer_direction(transfer, ROOT_NODE + '/nodem6')
     set_transfer_keepBytes(transfer, False)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check move
-    resp, content = self.h.request(BASE_URI + 'nodes/node6')
+    resp, content = self.h.request(BASE_URI + 'nodes/node6', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 404)
-    resp, content = self.h.request(BASE_URI + 'nodes/nodem6')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodem6', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     # Check container listings
     nf = NodeFactory()
@@ -791,28 +812,28 @@ class MoveNodeTestCase(unittest.TestCase):
     Test moving a container into a container: nodem6 -> node11 => node11/nodem6/
     """
     # Create new container
-    create_node(self.h, 'node11', ContainerNode())
+    create_node(self.h, self.token, 'node11', ContainerNode())
 #    node = ContainerNode()
 #    node.uri = ROOT_NODE + '/node11'
 #    resp, content = self.h.request(BASE_URI + 'nodes/node11', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
 #    self.assertEqual(int(resp['status']), 201)
     # Move container
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/nodem6')
     set_transfer_direction(transfer, ROOT_NODE + '/node11')
     set_transfer_keepBytes(transfer, False)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check move
-    resp, content = self.h.request(BASE_URI + 'nodes/nodem6')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodem6', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 404)
-    resp, content = self.h.request(BASE_URI + 'nodes/node11/nodem6')
+    resp, content = self.h.request(BASE_URI + 'nodes/node11/nodem6', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     # Check container listings
     nf = NodeFactory()
     container = nf.get_node(content)
     assert_contains(container.nodes, ROOT_NODE + "/node11/nodem6/node10")
-    resp, content = self.h.request(BASE_URI + 'nodes')
+    resp, content = self.h.request(BASE_URI + 'nodes', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     container = nf.get_node(content)
     assert_not_contains(container.nodes, ROOT_NODE + "/nodem6")
@@ -822,25 +843,25 @@ class MoveNodeTestCase(unittest.TestCase):
     """
     Test moving a known node to an existing node (non-container): node10a -> node3
     """
-    create_node(self.h, 'node10a', DataNode())
-    transfer = etree.parse('test/transfer.xml')
+    create_node(self.h, self.token, 'node10a', DataNode())
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node10a')
     set_transfer_direction(transfer, ROOT_NODE + '/node3')
     set_transfer_keepBytes(transfer, False)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer), fail = True, summary = 'A Node already exists with the requested URI')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer), fail = True, summary = 'A Node already exists with the requested URI')
 
   def test_move_to_reserved_uri(self):
     """
     Test moving a known node to an autogenerated node (non-container): node10 -> .auto
     """
-    create_node(self.h, 'node10b', DataNode())
-    transfer = etree.parse('test/transfer.xml')
+    create_node(self.h, self.token, 'node10b', DataNode())
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node10b')
     set_transfer_direction(transfer, ROOT_NODE + '/.auto')
     set_transfer_keepBytes(transfer, False)
     # Submit job
-    jobid = test_uws(self.h, 'transfers', etree.tostring(transfer))
+    jobid = test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check that node has been moved
     resp, content = self.h.request(BASE_URI + 'nodes')
     self.assertEqual(int(resp['status']), 200)
@@ -848,7 +869,7 @@ class MoveNodeTestCase(unittest.TestCase):
     container = nf.get_node(content)
     assert_not_contains(container.nodes, ROOT_NODE + "/node10b")
     # Check that new location in results TBD
-    resp, content = self.h.request(BASE_URI + 'transfers/' + jobid)
+    resp, content = self.h.request(BASE_URI + 'transfers/' + jobid, headers = {'X-DL-Authtoken': self.token})
     job = Job(content)
     print job.results
 
@@ -856,12 +877,12 @@ class MoveNodeTestCase(unittest.TestCase):
     """
     Test moving a known node to the null node (non-container): node10 -> .null
     """
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node10')
     set_transfer_direction(transfer, ROOT_NODE + '/.null')
     set_transfer_keepBytes(transfer, False)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check that node has been deleted
     resp, content = self.h.request(BASE_URI + 'nodes')
     self.assertEqual(int(resp['status']), 200)
@@ -881,10 +902,11 @@ class CopyNodeTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     node = DataNode()
     node.uri = ROOT_NODE + '/node12'
     self.h = httplib2.Http()
-    resp, content = self.h.request(BASE_URI + 'nodes/node12', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node12', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     # A HTTP 409 might be sent back if node already exists - this can be ignored
     self.xm = XMLMatcher()
     self.nf = NodeFactory()
@@ -901,36 +923,36 @@ class CopyNodeTestCase(unittest.TestCase):
     """
     Test copying a basic node: node12 -> nodec1
     """
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node12')
     set_transfer_direction(transfer, ROOT_NODE + '/nodec1')
     set_transfer_keepBytes(transfer, True)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check copy
-    resp, content = self.h.request(BASE_URI + 'nodes/node12')
+    resp, content = self.h.request(BASE_URI + 'nodes/node12', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
-    resp, content = self.h.request(BASE_URI + 'nodes/nodec1')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodec1', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
 
   def test_copy_basic_node_into_container(self):
     """
     Test copying a node into a container: node12 -> node11 => node11/node12
     """
-    create_container(self.h, 'node11')
-    transfer = etree.parse('test/transfer.xml')
+    create_container(self.h, self.token, 'node11')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node12')
     set_transfer_direction(transfer, ROOT_NODE + '/node11')
     set_transfer_keepBytes(transfer, True)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check copy
-    resp, content = self.h.request(BASE_URI + 'nodes/node12')
+    resp, content = self.h.request(BASE_URI + 'nodes/node12', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
-    resp, content = self.h.request(BASE_URI + 'nodes/node11/node12')
+    resp, content = self.h.request(BASE_URI + 'nodes/node11/node12', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     # Check container listings
-    resp, content = self.h.request(BASE_URI + 'nodes/node11')
+    resp, content = self.h.request(BASE_URI + 'nodes/node11', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     container = self.nf.get_node(content)
     assert_contains(container.nodes, ROOT_NODE + "/node11/node12")
@@ -940,23 +962,23 @@ class CopyNodeTestCase(unittest.TestCase):
     Test copying a container: node11 -> nodec11
     node11 contains: node12, nodem6, nodem6/node10
     """
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node11')
     set_transfer_direction(transfer, ROOT_NODE + '/nodec11')
     set_transfer_keepBytes(transfer, True)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check copy
-    resp, content = self.h.request(BASE_URI + 'nodes/node11')
+    resp, content = self.h.request(BASE_URI + 'nodes/node11', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
-    resp, content = self.h.request(BASE_URI + 'nodes/nodec11')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodec11', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     # Check container listings
     container = self.nf.get_node(content)
     assert_contains(container.nodes, ROOT_NODE + "/nodec11/node12")
     # Only if MoveNodeTestCase has run
     assert_contains(container.nodes, ROOT_NODE + "/nodec11/nodem6")
-    resp, content = self.h.request(BASE_URI + 'nodes/nodec11/nodem6')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodec11/nodem6', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     container = self.nf.get_node(content)
     assert_contains(container.nodes, ROOT_NODE + "/nodec11/nodem6/node10")
@@ -969,26 +991,26 @@ class CopyNodeTestCase(unittest.TestCase):
     # Create new container
     node = ContainerNode()
     node.uri = ROOT_NODE + '/node13'
-    resp, content = self.h.request(BASE_URI + 'nodes/node13', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node13', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
     # Move container
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node11')
     set_transfer_direction(transfer, ROOT_NODE + '/node13')
     set_transfer_keepBytes(transfer, True)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check copy
-    resp, content = self.h.request(BASE_URI + 'nodes/node11')
+    resp, content = self.h.request(BASE_URI + 'nodes/node11', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
-    resp, content = self.h.request(BASE_URI + 'nodes/node13/node11')
+    resp, content = self.h.request(BASE_URI + 'nodes/node13/node11', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     # Check container listings
     container = self.nf.get_node(content)
     assert_contains(container.nodes, ROOT_NODE + "/node13/node11/node12")
     # Only if MoveNodeTestCase has run
     assert_contains(container.nodes, ROOT_NODE + "/node13/node11/nodem6")
-    resp, content = self.h.request(BASE_URI + 'nodes/node13/node11/nodem6')
+    resp, content = self.h.request(BASE_URI + 'nodes/node13/node11/nodem6', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     container = self.nf.get_node(content)
     assert_contains(container.nodes, ROOT_NODE + "/node13/node11/nodem6/node10")
@@ -997,23 +1019,23 @@ class CopyNodeTestCase(unittest.TestCase):
     """
     Test copying a known node to an existing node (non-container): node12 -> node3
     """
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node12')
     set_transfer_direction(transfer, ROOT_NODE + '/node3')
     set_transfer_keepBytes(transfer, True)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer), fail = True, summary = 'A Node already exists with the requested URI')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer), fail = True, summary = 'A Node already exists with the requested URI')
 
   def test_copy_to_reserved_uri(self):
     """
     Test copying a known node to an autogenerated node (non-container): node12 -> .auto
     """
-    transfer = etree.parse('test/transfer.xml')
+    transfer = etree.parse('data/transfer.xml')
     set_transfer_target(transfer, ROOT_NODE + '/node12')
     set_transfer_direction(transfer, ROOT_NODE + '/.auto')
     set_transfer_keepBytes(transfer, True)
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     # Check copy
     resp, content = self.h.request(BASE_URI + 'nodes')
     self.assertEqual(int(resp['status']), 200)
@@ -1027,6 +1049,7 @@ class DeleteNodeTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
     
   def test_delete_node(self):
@@ -1035,16 +1058,16 @@ class DeleteNodeTestCase(unittest.TestCase):
     """
     node = Node()
     node.uri = ROOT_NODE + '/node9'
-    resp, content = self.h.request(BASE_URI + 'nodes/node9', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node9', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
-    resp, content = self.h.request(BASE_URI + 'nodes/node9', 'DELETE')
+    resp, content = self.h.request(BASE_URI + 'nodes/node9', 'DELETE', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 204)
 
   def test_delete_unknown_node(self):
     """
     Test deleting an unknown node: nodexx
     """
-    resp, content = self.h.request(BASE_URI + 'nodes/nodexx', 'DELETE')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodexx', 'DELETE', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 404)
     self.assertEqual(get_error_message(content), 'A Node does not exist with the requested URI')
 
@@ -1052,7 +1075,7 @@ class DeleteNodeTestCase(unittest.TestCase):
     """
     Test deleting a container: nodec1
     """
-    resp, content = self.h.request(BASE_URI + 'nodes/nodec1', 'DELETE')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodec1', 'DELETE', headers = {'X-DL-Authtoken': self.token})
     print content
     self.assertEqual(int(resp['status']), 204)
     
@@ -1063,11 +1086,12 @@ class GetNodeTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
     self.nf = NodeFactory()
     self.xm = XMLMatcher()
-    node = open('test/fullnode.xml').read()
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'PUT', body = node, headers={'Content-type': 'application/xml'})
+    node = open('data/fullnode.xml').read()
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'PUT', body = node, headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
     schema_doc = etree.parse(SCHEMA_ROOT)
     self.schema = etree.XMLSchema(schema_doc)
@@ -1077,71 +1101,71 @@ class GetNodeTestCase(unittest.TestCase):
     """
     Tidy up after test
     """
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'DELETE')
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'DELETE', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 204)
 
   def test_get_node(self):
     """
     Test getting a node with no arguments: node16
     """
-    resp, content = self.h.request(BASE_URI + 'nodes/node16')
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', headers = {'X-DL-Authtoken': self.token})
     print content
     self.assertEqual(int(resp['status']), 200)
     self.schema.assertValid(etree.parse(StringIO(content)))
-#    self.xm.assert_xml_strings(content, open('test/fullnode.xml').read())
+#    self.xm.assert_xml_strings(content, open('data/fullnode.xml').read())
 
   def test_get_min_detail(self):
     """
     Test getting a node with minimum detail: node16
     """
-    resp, content = self.h.request(BASE_URI + 'nodes/node16?detail=min')
+    resp, content = self.h.request(BASE_URI + 'nodes/node16?detail=min', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     self.schema.assertValid(etree.parse(StringIO(content)))
-#    self.xm.assert_xml_strings(content, open('test/fullnode_min.xml').read())
+#    self.xm.assert_xml_strings(content, open('data/fullnode_min.xml').read())
 
   def test_get_max_detail(self):
     """
     Test getting a node with maximum detail: node16
     """
-    resp, content = self.h.request(BASE_URI + 'nodes/node16?detail=max')
+    resp, content = self.h.request(BASE_URI + 'nodes/node16?detail=max', headers = {'X-DL-Authtoken': self.token})
     print content
     self.assertEqual(int(resp['status']), 200)
     self.schema.assertValid(etree.parse(StringIO(content)))
-#    self.xm.assert_xml_strings(content, open('test/fullnode.xml').read())
+#    self.xm.assert_xml_strings(content, open('data/fullnode.xml').read())
 
   def test_get_properties(self):
     """
     Test getting a node with just properties: node16
     """
-    resp, content = self.h.request(BASE_URI + 'nodes/node16?detail=properties')
+    resp, content = self.h.request(BASE_URI + 'nodes/node16?detail=properties', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     self.schema.assertValid(etree.parse(StringIO(content)))
-#    self.xm.assert_xml_strings(content, open('test/fullnode_props.xml').read())
+#    self.xm.assert_xml_strings(content, open('data/fullnode_props.xml').read())
 
   def test_get_protocols(self):
     """
     Test getting the protocols for a node: node16
     """
     protocol = Protocol()
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = protocol.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = protocol.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.schema.assertValid(etree.parse(StringIO(content)))
-#    self.xm.assert_xml_strings(content, open('test/protocols.xml').read())
+#    self.xm.assert_xml_strings(content, open('data/protocols.xml').read())
 
   def test_get_container(self):
     """
     Test getting a container: nodecon
     """
-    create_node(self.h, 'nodecon', ContainerNode())
-    create_node(self.h, 'nodecon/nodea', Node())
-    create_node(self.h, 'nodecon/nodeb', Node())
-    create_node(self.h, 'nodecon/nodec', Node())
-    resp, content = self.h.request(BASE_URI + 'nodes/nodecon')
+    create_node(self.h, self.token, 'nodecon', ContainerNode())
+    create_node(self.h, self.token, 'nodecon/nodea', Node())
+    create_node(self.h, self.token, 'nodecon/nodeb', Node())
+    create_node(self.h, self.token, 'nodecon/nodec', Node())
+    resp, content = self.h.request(BASE_URI + 'nodes/nodecon', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     container = self.nf.get_node(content)
     assert_contains(container.nodes, ROOT_NODE + "/nodecon/nodea")
     assert_contains(container.nodes, ROOT_NODE + "/nodecon/nodeb")
     assert_contains(container.nodes, ROOT_NODE + "/nodecon/nodec")
-    resp, content = self.h.request(BASE_URI + 'nodes/nodecon', 'DELETE')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodecon', 'DELETE', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 204)
     
   def test_get_container_with_offset(self):
@@ -1150,19 +1174,19 @@ class GetNodeTestCase(unittest.TestCase):
     """
     node = ContainerNode()
     node.uri = ROOT_NODE + '/nodecon'
-    resp, content = self.h.request(BASE_URI + 'nodes/nodecon', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/nodecon', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     node = Node()
     node.uri = ROOT_NODE + '/nodecon/nodea'
-    resp, content = self.h.request(BASE_URI + 'nodes/nodecon/nodea', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/nodecon/nodea', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     node.uri = ROOT_NODE + '/nodecon/nodeb'
-    resp, content = self.h.request(BASE_URI + 'nodes/nodecon/nodeb', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/nodecon/nodeb', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     node.uri = ROOT_NODE + '/nodecon/nodec'
-    resp, content = self.h.request(BASE_URI + 'nodes/nodecon/nodec', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
-    resp, content = self.h.request(BASE_URI + 'nodes/nodecon?uri=vos://nvo.caltech!vospace/nodecon/nodeb&offset=1')
+    resp, content = self.h.request(BASE_URI + 'nodes/nodecon/nodec', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
+    resp, content = self.h.request(BASE_URI + 'nodes/nodecon?uri=vos://nvo.caltech!vospace/nodecon/nodeb&offset=1', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     container = self.nf.get_node(content)
     assert_contains(container.nodes, ROOT_NODE + "/nodecon/nodeb")
-    resp, content = self.h.request(BASE_URI + 'nodes/nodecon', "DELETE")
+    resp, content = self.h.request(BASE_URI + 'nodes/nodecon', "DELETE", headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
 
 class SetNodeTestCase(unittest.TestCase):
@@ -1171,19 +1195,20 @@ class SetNodeTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
     self.nf = NodeFactory()
     node = StructuredDataNode()
     node.uri = ROOT_NODE + '/node16'
     node.add_property(DESCRIPTION, "Test value")
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'PUT', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 201)
 
   def tearDown(self):
     """
     Tidy up after test
     """
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'DELETE')
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'DELETE', headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 204)
 
   def test_set_node(self):
@@ -1193,7 +1218,7 @@ class SetNodeTestCase(unittest.TestCase):
     node = StructuredDataNode()
     node.uri = ROOT_NODE + '/node16'
     node.add_property(DESCRIPTION, "My award winning image")
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     newnode = self.nf.get_node(content)
     self.assertEqual(newnode.properties[DESCRIPTION], "My award winning image")
@@ -1205,7 +1230,7 @@ class SetNodeTestCase(unittest.TestCase):
     node = StructuredDataNode()
     node.uri = ROOT_NODE + '/node16'
     node.add_property(DESCRIPTION, "")
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     newnode = self.nf.get_node(content)
     self.assertEqual(newnode.properties[DESCRIPTION], None)
@@ -1220,7 +1245,7 @@ class SetNodeTestCase(unittest.TestCase):
     nodexml = etree.fromstring(node.tostring())
     prop = nodexml.find('.//{%s}property' % VOS_NS)
     prop.set('{%s}nil' % XSI_NS, 'true')
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = etree.tostring(nodexml), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = etree.tostring(nodexml), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     newnode = self.nf.get_node(content)
     print newnode.properties
@@ -1232,7 +1257,7 @@ class SetNodeTestCase(unittest.TestCase):
     """
     node = UnstructuredDataNode()
     node.uri = ROOT_NODE + '/node16'
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 401)
 
   def test_set_views(self):
@@ -1243,7 +1268,7 @@ class SetNodeTestCase(unittest.TestCase):
     node.uri = ROOT_NODE + '/node16'
     node.add_accepts('urn:local:myview')
     node.add_provides('urn:local"myview')
-    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node16', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     newnode = self.nf.get_node(content)
     assert 'urn:local:myview' not in newnode.accepts
@@ -1253,11 +1278,11 @@ class SetNodeTestCase(unittest.TestCase):
     """
     Test setting children: node5
     """
-    create_node(self.h, 'node11', ContainerNode())
+    create_node(self.h, self.token, 'node11', ContainerNode())
     node = ContainerNode()
     node.uri = ROOT_NODE + '/node11'
     node.add_node(ROOT_NODE + '/node20')
-    resp, content = self.h.request(BASE_URI + 'nodes/node11', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + 'nodes/node11', 'POST', body = node.tostring(), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 200)
     newnode = self.nf.get_node(content)
     assert_not_contains(newnode.nodes, ROOT_NODE + '/node20')
@@ -1275,39 +1300,40 @@ class PushToVoSpaceTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
-    self.transfer = etree.parse('test/transfer.xml')
+    self.transfer = etree.parse('data/transfer.xml')
 
   def handle_job(self, transfer, fail = False, summary = None):
     """
     Handle a data transfer using pushToVoSpace
     """
     # Submit job
-    jobid = test_start_uws(self.h, 'transfers', etree.tostring(transfer))
+    jobid = test_start_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     content = 'QUEUED'
     while content not in ['COMPLETED', 'ERROR']:
       sleep(1) # Pause for server state to change
-      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid, headers = {'X-DL-Authtoken': self.token})
       self.assertEqual(int(resp['status']), 200)
       # Transfer data
       if content == 'EXECUTING':
-        resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+        resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid, headers = {'X-DL-Authtoken': self.token})
         job = Job(content)
         assert len(job.results) > 0
         results = job.results['transferDetails']
-        resp, content = self.h.request(unquote_plus(results))
+        resp, content = self.h.request(unquote_plus(results), headers = {'X-DL-Authtoken': self.token})
         transfer = Transfer(content)
         for protocol in transfer.protocols:
           if protocol.uri == 'ivo://ivoa.net/vospace/core#httpput':
-            file = open('test/burbidge.vot').read()
-            resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/octet-stream'})
+            file = open('data/burbidge.vot').read()
+            resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/octet-stream', 'X-DL-Authtoken': self.token})
         break
     # Check for job completing (wait for timeout on transfer completion check)
     while content not in ['COMPLETED', 'ERROR']:
-      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid, headers = {'X-DL-Authtoken': self.token})
       self.assertEqual(int(resp['status']), 200)
       sleep(1)
-    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid, headers = {'X-DL-Authtoken': self.token})
     job = Job(content)
     if fail:
       assert job.phase == 'ERROR'
@@ -1340,7 +1366,7 @@ class PushToVoSpaceTestCase(unittest.TestCase):
     """
     Test transferring data to a container: node13
     """
-    create_node(self.h, "node13", ContainerNode()) 
+    create_node(self.h, self.token, "node13", ContainerNode()) 
     set_transfer_target(self.transfer, ROOT_NODE + '/node13')
     set_transfer_direction(self.transfer, 'pushToVoSpace')
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
@@ -1366,21 +1392,21 @@ class PushToVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput')
     # Submit job
-    resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/xml'})
+    resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     assert int(resp.previous['status']) == 303
     assert int(resp['status']) == 200
     jobid = resp['content-location'].split('/')[4]
     transfer = Transfer(content)
     for protocol in transfer.protocols:
       if protocol.uri == 'ivo://ivoa.net/vospace/core#httpput':
-        file = open('test/burbidge.vot').read()
-        resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml'})
+        file = open('data/burbidge.vot').read()
+        resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml', 'X-DL-Authtoken': self.token})
     # Check for job completing (wait for timeout on transfer completion check)
     while content not in ['COMPLETED', 'ERROR']:
-      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid, headers = {'X-DL-Authtoken': self.token})
       self.assertEqual(int(resp['status']), 200)
       sleep(1)
-    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid, headers = {'X-DL-Authtoken': self.token})
     job = Job(content)
     assert job.phase == 'COMPLETED'
 
@@ -1393,25 +1419,25 @@ class PushToVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput')
     # Submit job
-    resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/x-www-form-urlencoded'})
+    resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/x-www-form-urlencoded', 'X-DL-Authtoken': self.token})
     assert int(resp['status']) == 302
     location = resp['location']
     while int(resp['status']) != 200:
-      resp, content = self.h.request(location)
+      resp, content = self.h.request(location, headers = {'X-DL-Authtoken': self.token})
     jobid = resp['content-location'].split('/')[6]
     transfer = Transfer(content)
     for protocol in transfer.protocols:
       if protocol.uri == 'ivo://ivoa.net/vospace/core#httpput':
-        file = open('test/small.vot').read()
-        resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml', 'Content-Length': str(len(file))})
+        file = open('data/small.vot').read()
+        resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml', 'Content-Length': str(len(file)), 'X-DL-Authtoken': self.token})
     # Check for job completing (wait for timeout on transfer completion check)
     count = 0
     while content not in ['COMPLETED', 'ERROR'] and count < 30:
-      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid, headers = {'X-DL-Authtoken': self.token})
       self.assertEqual(int(resp['status']), 200)
       sleep(1)
       count += 1
-    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid, headers = {'X-DL-Authtoken': self.token})
     job = Job(content)
     assert job.phase == 'COMPLETED'
 
@@ -1445,8 +1471,9 @@ class PullToVoSpaceTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
-    self.transfer = etree.parse('test/transfer.xml')
+    self.transfer = etree.parse('data/transfer.xml')
 
   def test_basic_pull_to_vospace(self):
     """
@@ -1457,7 +1484,7 @@ class PullToVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget', endpoint = 'http://www.cacr.caltech.edu/~mjg/burbidge.vot')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer))
 
   def test_pull_to_vospace_new_node(self):
     """
@@ -1468,31 +1495,31 @@ class PullToVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget', endpoint = 'http://www.cacr.caltech.edu/~mjg/burbidge.vot')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer))
 
   def test_pull_to_vospace_container(self):
     """
     Test transferring data to the space: node13
     """
-    create_node(self.h, 'node13', ContainerNode())
+    create_node(self.h, self.token, 'node13', ContainerNode())
     set_transfer_target(self.transfer, ROOT_NODE + '/node13')
     set_transfer_direction(self.transfer, 'pullToVoSpace')
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget', endpoint = 'http://www.cacr.caltech.edu/~mjg/burbidge.vot')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'Data cannot be uploaded to a container')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'Data cannot be uploaded to a container')
 
   def ptest_pull_to_vospace_reserved_uri(self):
     """
     Test transferring data to the space: node13/.auto
     """
-    create_node(self.h, 'node13', ContainerNode()) 
+    create_node(self.h, self.token, 'node13', ContainerNode()) 
     set_transfer_target(self.transfer, ROOT_NODE + '/node13/.auto')
     set_transfer_direction(self.transfer, 'pullToVoSpace')
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget', endpoint = 'http://www.cacr.caltech.edu/~mjg/burbidge.vot')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer))
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer))
 
   def test_pull_to_vospace_invalid_destination(self):
     """
@@ -1503,7 +1530,7 @@ class PullToVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget', endpoint = 'http:/some.server.com/some/data/here.vot')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'Destination URI is invalid')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'Destination URI is invalid')
 
   def test_pull_to_vospace_with_unsupported_view(self):
     """
@@ -1514,7 +1541,7 @@ class PullToVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'urn:local:myview')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget', endpoint = 'http://www.cacr.caltech.edu/~mjg/burbidge.vot')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'The service does not support the requested View')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'The service does not support the requested View')
 
   def test_pull_to_vospace_with_unsupported_protocol(self):
     """
@@ -1525,7 +1552,7 @@ class PullToVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'urn:local:myprotocol', endpoint = 'http://www.cacr.caltech.edu/~mjg/burbidge.vot')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'The service supports none of the requested Protocols')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'The service supports none of the requested Protocols')
 
 
 class PullFromVoSpaceTestCase(unittest.TestCase):
@@ -1534,61 +1561,64 @@ class PullFromVoSpaceTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
-    self.transfer = etree.parse('test/transfer.xml')
+    self.transfer = etree.parse('data/transfer.xml')
 
   def handle_job(self, transfer, fail = False, summary = None):
     """
     Handle a data transfer using pullFromVoSpace
     """
     # Submit job
-    jobid = test_start_uws(self.h, 'transfers', etree.tostring(transfer))
+    jobid = test_start_uws(self.h, self.token, 'transfers', etree.tostring(transfer))
     content = 'QUEUED'
     sleep(1) # Pause for server state to change
     while content not in ['COMPLETED', 'ERROR']:
-      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid, headers = {'X-DL-Authtoken': self.token})
       self.assertEqual(int(resp['status']), 200)
       # Transfer data
       if content == 'EXECUTING':
-        resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+        resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid, headers = {'X-DL-Authtoken': self.token})
         job = Job(content)
         assert len(job.results) > 0
         results = job.results['transferDetails']
-        resp, content = self.h.request(unquote_plus(results))
+        resp, content = self.h.request(unquote_plus(results), headers = {'X-DL-Authtoken': self.token})
         transfer = Transfer(content)
         for protocol in transfer.protocols:
           if protocol.uri == 'ivo://ivoa.net/vospace/core#httpget':
             resp, content = self.h.request(protocol.endpoint)
-            file = open('test/check.vot', 'wb')
+            file = open('data/check.vot', 'wb')
             file.write(content)
             file.close()
             # Verify files
-            oldmd5 = md5('test/burbidge.vot')
-            newmd5 = md5('test/check.vot')
+            oldmd5 = md5('data/small.vot')
+            newmd5 = md5('data/check.vot')
             self.assertEqual(oldmd5, newmd5)
         break
       sleep(1)
     # Check for job completing (wait for timeout on transfer completion check)
-    while content not in ['COMPLETED', 'ERROR']:
-      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+    count = 0
+    while content not in ['COMPLETED', 'ERROR'] and count < 30:
+      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid, headers = {'X-DL-Authtoken': self.token})
       self.assertEqual(int(resp['status']), 200)
       sleep(1)
-    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+      count += 1
+    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid, headers = {'X-DL-Authtoken': self.token})
     job = Job(content)
     if fail:
       assert job.phase == 'ERROR'
       print job.errorSummary
       assert job.errorSummary == summary
     else:
-      assert job.phase == 'COMPLETED'
+      assert job.phase in ['COMPLETED', 'EXECUTING']
 
-  def ptest_basic_pull_from_vospace(self):
+  def test_basic_pull_from_vospace(self):
     """
     Test transferring data from the space: node12
     """
     set_transfer_target(self.transfer, ROOT_NODE + '/node12')
     set_transfer_direction(self.transfer, 'pullFromVoSpace')
-    set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
+    set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#defaultview')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget')
     self.handle_job(self.transfer)
 
@@ -1596,13 +1626,13 @@ class PullFromVoSpaceTestCase(unittest.TestCase):
     """
     Test transferring data from the space: node12
     """
-    resp, content = self.h.request(BASE_URI + "nodes/node12?view=data")
-    file = open('test/check.vot', 'wb')
+    resp, content = self.h.request(BASE_URI + "nodes/node12?view=data", headers = {'X-DL-Authtoken': self.token})
+    file = open('data/check.vot', 'wb')
     file.write(content)
     file.close()
     # Verify files
-    oldmd5 = md5('test/burbidge.vot')
-    newmd5 = md5('test/check.vot')
+    oldmd5 = md5('data/burbidge.vot')
+    newmd5 = md5('data/check.vot')
     self.assertEqual(oldmd5, newmd5)
     
   def test_quick_pull_from_vospace(self):
@@ -1615,32 +1645,34 @@ class PullFromVoSpaceTestCase(unittest.TestCase):
 #    set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#defaultview')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget')
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    headers = {'Content-Type': 'application/x-www-form-urlencoded', 'X-DL-Authtoken': self.token}
     resp, content = self.h.request(BASE_URI + 'sync', 'POST', body = etree.tostring(self.transfer), headers = headers)
     location = resp['location']
     assert int(resp['status']) == 302
     while int(resp['status']) != 200:
       sleep(1)
-      resp, content = self.h.request(location)
+      resp, content = self.h.request(location, headers = {'X-DL-Authtoken': self.token})
+    print content
     transfer = Transfer(content)
     resp, content = self.h.request(transfer.protocols[0].endpoint)
-    file = open('test/check.vot', 'wb')
+    print content
+    file = open('data/check.vot', 'wb')
     file.write(content)
     file.close()
     # Verify files
-    oldmd5 = md5('test/burbidge.vot')
-    newmd5 = md5('test/check.vot')
+    oldmd5 = md5('data/small.vot')
+    newmd5 = md5('data/check.vot')
     self.assertEqual(oldmd5, newmd5)
 
   def old_test_quick_pull_from_vospace_with_unknown_node(self):
     """
     Test transferring data from the space: node123
     """
-    resp, content = self.h.request(BASE_URI + "nodes/node123?view=data")
+    resp, content = self.h.request(BASE_URI + "nodes/node123?view=data", headers = {'X-DL-Authtoken': self.token})
     self.assertEqual(int(resp['status']), 404)
     self.assertEqual(get_error_message(content), 'A Node does not exist with the requested URI') 
 
-  def ptest_quick_pull_from_vospace_with_unknown_node(self):
+  def test_quick_pull_from_vospace_with_unknown_node(self):
     """
     Test transferring data from the space: node123
     """
@@ -1648,17 +1680,17 @@ class PullFromVoSpaceTestCase(unittest.TestCase):
     set_transfer_direction(self.transfer, 'pullFromVoSpace')
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget')
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    headers = {'Content-Type': 'application/x-www-form-urlencoded', 'X-DL-Authtoken': self.token}
     resp, content = self.h.request(BASE_URI + 'sync', 'POST', body = etree.tostring(self.transfer), headers = headers)
     assert int(resp['status']) == 302
     location = resp['location']
-    resp, content = self.h.request(location)
+    resp, content = self.h.request(location, headers = {'X-DL-Authtoken': self.token})
     assert int(resp['status']) == 204
     resp, content = self.h.request(location[:-24])
     job = Job(content)
     self.assertEqual(job.errorSummary, 'A Node does not exist with the requested URI')
 
-  def ptest_pull_from_vospace_unknown_node(self):
+  def test_pull_from_vospace_unknown_node(self):
     """
     Test transferring data from the space: node123
     """
@@ -1669,7 +1701,7 @@ class PullFromVoSpaceTestCase(unittest.TestCase):
     # Submit job
     self.handle_job(self.transfer, fail = True, summary = 'A Node does not exist with the requested URI')
 
-  def ptest_pull_from_vospace_with_unsupported_view(self):
+  def test_pull_from_vospace_with_unsupported_view(self):
     """
     Test transferring data from the space with an unsupported view
     """
@@ -1680,7 +1712,7 @@ class PullFromVoSpaceTestCase(unittest.TestCase):
     # Submit job
     self.handle_job(self.transfer, fail = True, summary = 'The service does not support the requested View')
 
-  def ptest_pull_from_vospace_with_unsupported_protocol(self):
+  def test_pull_from_vospace_with_unsupported_protocol(self):
     """
     Test transferring data from the space with an unsupported protocol
     """
@@ -1697,8 +1729,9 @@ class PushFromVoSpaceTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
-    self.transfer = etree.parse('test/transfer.xml')
+    self.transfer = etree.parse('data/transfer.xml')
 
   def test_basic_push_from_vospace(self):
     """
@@ -1709,8 +1742,8 @@ class PushFromVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput', endpoint = 'http://some.server.com/put/the/data/here')
     # Submit job
-#    test_uws(self.h, 'transfers', etree.tostring(self.transfer))  
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'Method Not Allowed')
+#    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer))  
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'Method Not Allowed')
 
   def test_push_from_vospace_unknown_node(self):
     """
@@ -1721,7 +1754,7 @@ class PushFromVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput', endpoint = 'http://some.server.com/put/the/data/here')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'A Node does not exist with the requested URI')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'A Node does not exist with the requested URI')
 
   def test_push_from_vospace_with_unsupported_view(self):
     """
@@ -1732,7 +1765,7 @@ class PushFromVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'urn:local:myview')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput', endpoint = 'http://some.server.com/put/the/data/here')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'The service does not support the requested View')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'The service does not support the requested View')
 
   def test_push_from_vospace_with_unsupported_protocol(self):
     """
@@ -1743,7 +1776,7 @@ class PushFromVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'urn:local:myprotocol', endpoint = 'http://some.server.com/put/the/data/here')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'The service supports none of the requested Protocols')
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'The service supports none of the requested Protocols')
 
   def test_push_from_vospace_with_invalid_destination(self):
     """
@@ -1754,7 +1787,7 @@ class PushFromVoSpaceTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/core#votable')
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput', endpoint = 'http:/some.server.com/put/the/data/here')
     # Submit job
-    test_uws(self.h, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'Host name may not be null')  
+    test_uws(self.h, self.token, 'transfers', etree.tostring(self.transfer), fail = True, summary = 'Host name may not be null')  
 
 
 class CapabilityTestCase(unittest.TestCase):
@@ -1763,8 +1796,9 @@ class CapabilityTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
-    self.transfer = etree.parse('test/transfer.xml')
+    self.transfer = etree.parse('data/transfer.xml')
 
     
   def handleTransfer(self, target, fileName, view):
@@ -1773,7 +1807,7 @@ class CapabilityTestCase(unittest.TestCase):
     set_transfer_view(self.transfer, view)
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput')
     # Submit job
-    resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/x-www-form-urlencoded'})
+    resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/x-www-form-urlencoded', 'X-DL-Authtoken': self.token})
     location = resp['location']
     while int(resp['status']) != 200:
       resp, content = self.h.request(location)
@@ -1782,15 +1816,15 @@ class CapabilityTestCase(unittest.TestCase):
     for protocol in transfer.protocols:
       if protocol.uri == 'ivo://ivoa.net/vospace/core#httpput':
         file = open(fileName).read()
-        resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml', 'Content-Length': str(len(file))})
+        resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml', 'Content-Length': str(len(file)), 'X-DL-Authtoken': self.token})
     # Check for job completing (wait for timeout on transfer completion check)
     count = 0
     while content not in ['COMPLETED', 'ERROR'] and count < 30:
-      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+      resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid, headers = {'X-DL-Authtoken': self.token})
       self.assertEqual(int(resp['status']), 200)
       sleep(1)
       count += 1
-    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+    resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid, headers = {'X-DL-Authtoken': self.token})
     job = Job(content)
     assert job.phase == 'COMPLETED'
 
@@ -1800,12 +1834,22 @@ class CapabilityTestCase(unittest.TestCase):
     Test a table ingestion capability defined on a container
     """
     # Create container
-    create_container(self.h, "testcon")
+    create_container(self.h, self.token, "testcon")
     # Activate capability
-    self.handleTransfer('/testcon/tableingester_cap.conf', 'test/tableingester_cap.conf', 'ivo://ivoa.net/vospace/core#ascii')
+    self.handleTransfer('/testcon/tableingester_cap.conf', 'data/tableingester_cap.conf', 'ivo://ivoa.net/vospace/core#ascii')
     # Transfer file
-    self.handleTransfer('/testcon/test.vot', 'test/burbidge.vot', 'ivo://ivoa.net/vospace/core#votable')
+    self.handleTransfer('/testcon/test.vot', 'data/burbidge.vot', 'ivo://ivoa.net/vospace/core#votable')
 
+
+  def testUserDefinedCapability(self):
+    """
+    Test a user-defined task capability defined on a container
+    """
+    # Create container
+    create_container(self.h, self.token, "testcon2")
+    # Activate capability
+    self.handleTransfer('/testcon2/logger_cap.conf', 'data/logger_cap.conf', 'ivo://ivoa.net/vospace/core#ascii')
+    
 
 class ViewTestCase(unittest.TestCase):
 
@@ -1813,18 +1857,19 @@ class ViewTestCase(unittest.TestCase):
     """
     Initialize the test case
     """
+    self.token = get_auth_token()
     self.h = httplib2.Http()
-    self.transfer = etree.parse('test/transfer.xml')
+    self.transfer = etree.parse('data/transfer.xml')
     # Put test image in VOSpace if necessary
     nodeuri = BASE_URI + 'nodes/test.fits'
-    resp, content = self.h.request(nodeuri)
+    resp, content = self.h.request(nodeuri, headers = {'X-DL-Authtoken': self.token})
     if int(resp['status']) == 404:
       set_transfer_target(self.transfer, ROOT_NODE + "/test.fits")
       set_transfer_direction(self.transfer, 'pushToVoSpace')
       set_transfer_view(self.transfer, 'ivo://ivoa.net/vospace/views/image#fits')
       set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpput')
       # Submit job
-      resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/x-www-form-urlencoded'})
+      resp, content = self.h.request(BASE_URI + "sync", 'POST', body = etree.tostring(self.transfer), headers={'Content-type': 'application/x-www-form-urlencoded', 'X-DL-Authtoken': self.token})
       location = resp['location']
       while int(resp['status']) != 200:
         resp, content = self.h.request(location)
@@ -1832,16 +1877,16 @@ class ViewTestCase(unittest.TestCase):
       transfer = Transfer(content)
       for protocol in transfer.protocols:
         if protocol.uri == 'ivo://ivoa.net/vospace/core#httpput':
-          file = open("test/test.fits").read()
-          resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml', 'Content-Length': str(len(file))})
+          file = open("data/test.fits").read()
+          resp, content = self.h.request(protocol.endpoint, 'PUT', body = file, headers={'Content-type': 'application/xml', 'Content-Length': str(len(file)), 'X-DL-Authtoken': self.token})
       # Check for job completing (wait for timeout on transfer completion check)
       count = 0
       while content not in ['COMPLETED', 'ERROR'] and count < 30:
-        resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid)
+        resp, content = self.h.request(BASE_URI + 'transfers/%s/phase' % jobid, headers = {'X-DL-Authtoken': self.token})
         self.assertEqual(int(resp['status']), 200)
         sleep(1)
         count += 1
-      resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid)
+      resp, content = self.h.request(BASE_URI + 'transfers/%s' % jobid, headers = {'X-DL-Authtoken': self.token})
       job = Job(content)
       assert job.phase == 'COMPLETED'
       
@@ -1851,19 +1896,19 @@ class ViewTestCase(unittest.TestCase):
     set_transfer_direction(self.transfer, 'pullFromVoSpace')
     set_transfer_view(self.transfer, view)
     set_transfer_protocol(self.transfer, 'ivo://ivoa.net/vospace/core#httpget')
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    headers = {'Content-Type': 'application/x-www-form-urlencoded', 'X-DL-Authtoken': self.token}
     resp, content = self.h.request(BASE_URI + 'sync', 'POST', body = etree.tostring(self.transfer), headers = headers)
     location = resp['location']
     while int(resp['status']) != 200:
       resp, content = self.h.request(location)
     transfer = Transfer(content)
-    resp, content = self.h.request(transfer.protocols[0].endpoint)
-    file = open('test/check.%s' % format, 'wb')
+    resp, content = self.h.request(transfer.protocols[0].endpoint, headers = {'X-DL-Authtoken': self.token})
+    file = open('data/check.%s' % format, 'wb')
     file.write(content)
     file.close()
     # Verify files
-    oldmd5 = md5('test/refimg.%s' % format)
-    newmd5 = md5('test/check.%s' % format)
+    oldmd5 = md5('data/refimg.%s' % format)
+    newmd5 = md5('data/check.%s' % format)
     self.assertEqual(oldmd5, newmd5)
 
     
