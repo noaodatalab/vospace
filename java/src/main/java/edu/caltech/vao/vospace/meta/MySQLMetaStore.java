@@ -72,6 +72,15 @@ public class MySQLMetaStore implements MetaStore{
     }
 
 
+    /* 
+     * Standardize the VOSpace identifier
+     * @param id The id of the node
+     */
+    public String fixId(String identifier) {
+	return identifier.replace("~", "!");
+    }
+    
+    
     /*
      * Set the id of the store
      * @param id The id of the store
@@ -119,7 +128,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public boolean isStored(String identifier) throws SQLException {
 	boolean isStored = false;
-        String query = "select identifier from nodes where identifier = '" + identifier + "'";
+        String query = "select identifier from nodes where identifier = '" + fixId(identifier) + "'";
 	isStored = extantEntry(query);
 	return isStored;
     }
@@ -131,7 +140,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public int getType(String identifier) throws SQLException {
 	int type = -1;
-        String query = "select type from nodes where identifier = '" + identifier + "'";
+        String query = "select type from nodes where identifier = '" + fixId(identifier) + "'";
 	type = getAsInt(query);
 	return type;
     }
@@ -143,7 +152,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String getOwner(String identifier) throws SQLException {
 	String owner = "";
-	String query = "select owner from nodes where identifier = '" + identifier + "'";
+	String query = "select owner from nodes where identifier = '" + fixId(identifier) + "'";
 	owner = getAsString(query);
 	return owner;
     }
@@ -178,7 +187,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public void storeData(String identifier, int type, Object metadata) throws SQLException {
 	if (metadata instanceof String) {
-	    String query = "insert into nodes (identifier, type, creationDate, node) values ('" + identifier + "', '" + type + "', cast(now() as datetime), '" + (String) metadata + "')"; 
+	    String query = "insert into nodes (identifier, type, creationDate, node) values ('" + fixId(identifier) + "', '" + type + "', cast(now() as datetime), '" + (String) metadata + "')"; 
 	    update(query);
 	    storeProperties((String) metadata);
 	}
@@ -189,7 +198,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException {
 	if (metadata instanceof String) {
-	    String query = "insert into nodes (identifier, type, owner, creationDate, node) values ('" + identifier + "', '" + type + "', '" + owner + "', cast(now() as datetime), '" + (String) metadata + "')"; 
+	    String query = "insert into nodes (identifier, type, owner, creationDate, node) values ('" + fixId(identifier) + "', '" + type + "', '" + owner + "', cast(now() as datetime), '" + (String) metadata + "')"; 
 	    update(query);
 	    storeProperties((String) metadata);
 	}
@@ -200,7 +209,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public void storeData(String identifier, int type, String owner, String location, Object metadata) throws SQLException {
 	if (metadata instanceof String) {
-	    String query = "insert into nodes (identifier, type, owner, location, creationDate, node) values ('" + identifier + "', '" + type + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
+	    String query = "insert into nodes (identifier, type, owner, location, creationDate, node) values ('" + fixId(identifier) + "', '" + type + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
 	    update(query);
 	    storeProperties((String) metadata);
 	}
@@ -211,7 +220,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException {
 	if (metadata instanceof String) {
-	    String query = "insert into nodes (identifier, type, view, owner, location, creationDate, node) values ('" + identifier + "', '" + type + "', '" + view + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
+	    String query = "insert into nodes (identifier, type, view, owner, location, creationDate, node) values ('" + fixId(identifier) + "', '" + type + "', '" + view + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
 	    update(query);
 	    storeProperties((String) metadata);
 	}
@@ -231,7 +240,7 @@ public class MySQLMetaStore implements MetaStore{
             }
 	    if (i != identifiers.length - 1) whereQuery += " or ";
 	}
-	String query = "select count(identifier) from nodes " + whereQuery;
+	String query = "select count(identifier) from nodes " + fixId(whereQuery);
 	int count = getAsInt(query);
 	if (limit < count) {
 	    token = UUID.randomUUID().toString();
@@ -301,7 +310,7 @@ public class MySQLMetaStore implements MetaStore{
 	query += whereQuery + " order by type ";
 	if (limit > 0) query += " limit " + limit;
 	if (offset > 0) query += " offset " + offset;
-	String[] nodes = getAsStringArray(query);
+	String[] nodes = getAsStringArray(fixId(query));
 	return nodes;
     }
 
@@ -310,7 +319,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String getNode(String identifier) throws SQLException {
 	String node = null;
-	String query = "select node from nodes where identifier = '" + identifier + "'";
+	String query = "select node from nodes where identifier = '" + fixId(identifier) + "'";
 	node = getAsString(query);
 	return node;
     }
@@ -321,7 +330,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String[] getChildren(String identifier) throws SQLException {
 	ArrayList<String> children = new ArrayList<String>();
-	String query = "select identifier from nodes where identifier like '" + identifier + "/%'";
+	String query = "select identifier from nodes where identifier like '" + fixId(identifier) + "/%'";
 	for (String child: getAsStringArray(query)) {
 	    if (!child.equals(identifier) && !child.substring(identifier.length() + 1).contains("/")) {
 		children.add(child);
@@ -335,7 +344,7 @@ public class MySQLMetaStore implements MetaStore{
      * Get the direct children nodes of the specified container node
      */
     public String[] getChildrenNodes(String identifier) throws SQLException {
-	String query = "select node from nodes where identifier like '" + identifier + "/%' and identifier not like '" + identifier + "/%/%'";
+	String query = "select node from nodes where identifier like '" + fixId(identifier) + "/%' and identifier not like '" + fixId(identifier) + "/%/%'";
 	String[] children = getAsStringArray(query);
 	return children;
     }
@@ -346,9 +355,9 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String[] getAllChildren(String identifier) throws SQLException {	
 	ArrayList<String> children = new ArrayList<String>();
-	String query = "select identifier from nodes where identifier like '" + identifier + "/%'";
+	String query = "select identifier from nodes where identifier like '" + fixId(identifier) + "/%'";
 	for (String child : getAsStringArray(query)) {
-	    if (!child.equals(identifier)) {
+	    if (!child.equals(fixId(identifier))) {
 		children.add(child);
 	    }
 	}
@@ -363,6 +372,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public void removeData(String identifier, boolean container) throws SQLException {
 	String query = "";
+	identifier = fixId(identifier);
 	if (container) {
             query = "delete from nodes where identifier like '" + identifier + "/%'";
 	    update(query);
@@ -388,7 +398,7 @@ public class MySQLMetaStore implements MetaStore{
 	if (metadata instanceof String) {
 	    String node = updateProperties((String) metadata);
 	    String encode = node.replace("\"", "'");
-	    String query = "update nodes set node = \"" + encode + "\" where identifier = '" + identifier + "'";
+	    String query = "update nodes set node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
 	    update(query);
 	}
     }
@@ -401,9 +411,9 @@ public class MySQLMetaStore implements MetaStore{
 	if (metadata instanceof String) {
 	    String node = updateProperties((String) metadata);
 	    String encode = node.replace("\"", "'");
-	    String query = "update nodes set identifier = '" + newIdentifier + "', node = \"" + encode + "\" where identifier = '" + identifier + "'"; 
+	    String query = "update nodes set identifier = '" + newIdentifier + "', node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'"; 
 	    update(query);
-	    query = "update properties set identifier = '" + newIdentifier + "' where identifier = '" + identifier + "'"; 
+	    query = "update properties set identifier = '" + fixId(newIdentifier) + "' where identifier = '" + fixId(identifier) + "'"; 
 	    update(query);
 	}
     }
@@ -416,9 +426,9 @@ public class MySQLMetaStore implements MetaStore{
 	if (metadata instanceof String) {
 	    String node = updateProperties((String) metadata);
 	    String encode = node.replace("\"", "'");
-	    String query = "update nodes set identifier = '" + newIdentifier + "', location = '" + newLocation + "', node = \"" + encode + "\" where identifier = '" + identifier + "'";
+	    String query = "update nodes set identifier = '" + fixId(newIdentifier) + "', location = '" + newLocation + "', node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
 	    update(query);
-	    query = "update properties set identifier = '" + newIdentifier + "' where identifier = '" + identifier + "'"; 
+	    query = "update properties set identifier = '" + fixId(newIdentifier) + "' where identifier = '" + fixId(identifier) + "'"; 
 	    update(query);
 	}
     }
@@ -439,7 +449,7 @@ public class MySQLMetaStore implements MetaStore{
 	}
 	String token = null;
 	query = "select token from listings where whereQuery = '" + whereQuery.replace("'", "\\'") + "'";
-	token = getAsString(query);
+	token = getAsString(fixId(query));
 	return token;
     }
 
@@ -448,7 +458,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String getLocation(String identifier) throws SQLException {
 	String location = null;
-        String query = "select location from nodes where identifier = '" + identifier + "'";
+        String query = "select location from nodes where identifier = '" + fixId(identifier) + "'";
 	location = getAsString(query);
 	return location;
     }
@@ -472,19 +482,19 @@ public class MySQLMetaStore implements MetaStore{
     public void setStatus(String identifier, boolean status) throws SQLException {
 	String query = null;
 	if (status) {
-	    query = "update nodes set status = 1 where identifier = '" + identifier + "'";
+	    query = "update nodes set status = 1 where identifier = '" + fixId(identifier) + "'";
 	} else {
-	    query = "update nodes set status = 0 where identifier = '" + identifier + "'";
+	    query = "update nodes set status = 0 where identifier = '" + fixId(identifier) + "'";
         }
 	update(query);
     }
 
 
     /*
-     * Store the details of the specified transfer
+     * Store the details of the specified trafnsfer
      */
     public void storeTransfer(String identifier, String endpoint) throws SQLException {
-	String query = "insert into transfers (jobid, endpoint, created) values ('" + identifier + "', '" + endpoint + "', cast(now() as datetime))";
+	String query = "insert into transfers (jobid, endpoint, created) values ('" + fixId(identifier) + "', '" + endpoint + "', cast(now() as datetime))";
 	update(query);
     }
 
@@ -521,7 +531,7 @@ public class MySQLMetaStore implements MetaStore{
      * Store the original view of the specific object
      */
     public void setView(String identifier, String view) throws SQLException {
-	String query = "update nodes set view = '" + view + "' where identifier = '" + identifier + "'";
+	String query = "update nodes set view = '" + view + "' where identifier = '" + fixId(identifier) + "'";
 	update(query);
     }
 
@@ -530,7 +540,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String getView(String identifier) throws SQLException {
 	String view = null;
-        String query = "select view from nodes where identifier = '" + identifier + "'";
+        String query = "select view from nodes where identifier = '" + fixId(identifier) + "'";
 	view = getAsString(query);
 	return view;
     }
@@ -562,7 +572,7 @@ public class MySQLMetaStore implements MetaStore{
     public String resolveIdentifier(String location) throws SQLException {
 	String identifier = null;
 	String query = "select identifier from nodes where location like '" + location + "'";
-	identifier = getAsString(query);
+	identifier = fixId(getAsString(query));
 	return identifier;
     }
 
@@ -651,7 +661,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String getPropertyValue(String identifier, String property) throws SQLException {
 	String value = null;
-	String query = "select value from properties where identifier = '" + identifier + "'" + " and property = '" + property + "'";
+	String query = "select value from properties where identifier = '" + fixId(identifier) + "'" + " and property = '" + property + "'";
 	value = getAsString(query);
 	return value;
     }
@@ -661,7 +671,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public int isActive(String identifier, String capability) throws SQLException {
 	int isActive = 0;
-	String query = "select active from capabilities where identifier = '" + identifier + "' and capability = '" + capability + "'";
+	String query = "select active from capabilities where identifier = '" + fixId(identifier) + "' and capability = '" + capability + "'";
 	isActive = getAsInt(query);
 	return isActive;
     }
@@ -671,7 +681,7 @@ public class MySQLMetaStore implements MetaStore{
      * Set the status of a capability (active or not)
      */
     public void setActive(String identifier, String capability, int port) throws SQLException {
-	String query = "update capabilities set active = " + port + " where identifier = '" + identifier + "' and capability = '" + capability + "'";
+	String query = "update capabilities set active = " + port + " where identifier = '" + fixId(identifier) + "' and capability = '" + capability + "'";
 	update(query);
     }
 
@@ -680,7 +690,7 @@ public class MySQLMetaStore implements MetaStore{
      * Register the capabilities
      */
     public void registerCapability(String identifier, String capability) throws SQLException {
-	String query = "insert capabilities values('" + identifier + "', '" + capability + "', 0)";
+	String query = "insert capabilities values('" + fixId(identifier) + "', '" + capability + "', 0)";
 	update(query);
     }
 
@@ -877,7 +887,7 @@ public class MySQLMetaStore implements MetaStore{
         Statement statement = connection.createStatement();
 	try {
 	    Node node = new Node(nodeAsString.getBytes());
-	    String identifier = node.getUri();
+	    String identifier = fixId(node.getUri());
 	    HashMap<String, String> properties = node.getProperties();
 	    for (Map.Entry<String, String> prop : properties.entrySet()) {
 		String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + prop.getKey() + "', '" + prop.getValue() + "')"; 
@@ -910,7 +920,7 @@ public class MySQLMetaStore implements MetaStore{
         Statement statement = connection.createStatement();
 	try {
 	    node = new Node(nodeAsString.getBytes());
-	    String identifier = node.getUri();
+	    String identifier = fixId(node.getUri());
 	    HashMap<String, String> properties = node.getProperties();
 	    for (Map.Entry<String, String> prop : properties.entrySet()) {
 		String query = "update properties set value = '" + prop.getValue() + "' where identifier = '" + identifier + "' and property = '" + prop.getKey() + "'";
@@ -980,7 +990,7 @@ public class MySQLMetaStore implements MetaStore{
      * Get the last modification time of the node
      */
     public long getLastModTime(String identifier) throws SQLException {
-	String query = "select lastModificationDate from nodes where identifier = '" + identifier + "'";
+	String query = "select lastModificationDate from nodes where identifier = '" + fixId(identifier) + "'";
 	long lastMod = getAsTime(query);
 	return lastMod;
     }

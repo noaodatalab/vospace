@@ -269,7 +269,8 @@ public class VOSpaceManager {
 		for (String capUri: node.getCapabilities()) {
 		    store.registerCapability(uri, capUri);
 		}
-		if (type.equals(NodeType.CONTAINER_NODE) && overwrite) {
+//		if (type.equals(NodeType.CONTAINER_NODE) && overwrite) {
+		if (type.equals(NodeType.CONTAINER_NODE)) {
 		    backend.createContainer(location);
 		} else {
 		    backend.touch(location);
@@ -537,6 +538,7 @@ public class VOSpaceManager {
 		    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "The specified URL is no longer valid.");
 		}
 		// View transformation
+		target = target.replace("~", "!");
 		String location = store.getLocation(target);
 		if (viewCheck && !view.equals("ivo://ivoa.net/vospace/core#defaultview")) {
 		    String oldView = store.getView(target);

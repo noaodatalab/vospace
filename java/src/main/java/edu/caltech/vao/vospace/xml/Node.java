@@ -27,7 +27,8 @@ public class Node {
      * @return The uri of the node
      */
     public String getUri() throws VOSpaceException {
-	return node.xpath("/vos:node/@uri")[0];
+	String uri = node.xpath("/vos:node/@uri")[0];
+	return uri.replace("~", "!");
     }
 
     /**

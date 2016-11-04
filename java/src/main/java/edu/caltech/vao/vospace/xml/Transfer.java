@@ -27,7 +27,8 @@ public class Transfer {
      * @return The target of the transfer
      */
     public String getTarget() throws VOSpaceException {
-	return transfer.xpath("/vos:transfer/vos:target")[0];
+	String target = transfer.xpath("/vos:transfer/vos:target")[0];
+        return target.replace("~", "!");
     }
 
     /** 
