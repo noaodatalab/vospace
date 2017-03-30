@@ -203,9 +203,9 @@ public class NodeManager {
 	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid."); 
 	// Retrieve original node
 	try {
-	    ResultSet result = store.getData(new String[] {identifier}, null, 0);
-	    if (result.next()) {
-		Node node = nfactory.getNode(result.getString(1));
+	    String[] result = store.getData(new String[] {identifier}, null, 0);
+	    if (len(result) > 0) {
+		Node node = nfactory.getNode(result[0]);
 		detail = (detail == null) ? "max" : detail;
 		if (!detail.equals("max")) {
 		    if (node instanceof DataNode) {
@@ -249,7 +249,7 @@ public class NodeManager {
 	    if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI."); 
 	    // Remove node
 	    //	    removeBytes(getLocation(identifier));
-	    store.removeData(identifier);
+	    store.removeData(identifier, false);
 	} catch (SQLException e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}

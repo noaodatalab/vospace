@@ -368,7 +368,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Remove the metadata for the specified identifier
      * @param identifier The (root) identifier of the node(s) to delete
-     * @param containter Does the identifier refer to a container?
+     * @param container Does the identifier refer to a container?
      */
     public void removeData(String identifier, boolean container) throws SQLException {
 	String query = "";

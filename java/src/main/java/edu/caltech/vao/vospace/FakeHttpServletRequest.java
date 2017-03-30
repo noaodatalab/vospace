@@ -16,9 +16,17 @@ import java.util.Vector;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletInputStream;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.AsyncServletContext;
+import javax.servlet.DispatcherType;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 import javax.servlet.http.HttpSession;
+
 
 public class FakeHttpServletRequest implements HttpServletRequest {
 
@@ -318,4 +326,53 @@ public class FakeHttpServletRequest implements HttpServletRequest {
   public int getLocalPort() {
     throw new UnsupportedOperationException();
   }
+
+  public boolean authenticate(HttpServletResponse response) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void login(String username, String password) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void logout() {
+    throw new UnsupportedOperationException();
+  }
+
+  public Collection<Part> getParts() {
+    throw new UnsupportedOperationException();
+  }
+
+  public Part getPart(String name) {
+    throw new UnsupportedOperationException();
+  }
+
+  public ServletContext getServletContext() {
+    throw new UnsupportedOperationException();
+  }
+
+  public AsyncContext startAsync() {
+    throw new UnsupportedOperationException();
+  }
+
+  public AsyncContext startAsync(ServletRequest servletRequest, ServletResponse servletResponse) {
+      throw new UnsupportedOperationException();
+  }
+
+  public boolean isAsyncStarted() {
+      throw new UnsupportedOperationException();
+  }
+
+  public boolean isAsyncSupported() {
+      throw new UnsupportedOperationException();
+  }
+
+  public AsyncContext getAsyncContext() {
+      throw new UnsupportedOperationException();
+  }
+
+  public DispatcherType getDispatcherType() {
+      throw new UnsupportedOperationException();
+  }
+		
 }
