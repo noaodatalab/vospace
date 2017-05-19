@@ -13,6 +13,14 @@ import java.net.URI;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Properties;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 
@@ -29,7 +37,7 @@ public class LocalFSStorageManager implements StorageManager {
 
     /**
      * Authenticate the client to the current backend storage
-     * @param endpoint The storage URL
+bb     * @param endpoint The storage URL
      * @param credentials The client's security credentials
      */
     public void authenticate(String endpoint, HashMap<String, String> credentials) throws VOSpaceException {
@@ -42,7 +50,14 @@ public class LocalFSStorageManager implements StorageManager {
      */
     public void createContainer(String location) throws VOSpaceException {
 	try {
-	    boolean success = (new File(new URI(location))).mkdir();
+            boolean success = true;
+            Path path = Paths.get(location);
+	    // Need to set permissions to 775 so that Tomcat and manager users
+	    // do not clash when creating/writing files
+            Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw
+xrwxr-x");
+	    Files.createDirectory(path);
+	    Files.setPosixFilePermissions(path, perms);
 	    if (!success) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Container cannot be created");
 	} catch (Exception e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -58,7 +73,7 @@ public class LocalFSStorageManager implements StorageManager {
 	    File file = new File(new URI(location));
 	    FileUtils.touch(file);
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    if !(e.getMessage().contains("last modification date")) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
 	}
     }
 
