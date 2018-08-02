@@ -15,10 +15,10 @@ public class Node {
      * @param req The byte array containing the Node
      */
     public Node(byte[] bytes) throws VOSpaceException {
-	// Remove any XML processing instructions
-	String rep = new String(bytes);
-	rep.replace("<?xml version='1.0' encoding='UTF-8'?>", "");
-	node = new XMLObject(rep.getBytes());
+        // Remove any XML processing instructions
+        String rep = new String(bytes);
+        rep.replace("<?xml version='1.0' encoding='UTF-8'?>", "");
+        node = new XMLObject(rep.getBytes());
         PREFIX = node.PREFIX;
     }
 
@@ -27,8 +27,8 @@ public class Node {
      * @return The uri of the node
      */
     public String getUri() throws VOSpaceException {
-	String uri = node.xpath("/vos:node/@uri")[0];
-	return uri.replace("~", "!");
+        String uri = node.xpath("/vos:node/@uri")[0];
+        return uri.replace("~", "!");
     }
 
     /**
@@ -36,7 +36,7 @@ public class Node {
      * @return The type of the node
      */
     public String getType() throws VOSpaceException {
-	return node.xpath("/vos:node/@xsi:type")[0];
+        return node.xpath("/vos:node/@xsi:type")[0];
     }
 
     /**
@@ -44,20 +44,20 @@ public class Node {
      * @param uri The new uri of the node
      */
     public void setUri(String uri) throws VOSpaceException {
-	node.replace("/vos:node/@uri", uri);
+        node.replace("/vos:node/@uri", uri);
     }
 
-    
+
     /**
      * Check whether the node has any properties set
      * @return whether the node has any properties set
      */
     public boolean hasProperties() throws VOSpaceException {
-	try {
-	    return node.has("/vos:node/vos:properties/vos:property");
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
-	}
+        try {
+            return node.has("/vos:node/vos:properties/vos:property");
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
     /**
@@ -65,48 +65,48 @@ public class Node {
      * @return any properties the node has set on it
      */
     public HashMap<String, String> getProperties() throws VOSpaceException {
-	try {
-	    HashMap<String, String> properties = new HashMap<String, String>();
-	    String[] propUris = node.xpath("/vos:node/vos:properties/vos:property/@uri");
-	    for (String uri: propUris) {
-		String[] values = node.xpath("/vos:node/vos:properties/vos:property[@uri = '" + uri + "']");
-		String[] nilSet = node.xpath("/vos:node/vos:properties/vos:property[@uri = '" + uri +"']/@xsi:nil");
-		// Add property to list if not nilled
-		if (nilSet.length == 0) {
-		    if (values.length > 0) {
-			properties.put(uri, values[0]);
-		    } else {
-			properties.put(uri, "");
-		    }
-		}
-	    }
-	    return properties;
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
-	}
+        try {
+            HashMap<String, String> properties = new HashMap<String, String>();
+            String[] propUris = node.xpath("/vos:node/vos:properties/vos:property/@uri");
+            for (String uri: propUris) {
+                String[] values = node.xpath("/vos:node/vos:properties/vos:property[@uri = '" + uri + "']");
+                String[] nilSet = node.xpath("/vos:node/vos:properties/vos:property[@uri = '" + uri +"']/@xsi:nil");
+                // Add property to list if not nilled
+                if (nilSet.length == 0) {
+                    if (values.length > 0) {
+                        properties.put(uri, values[0]);
+                    } else {
+                        properties.put(uri, "");
+                    }
+                }
+            }
+            return properties;
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
     /**
      * Add the specified property to the node
      */
     public void setProperty(String property, String value) throws VOSpaceException {
-	String xpath = "/vos:node/vos:properties/vos:property[@uri = '" + property + "']";
-	String newProp = node.PREFIX == null ? "<property uri=\"" + property + "\">" + value + "</property>" : "<" + node.PREFIX + ":property uri = \"" + property + "\">" + value + "</" + node.PREFIX + ":property>";
+        String xpath = "/vos:node/vos:properties/vos:property[@uri = '" + property + "']";
+        String newProp = node.PREFIX == null ? "<property uri=\"" + property + "\">" + value + "</property>" : "<" + node.PREFIX + ":property uri = \"" + property + "\">" + value + "</" + node.PREFIX + ":property>";
         try {
-	    if (node.has(xpath)) {
-		node.replace(xpath, value);
-	    } else {
-		if (!node.has("/vos:node/vos:properties/vos:property")) {
-		    // Get around the <properties/> child insertion issue
-		    node.remove("/vos:node/vos:properties");
-		    String props = node.PREFIX == null ? "<properties></properties>" : "<" + node.PREFIX + ":properties></" + node.PREFIX + ":properties>";
-		    node.addChild("/vos:node", props);
-		}
-		node.addChild("/vos:node/vos:properties", newProp);
-	    }
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
-	}
+            if (node.has(xpath)) {
+                node.replace(xpath, value);
+            } else {
+                if (!node.has("/vos:node/vos:properties/vos:property")) {
+                    // Get around the <properties/> child insertion issue
+                    node.remove("/vos:node/vos:properties");
+                    String props = node.PREFIX == null ? "<properties></properties>" : "<" + node.PREFIX + ":properties></" + node.PREFIX + ":properties>";
+                    node.addChild("/vos:node", props);
+                }
+                node.addChild("/vos:node/vos:properties", newProp);
+            }
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
     /**
@@ -114,21 +114,21 @@ public class Node {
      * @param expression The XPath expression identifying the items to remove
      */
     public void remove(String expression) throws VOSpaceException {
-	node.remove(expression);
+        node.remove(expression);
     }
 
     /**
      * Remove the <properties> element
      */
     public void removeProperties() throws VOSpaceException {
-	node.remove("/vos:node/vos:properties");
+        node.remove("/vos:node/vos:properties");
     }
 
     /**
      * Remove the <capabilities> element
      */
     public void removeCapabilities() throws VOSpaceException {
-	node.remove("/vos:node/vos:capabilities");
+        node.remove("/vos:node/vos:capabilities");
     }
 
     /**
@@ -137,35 +137,35 @@ public class Node {
      * @param value The value of the <capability> element
      */
     public void addCapabilities(String value) throws VOSpaceException {
-	boolean hasCapabilities = node.has("/vos:node/vos:capabilities");
-	if (!hasCapabilities)
-	    node.add("/vos:node/vos:provides", node.PREFIX == null ? "<capabilities></capabilities>" : "<" + node.PREFIX + ":capabilities></" + node.PREFIX + ":capabilities>");
-	if (value != null)
-	    node.addChild("/vos:node/vos:capabilities", node.PREFIX == null ? "<capability uri=\"" + value + "\"/>" : "<" + node.PREFIX + ":capability uri=\"" + value + "\"/>");
+        boolean hasCapabilities = node.has("/vos:node/vos:capabilities");
+        if (!hasCapabilities)
+            node.add("/vos:node/vos:provides", node.PREFIX == null ? "<capabilities></capabilities>" : "<" + node.PREFIX + ":capabilities></" + node.PREFIX + ":capabilities>");
+        if (value != null)
+            node.addChild("/vos:node/vos:capabilities", node.PREFIX == null ? "<capability uri=\"" + value + "\"/>" : "<" + node.PREFIX + ":capability uri=\"" + value + "\"/>");
     }
 
-    
+
     /**
      * Get the capabilities set on the node
      * @return any capabilities the node has set on it
      */
     public String[] getCapabilities() throws VOSpaceException {
-	try {
-	    String[] capUris = node.xpath("/vos:node/vos:capabilities/vos:capability/@uri");
-	    return capUris;
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
-	}
+        try {
+            String[] capUris = node.xpath("/vos:node/vos:capabilities/vos:capability/@uri");
+            return capUris;
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
-    
+
     /**
      * Add the item identified by the specified XPath expression
      * @param expression The XPath expression identifying where to add the item
      * @param item The item to add
      */
     public void addChild(String expression, String item) throws VOSpaceException {
-	node.addChild(expression, item);
+        node.addChild(expression, item);
     }
 
     /**
@@ -174,7 +174,7 @@ public class Node {
      * @param item The item to add
      */
     public void add(String expression, String item) throws VOSpaceException {
-	node.add(expression, item);
+        node.add(expression, item);
     }
 
     /**
@@ -183,8 +183,8 @@ public class Node {
      * @return whether the specified item exists or not
      */
     public boolean has(String expression) throws VOSpaceException {
-	boolean has = node.has(expression);
-	return has;
+        boolean has = node.has(expression);
+        return has;
     }
 
     /**
@@ -193,17 +193,17 @@ public class Node {
      * @return the specified item(s)
      */
     public String[] get(String expression) throws VOSpaceException {
-	String[] items = node.xpath(expression);
-	return items;
+        String[] items = node.xpath(expression);
+        return items;
     }
 
     /**
      * Update the value of the text identified by the XPath expression with the specified string
      * @param expression The XPath expression identifying the text to be replaced
-     * @param value The new text value 
+     * @param value The new text value
      */
     public void replace(String expression, String value) throws VOSpaceException {
-	node.replace(expression, value);
+        node.replace(expression, value);
     }
 
     /**
@@ -211,6 +211,6 @@ public class Node {
      * @return a string representation of the node
      */
     public String toString() {
-	return node.toString().replace("'", "\"");
+        return node.toString().replace("'", "\"");
     }
 }
