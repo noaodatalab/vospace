@@ -37,7 +37,7 @@ public class LocalFSStorageManager implements StorageManager {
 
     /**
      * Authenticate the client to the current backend storage
-bb     * @param endpoint The storage URL
+     * @param endpoint The storage URL
      * @param credentials The client's security credentials
      */
     public void authenticate(String endpoint, HashMap<String, String> credentials) throws VOSpaceException {
@@ -54,8 +54,7 @@ bb     * @param endpoint The storage URL
             Path path = Paths.get(location);
 	    // Need to set permissions to 775 so that Tomcat and manager users
 	    // do not clash when creating/writing files
-            Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw
-xrwxr-x");
+            Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxrwxr-x");
 	    Files.createDirectory(path);
 	    Files.setPosixFilePermissions(path, perms);
 	    if (!success) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Container cannot be created");
@@ -73,13 +72,13 @@ xrwxr-x");
 	    File file = new File(new URI(location));
 	    FileUtils.touch(file);
 	} catch (Exception e) {
-	    if !(e.getMessage().contains("last modification date")) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    if (!e.getMessage().contains("last modification date")) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
 	}
     }
 
-    
+
     /**
-     * Move the bytes from the specified old location to the specified new location 
+     * Move the bytes from the specified old location to the specified new location
      * in the current backend storage
      * @param oldLocation The old location of the bytes
      * @param newLocation The new location of the bytes
@@ -117,7 +116,7 @@ xrwxr-x");
     }
 
     /**
-     * Put the bytes from the specified input stream at the specified location in 
+     * Put the bytes from the specified input stream at the specified location in
      * the current backend storage
      * @param location The location for the bytes
      * @param stream The stream containing the bytes
@@ -126,7 +125,7 @@ xrwxr-x");
 	try {
 	    URI uri = new URI(location);
 	    BufferedInputStream bis = new BufferedInputStream(stream);
-	    FileOutputStream fos = new FileOutputStream(uri.getPath()); 
+	    FileOutputStream fos = new FileOutputStream(uri.getPath());
             byte[] buffer = new byte[8192];
             int count = bis.read(buffer);
             while (count != -1 && count <= 8192) {

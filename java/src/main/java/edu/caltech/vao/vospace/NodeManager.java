@@ -204,7 +204,7 @@ public class NodeManager {
         // Retrieve original node
         try {
             String[] result = store.getData(new String[] {identifier}, null, 0);
-            if (len(result) > 0) {
+            if (result.length > 0) {
                 Node node = nfactory.getNode(result[0]);
                 detail = (detail == null) ? "max" : detail;
                 if (!detail.equals("max")) {

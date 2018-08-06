@@ -24,6 +24,7 @@ import org.apache.commons.dbcp.DriverManagerConnectionFactory;
 import edu.caltech.vao.vospace.xml.Node;
 import edu.caltech.vao.vospace.xml.NodeFactory;
 import edu.caltech.vao.vospace.NodeType;
+import edu.caltech.vao.vospace.VOSpaceException;
 
 /**
  * This class represents a metadata store for VOSpace based on the MySQL
@@ -286,7 +287,7 @@ public class MySQLMetaStore implements MetaStore{
      * level of detail
      */
     /* DONE: Construct the nodes from existing data rather than querying directly */
-    public String[] getData(String[] identifiers, String token, int limit) throws SQLException {
+    public String[] getData(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException {
         String query = null, whereQuery = null;
         int count = 0, offset = 0;
         // Get count
@@ -336,13 +337,13 @@ public class MySQLMetaStore implements MetaStore{
      * Create the specified node string by combining the other data stored in the database
      */
 /* TODO: Figure out how to deal with Views and Capabilities */
-    private String createNode(String identifier) {
+    private String createNode(String identifier) throws SQLException, VOSpaceException {
         // Get the default node object
         NodeFactory nf = NodeFactory.getInstance();
         String defaultNode = nf.getDefaultNode().toString();
         // Replace the data type, using the identifier in the database
         // TODO: Consider adding a setType() to the Node object instead of doing the string manipulation here.
-        int newType = NodeType.getUriById(getType(identifier));
+        String newType = NodeType.getUriById(getType(identifier));
     	int start = defaultNode.indexOf("\"", defaultNode.indexOf("xsi:type"));
 	    int end = defaultNode.indexOf("\"", start + 1);
         // Create a new Node object of the proper type
@@ -356,7 +357,7 @@ public class MySQLMetaStore implements MetaStore{
         boolean first = true;
         for (String name: propNames) {
             if (!first) { columns.append(", "); } else { first = false; }
-            columns.append(name)
+            columns.append(name);
         }
         String query = "select " + columns.toString() + " from properties where identifier = '" + fixId(identifier) + "'";
         // Execute the query and set the property values in the Node.
@@ -366,7 +367,7 @@ public class MySQLMetaStore implements MetaStore{
             if (result.next()) {
                 String value = null;
                 for (String name: propNames) {
-                    value = result.getString(name));
+                    value = result.getString(name);
                     if (value != null) node.setProperty(name, value);
                 }
             }
@@ -383,7 +384,7 @@ public class MySQLMetaStore implements MetaStore{
      *     Get the specified node
      */
     /* DONE: Here we have to reconstruct the node from other data */
-    public String getNode(String identifier) throws SQLException {
+    public String getNode(String identifier) throws SQLException, VOSpaceException {
         /* String node = null;
         String query = "select node from nodes where identifier = '" + fixId(identifier) + "'";
         node = getAsString(query);
@@ -411,7 +412,7 @@ public class MySQLMetaStore implements MetaStore{
      * Get the direct children nodes of the specified container node
      */
     /* DONE: Here we have to reconstruct the nodes from other data */
-    public String[] getChildrenNodes(String identifier) throws SQLException {
+    public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
         /* String query = "select node from nodes where identifier like '" + fixId(identifier) + "/%' and identifier not like '" + fixId(identifier) + "/%/%'";
         String[] children = getAsStringArray(query);
         return children; */
@@ -989,6 +990,7 @@ public class MySQLMetaStore implements MetaStore{
             String identifier = fixId(node.getUri());
             StringBuilder columns = new StringBuilder("identifier");
             StringBuilder values = new StringBuilder(identifier);
+            HashMap<String, String> properties = node.getProperties();
             for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String property = prop.getKey();
                 columns.append(", ").append(property.substring(property.lastIndexOf('#') + 1));
@@ -1051,7 +1053,7 @@ public class MySQLMetaStore implements MetaStore{
                 String query = "delete from properties where identifier = '" + identifier + "' and property = '" + delProp + "'";
                 statement.executeUpdate(query);
             } */
-            String query = "update properties set " + updates.toString() + where identifier = '" + identifier + "'";
+            String query = "update properties set " + updates.toString() + " where identifier = '" + identifier + "'";
             statement.executeUpdate(query);
             node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
         } catch (Exception e) {}

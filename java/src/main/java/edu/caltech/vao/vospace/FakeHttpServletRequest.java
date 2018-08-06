@@ -19,7 +19,7 @@ import javax.servlet.ServletInputStream;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
-import javax.servlet.AsyncServletContext;
+import javax.servlet.AsyncContext;
 import javax.servlet.DispatcherType;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -63,7 +63,7 @@ public class FakeHttpServletRequest implements HttpServletRequest {
 
     setBody("");
   }
-  
+
   public void setParameters(Map<String, String> parameters) {
     this.parameters.clear();
     this.parameters.putAll(parameters);
@@ -211,7 +211,7 @@ public class FakeHttpServletRequest implements HttpServletRequest {
   }
 
   public long getDateHeader(String name) throws IllegalArgumentException {
-      return -1; 
+      return -1;
   }
 
   public String getHeader(String name) {
@@ -374,5 +374,5 @@ public class FakeHttpServletRequest implements HttpServletRequest {
   public DispatcherType getDispatcherType() {
       throw new UnsupportedOperationException();
   }
-		
+
 }
