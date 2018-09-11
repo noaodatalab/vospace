@@ -65,7 +65,7 @@ public class NodeManager {
             Properties props = new Properties();
             props.load(new FileInputStream(propFile));
             // Set space properties
-	    BASEURI = props.containsKey("space.baseuri") ? props.getProperty("space.baseuri") : BASE; 
+	    BASEURI = props.containsKey("space.baseuri") ? props.getProperty("space.baseuri") : BASE;
 	    STAGING_LOCATION = props.containsKey("space.staging_area") ? props.getProperty("space.staging_area") : BASE;
             structure = Boolean.parseBoolean(props.getProperty("space.supports.structure"));
 
@@ -95,7 +95,7 @@ public class NodeManager {
         }
     }
 
-    /** 
+    /**
      * Create the specified node
      * @param node The node to be created
      * @return The created node
@@ -103,13 +103,13 @@ public class NodeManager {
     public Node create(Node node, boolean overwrite) throws VOSpaceException {
 	String uri = node.getUri();
 	// Is identifier syntactically valid?
-	if (!validId(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid."); 
+	if (!validId(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid.");
 	// Is the parent a valid container?
-	if (!validParent(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid - bad parent."); 
+	if (!validParent(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid - bad parent.");
 	try {
 	    // Does node already exist?
 	    boolean exists = store.isStored(uri);
-	    if (exists && !overwrite) throw new VOSpaceException(VOSpaceException.CONFLICT, "A Node already exists with the requested URI."); 
+	    if (exists && !overwrite) throw new VOSpaceException(VOSpaceException.CONFLICT, "A Node already exists with the requested URI.");
 	    NodeType type = NodeType.NODE;
 	    // Is a service-generated name required?
 	    if (uri.endsWith(AUTO_NODE)) {
@@ -200,11 +200,11 @@ public class NodeManager {
      */
     public Node getNode(String identifier, String detail) throws VOSpaceException {
 	// Is identifier syntactically valid?
-	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid."); 
+	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid.");
 	// Retrieve original node
 	try {
 	    String[] result = store.getData(new String[] {identifier}, null, 0);
-	    if (len(result) > 0) {
+	    if (result.length > 0) {
 		Node node = nfactory.getNode(result[0]);
 		detail = (detail == null) ? "max" : detail;
 		if (!detail.equals("max")) {
@@ -230,23 +230,23 @@ public class NodeManager {
 		return node;
 	    } else {
 		throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI.");
-	    }   
+	    }
 	} catch (SQLException e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
     }
-     
-    /** 
+
+    /**
      * Delete the specified node
      * @param nodeid The identifier of the node to be deleted
      */
     public void delete(String identifier) throws VOSpaceException {
 	// Is identifier syntactically valid?
-	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid."); 
+	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid.");
 	try {
 	    // Does node already exist?
 	    boolean exists = store.isStored(identifier);
-	    if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI."); 
+	    if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI.");
 	    // Remove node
 	    //	    removeBytes(getLocation(identifier));
 	    store.removeData(identifier, false);
@@ -342,7 +342,7 @@ public class NodeManager {
     private String getLocation(String identifier) {
 	String name = identifier.substring(identifier.lastIndexOf("!"));
         String dataname = name.substring(name.indexOf("/") + 1);
-        return BASEURI + "/" + dataname; 
+        return BASEURI + "/" + dataname;
     }
 
     /*
