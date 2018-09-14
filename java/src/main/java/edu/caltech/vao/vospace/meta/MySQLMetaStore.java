@@ -65,22 +65,22 @@ public class MySQLMetaStore implements MetaStore{
 	    Class.forName("org.apache.commons.dbcp.PoolingDriver");
 	    PoolingDriver driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
 	    driver.registerPool("connPool", connectionPool);
-        } catch (Exception e) {	
+        } catch (Exception e) {
 	    e.printStackTrace();
 	    //	    log.error(e.getMessage());
 	}
     }
 
 
-    /* 
+    /*
      * Standardize the VOSpace identifier
      * @param id The id of the node
      */
     public String fixId(String identifier) {
 	return identifier.replace("~", "!");
     }
-    
-    
+
+
     /*
      * Set the id of the store
      * @param id The id of the store
@@ -89,8 +89,8 @@ public class MySQLMetaStore implements MetaStore{
 	STOREID = id;
     }
 
-    
-   /* 
+
+   /*
     * Get a db connection
     */
     private Connection getConnection() throws SQLException {
@@ -99,7 +99,7 @@ public class MySQLMetaStore implements MetaStore{
 	return connection;
     }
 
-    /* 
+    /*
      * Get the job with the specified identifier
      * @param jobID The ID of the job to get
      * @return The requested job or <i>null</i> if there is no job with the given ID.
@@ -111,7 +111,7 @@ public class MySQLMetaStore implements MetaStore{
 	return job;
     }
 
-    /* 
+    /*
      * Add the job with the specified identifier
      * @param jobID The ID of the job to get
      * @param job The XML string representation of the job
@@ -135,7 +135,7 @@ public class MySQLMetaStore implements MetaStore{
 
     /*
      * Get the type of the object with the specified identifier
-     * @param identifier The ID of the node 
+     * @param identifier The ID of the node
      * @return the type of the node
      */
     public int getType(String identifier) throws SQLException {
@@ -156,7 +156,7 @@ public class MySQLMetaStore implements MetaStore{
 	owner = getAsString(query);
 	return owner;
     }
-    
+
     /*
      * Check whether the specified property is known to the service
      * @param identifier The ID of the property
@@ -187,7 +187,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public void storeData(String identifier, int type, Object metadata) throws SQLException {
 	if (metadata instanceof String) {
-	    String query = "insert into nodes (identifier, type, creationDate, node) values ('" + fixId(identifier) + "', '" + type + "', cast(now() as datetime), '" + (String) metadata + "')"; 
+	    String query = "insert into nodes (identifier, type, creationDate, node) values ('" + fixId(identifier) + "', '" + type + "', cast(now() as datetime), '" + (String) metadata + "')";
 	    update(query);
 	    storeProperties((String) metadata);
 	}
@@ -198,7 +198,7 @@ public class MySQLMetaStore implements MetaStore{
      */
     public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException {
 	if (metadata instanceof String) {
-	    String query = "insert into nodes (identifier, type, owner, creationDate, node) values ('" + fixId(identifier) + "', '" + type + "', '" + owner + "', cast(now() as datetime), '" + (String) metadata + "')"; 
+	    String query = "insert into nodes (identifier, type, owner, creationDate, node) values ('" + fixId(identifier) + "', '" + type + "', '" + owner + "', cast(now() as datetime), '" + (String) metadata + "')";
 	    update(query);
 	    storeProperties((String) metadata);
 	}
@@ -249,7 +249,7 @@ public class MySQLMetaStore implements MetaStore{
 	}
 	return token;
     }
-   
+
     public boolean getAllData(String token, int limit) throws SQLException {
 	boolean allData = false;
 	String query = "select offset, count from listings where token = '" + token + "'";
@@ -294,7 +294,7 @@ public class MySQLMetaStore implements MetaStore{
 	    try {
 		tokenResult = execute(tokenQuery);
 		if (tokenResult.next()) {
-		    offset = tokenResult.getInt(1);	
+		    offset = tokenResult.getInt(1);
 		    count = tokenResult.getInt(2);
 		    whereQuery = tokenResult.getString(4);
 		} else {
@@ -349,11 +349,11 @@ public class MySQLMetaStore implements MetaStore{
 	return children;
     }
 
-    
+
     /*
      * Get all the children of the specified container node
      */
-    public String[] getAllChildren(String identifier) throws SQLException {	
+    public String[] getAllChildren(String identifier) throws SQLException {
 	ArrayList<String> children = new ArrayList<String>();
 	String query = "select identifier from nodes where identifier like '" + fixId(identifier) + "/%'";
 	for (String child : getAsStringArray(query)) {
@@ -364,7 +364,7 @@ public class MySQLMetaStore implements MetaStore{
 	return children.toArray(new String[0]);
     }
 
-    
+
     /*
      * Remove the metadata for the specified identifier
      * @param identifier The (root) identifier of the node(s) to delete
@@ -411,9 +411,9 @@ public class MySQLMetaStore implements MetaStore{
 	if (metadata instanceof String) {
 	    String node = updateProperties((String) metadata);
 	    String encode = node.replace("\"", "'");
-	    String query = "update nodes set identifier = '" + newIdentifier + "', node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'"; 
+	    String query = "update nodes set identifier = '" + newIdentifier + "', node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
 	    update(query);
-	    query = "update properties set identifier = '" + fixId(newIdentifier) + "' where identifier = '" + fixId(identifier) + "'"; 
+	    query = "update properties set identifier = '" + fixId(newIdentifier) + "' where identifier = '" + fixId(identifier) + "'";
 	    update(query);
 	}
     }
@@ -428,7 +428,7 @@ public class MySQLMetaStore implements MetaStore{
 	    String encode = node.replace("\"", "'");
 	    String query = "update nodes set identifier = '" + fixId(newIdentifier) + "', location = '" + newLocation + "', node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
 	    update(query);
-	    query = "update properties set identifier = '" + fixId(newIdentifier) + "' where identifier = '" + fixId(identifier) + "'"; 
+	    query = "update properties set identifier = '" + fixId(newIdentifier) + "' where identifier = '" + fixId(identifier) + "'";
 	    update(query);
 	}
     }
@@ -473,7 +473,7 @@ public class MySQLMetaStore implements MetaStore{
      * Get the status of the object with the specified identifier
      */
     public boolean getStatus(String identifier) throws SQLException {
-	return false; 
+	return false;
     }
 
     /*
@@ -592,7 +592,7 @@ public class MySQLMetaStore implements MetaStore{
 	completeTransfer(endpoint);
 	NodeType node = null;
 	String identifier = resolveTransfer(endpoint);
-	String query = "select node from nodes where identifier = '" + identifier + "'"; 
+	String query = "select node from nodes where identifier = '" + identifier + "'";
 	ResultSet result = execute(query);
 	if (result.next()) {
 	    try {
@@ -603,7 +603,7 @@ public class MySQLMetaStore implements MetaStore{
 		}
 		setStatus(identifier, updateStatus);
 	    } catch (XmlException e) {
-	        throw new SQLException(e.getMessage());	
+	        throw new SQLException(e.getMessage());
 	    }
 	    }*/
     }
@@ -621,7 +621,7 @@ public class MySQLMetaStore implements MetaStore{
 
     /*
      * Update the specified property
-     */   
+     */
     public void updateProperty(String property, int type) throws SQLException {
 	String query = "update metaproperties set type = " + type + " where identifier = '" + property + "'";
 	update(query);
@@ -645,7 +645,7 @@ public class MySQLMetaStore implements MetaStore{
 	type = getAsString(query);
 	return type;
     }
-    
+
     /*
      * Check whether the property is read/only
      */
@@ -665,7 +665,7 @@ public class MySQLMetaStore implements MetaStore{
 	value = getAsString(query);
 	return value;
     }
-    
+
     /*
      * Check the status of a capability (active or not)
      */
@@ -718,7 +718,7 @@ public class MySQLMetaStore implements MetaStore{
 	return port;
     }
 
-    
+
     /*
      * Execute a query on the store
      */
@@ -726,7 +726,7 @@ public class MySQLMetaStore implements MetaStore{
 	String ans = null;
 	ResultSet result = null;
 	try {
-    	    result = execute(query);	
+    	    result = execute(query);
             if (result.next()) ans = result.getString(1);
 	} finally {
     	    closeResult(result);
@@ -742,7 +742,7 @@ public class MySQLMetaStore implements MetaStore{
 	int ans = -1;
 	ResultSet result = null;
 	try {
-  	    result = execute(query);	
+  	    result = execute(query);
             if (result.next()) ans = result.getInt(1);
 	} finally {
    	    closeResult(result);
@@ -758,7 +758,7 @@ public class MySQLMetaStore implements MetaStore{
 	boolean ans = false;
 	ResultSet result = null;
 	try {
-	    result = execute(query);	
+	    result = execute(query);
             if (result.next()) ans = result.getBoolean(1);
 	} finally {
 	    closeResult(result);
@@ -774,7 +774,7 @@ public class MySQLMetaStore implements MetaStore{
 	Date ans = null;
 	ResultSet result = null;
 	try {
-	    result = execute(query);	
+	    result = execute(query);
             if (result.next()) ans = result.getDate(1);
 	} finally {
 	    closeResult(result);
@@ -798,7 +798,7 @@ public class MySQLMetaStore implements MetaStore{
 	return ans;
     }
 
-    
+
     /*
      * Execute a query on the store
      */
@@ -806,8 +806,8 @@ public class MySQLMetaStore implements MetaStore{
 	String[] ans = null;
 	ResultSet result = null;
 	try {
-	    ArrayList<String> list = new ArrayList<String>(); 
-    	    result = execute(query);	
+	    ArrayList<String> list = new ArrayList<String>();
+    	    result = execute(query);
 	    while (result.next()) {
 		list.add(result.getString(1));
 	    }
@@ -826,14 +826,14 @@ public class MySQLMetaStore implements MetaStore{
 	boolean ans = false;
 	ResultSet result = null;
 	try {
-	    result = execute(query);	
+	    result = execute(query);
             if (result.next()) ans = true;
 	} finally {
 	    closeResult(result);
 	}
 	return ans;
     }
-    
+
 
     /*
      * Execute a query on the store
@@ -846,7 +846,7 @@ public class MySQLMetaStore implements MetaStore{
 	return result;
     }
 
-    /* 
+    /*
      * Insert/update query on the store
      */
     private void update(String query) throws SQLException {
@@ -863,7 +863,7 @@ public class MySQLMetaStore implements MetaStore{
 	}
     }
 
-    
+
     /*
      * Close all the db resources
      */
@@ -878,7 +878,7 @@ public class MySQLMetaStore implements MetaStore{
 //	System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
     }
 
-    
+
     /*
      * Extract and store the properties from the specified node description
      */
@@ -890,17 +890,18 @@ public class MySQLMetaStore implements MetaStore{
 	    String identifier = fixId(node.getUri());
 	    HashMap<String, String> properties = node.getProperties();
 	    for (Map.Entry<String, String> prop : properties.entrySet()) {
-		String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + prop.getKey() + "', '" + prop.getValue() + "')"; 
+		String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + prop.getKey() + "', '" + prop.getValue() + "')";
+            System.err.println(query);
 	        statement.executeUpdate(query);
 	    }
  	    /*	    NodeType node = NodeType.Factory.parse(nodeAsString);
 	    String identifier = node.getUri();
 	    PropertyListType properties = node.getProperties();
 	    for (PropertyType property : properties.getPropertyArray()) {
-	        String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + property.getUri() + "', '" + property.getStringValue() + "')"; 
+	        String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + property.getUri() + "', '" + property.getStringValue() + "')";
 	        statement.executeUpdate(query);
 		} */
-	} catch (Exception e) {}
+	} catch (Exception e) { e.printStackTrace(); }
 	finally {
 	    statement.close();
 	    connection.close();
@@ -912,7 +913,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Extract and store the properties from the specified node description
      * @param nodeAsString String representation of node whose properties are to be stored
-     * @return string representation of node with updated properties (deleted where specified) 
+     * @return string representation of node with updated properties (deleted where specified)
      */
     private String updateProperties(String nodeAsString) throws SQLException {
 	Node node = null;
@@ -924,16 +925,18 @@ public class MySQLMetaStore implements MetaStore{
 	    HashMap<String, String> properties = node.getProperties();
 	    for (Map.Entry<String, String> prop : properties.entrySet()) {
 		String query = "update properties set value = '" + prop.getValue() + "' where identifier = '" + identifier + "' and property = '" + prop.getKey() + "'";
+            System.err.println(query);
 	        statement.executeUpdate(query);
 	    }
 	    // Check for deleted properties
 	    String[] nilSet = node.get("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']/@uri");
 	    for (String delProp : nilSet) {
 		String query = "delete from properties where identifier = '" + identifier + "' and property = '" + delProp + "'";
+            System.err.println(query);
 		statement.executeUpdate(query);
 	     }
 	    node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
-	} catch (Exception e) {}
+	} catch (Exception e) { e.printStackTrace(); }
 	finally {
 	    statement.close();
 	    connection.close();
@@ -942,7 +945,7 @@ public class MySQLMetaStore implements MetaStore{
 	return node.toString();
     }
 
-    
+
     /**
      * Store a result associated with a Job
      * @param identifier The job identifier
@@ -953,7 +956,7 @@ public class MySQLMetaStore implements MetaStore{
 	update(query);
     }
 
-    
+
     /**
      * Get a result associated with a Job
      * @param identifier The job identifier
