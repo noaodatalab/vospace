@@ -891,7 +891,6 @@ public class MySQLMetaStore implements MetaStore{
 	    HashMap<String, String> properties = node.getProperties();
 	    for (Map.Entry<String, String> prop : properties.entrySet()) {
 		String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + prop.getKey() + "', '" + prop.getValue() + "')";
-            System.err.println(query);
 	        statement.executeUpdate(query);
 	    }
  	    /*	    NodeType node = NodeType.Factory.parse(nodeAsString);
@@ -901,7 +900,7 @@ public class MySQLMetaStore implements MetaStore{
 	        String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + property.getUri() + "', '" + property.getStringValue() + "')";
 	        statement.executeUpdate(query);
 		} */
-	} catch (Exception e) { e.printStackTrace(); }
+	} catch (Exception e) {}
 	finally {
 	    statement.close();
 	    connection.close();
@@ -925,18 +924,16 @@ public class MySQLMetaStore implements MetaStore{
 	    HashMap<String, String> properties = node.getProperties();
 	    for (Map.Entry<String, String> prop : properties.entrySet()) {
 		String query = "update properties set value = '" + prop.getValue() + "' where identifier = '" + identifier + "' and property = '" + prop.getKey() + "'";
-            System.err.println(query);
 	        statement.executeUpdate(query);
 	    }
 	    // Check for deleted properties
 	    String[] nilSet = node.get("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']/@uri");
 	    for (String delProp : nilSet) {
 		String query = "delete from properties where identifier = '" + identifier + "' and property = '" + delProp + "'";
-            System.err.println(query);
 		statement.executeUpdate(query);
 	     }
 	    node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
-	} catch (Exception e) { e.printStackTrace(); }
+	} catch (Exception e) {}
 	finally {
 	    statement.close();
 	    connection.close();
