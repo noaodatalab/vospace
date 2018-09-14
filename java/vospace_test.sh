@@ -11,10 +11,14 @@ done
 prop_create=$prop_create', PRIMARY KEY (`identifier`) ) ENGINE=InnoDB DEFAULT CHARSET=latin1;'
 echo $prop_create | $P_MYSQL vospace_test
 
+count=$(echo "select count(identifier) from properties" | $P_MYSQL vospace -N)
+echo -ne "${count}\r"
 echo "select * from properties" | $P_MYSQL vospace -N | while read -r i; do
     id=$(echo $i | cut -d' ' -f1)
     col=$(echo $i | cut -d' ' -f2 | cut -f2 -d'#')
     val=$(echo $i | cut -d' ' -f3)
-        echo "INSERT INTO properties (identifier, ${col}) VALUES ('${id}', '${val}') ON DUPLICATE KEY UPDATE ${col}='${val}';" \
+    echo "INSERT INTO properties (identifier,${col}) VALUES ('${id}','${val}') ON DUPLICATE KEY UPDATE ${col}='${val}';" \
             | $P_MYSQL vospace_test
+    count=$((count-1))
+    echo -ne "${count}  \r"
 done
