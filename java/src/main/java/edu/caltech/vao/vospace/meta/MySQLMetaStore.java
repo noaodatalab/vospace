@@ -997,6 +997,7 @@ public class MySQLMetaStore implements MetaStore{
                 values.append(", ").append("'").append(prop.getValue()).append("'");
             }
             String query = "insert into properties (" + columns.toString() + ") values (" + values.toString() + ")";
+            System.err.println(query)
             statement.executeUpdate(query);
             /*      for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + prop.getKey() + "', '" + prop.getValue() + "')";
@@ -1009,7 +1010,7 @@ public class MySQLMetaStore implements MetaStore{
                 String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + property.getUri() + "', '" + property.getStringValue() + "')";
                 statement.executeUpdate(query);
                 } */
-        } catch (Exception e) {}
+        } catch (Exception e) { e.printStackTrace(); }
         finally {
             statement.close();
             connection.close();
@@ -1054,9 +1055,10 @@ public class MySQLMetaStore implements MetaStore{
                 statement.executeUpdate(query);
             } */
             String query = "update properties set " + updates.toString() + " where identifier = '" + identifier + "'";
+            System.err.println(query)
             statement.executeUpdate(query);
             node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
-        } catch (Exception e) {}
+        } catch (Exception e) { e.printStackTrace(); }
         finally {
             statement.close();
             connection.close();
