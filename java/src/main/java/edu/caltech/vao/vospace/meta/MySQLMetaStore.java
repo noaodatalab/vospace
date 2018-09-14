@@ -989,7 +989,7 @@ public class MySQLMetaStore implements MetaStore{
             Node node = new Node(nodeAsString.getBytes());
             String identifier = fixId(node.getUri());
             StringBuilder columns = new StringBuilder("identifier");
-            StringBuilder values = new StringBuilder(identifier);
+            StringBuilder values = new StringBuilder("'" + identifier + "'");
             HashMap<String, String> properties = node.getProperties();
             for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String property = prop.getKey();
