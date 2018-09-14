@@ -368,7 +368,7 @@ public class MySQLMetaStore implements MetaStore{
                 String value = null;
                 for (String name: propNames) {
                     value = result.getString(name);
-                    if (value != null) node.setProperty(name, value);
+                    if (value != null) node.setProperty("ivo://ivoa.net/vospace/core#" + name, value);
                 }
             }
         } finally {
