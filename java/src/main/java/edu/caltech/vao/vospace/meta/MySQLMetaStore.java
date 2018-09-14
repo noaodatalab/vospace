@@ -1033,12 +1033,14 @@ public class MySQLMetaStore implements MetaStore{
         try {
             node = new Node(nodeAsString.getBytes());
             String identifier = fixId(node.getUri());
-            HashMap<String, String> properties = node.getProperties();
             StringBuilder updates = new StringBuilder();
-            for (Map.Entry<String, String> prop : properties.entrySet()) {
-                String property = prop.getKey();
-                if (updates.length() != 0) { updates.append(", "); }
-                updates.append(property.substring(property.lastIndexOf('#') + 1)).append(" = ").append("'").append(prop.getValue()).append("'");
+            HashMap<String, String> properties = node.getProperties();
+            if (!properties.isEmpty()) {
+                for (Map.Entry<String, String> prop : properties.entrySet()) {
+                    String property = prop.getKey();
+                    if (updates.length() != 0) { updates.append(", "); }
+                    updates.append(property.substring(property.lastIndexOf('#') + 1)).append(" = ").append("'").append(prop.getValue()).append("'");
+                }
             }
             /* for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String query = "update properties set value = '" + prop.getValue() + "' where identifier = '" + identifier + "' and property = '" + prop.getKey() + "'";
@@ -1046,17 +1048,21 @@ public class MySQLMetaStore implements MetaStore{
             } */
             // Check for deleted properties
             String[] nilSet = node.get("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']/@uri");
-            for (String delProp : nilSet) {
-                if (updates.length() != 0) { updates.append(", "); }
-                updates.append(delProp.substring(delProp.lastIndexOf('#') + 1)).append(" = NULL");
+            if (nilSet.length > 0) {
+                for (String delProp : nilSet) {
+                    if (updates.length() != 0) { updates.append(", "); }
+                    updates.append(delProp.substring(delProp.lastIndexOf('#') + 1)).append(" = NULL");
+                }
             }
             /* for (String delProp : nilSet) {
                 String query = "delete from properties where identifier = '" + identifier + "' and property = '" + delProp + "'";
                 statement.executeUpdate(query);
             } */
-            String query = "update properties set " + updates.toString() + " where identifier = '" + identifier + "'";
-            System.err.println(query);
-            statement.executeUpdate(query);
+            if (updates.length() > 0) {
+                String query = "update properties set " + updates.toString() + " where identifier = '" + identifier + "'";
+                System.err.println(query);
+                statement.executeUpdate(query);
+            }
             node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
         } catch (Exception e) { e.printStackTrace(); }
         finally {
