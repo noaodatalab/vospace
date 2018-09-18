@@ -13,11 +13,10 @@ import java.net.URI;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Properties;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
@@ -41,7 +40,7 @@ public class LocalFSStorageManager implements StorageManager {
      * @param credentials The client's security credentials
      */
     public void authenticate(String endpoint, HashMap<String, String> credentials) throws VOSpaceException {
-	// Nothing needed here
+        // Nothing needed here
     }
 
     /**
@@ -49,18 +48,28 @@ public class LocalFSStorageManager implements StorageManager {
      * @param location The location of the container
      */
     public void createContainer(String location) throws VOSpaceException {
-	try {
-            boolean success = true;
-            Path path = Paths.get(location);
-	    // Need to set permissions to 775 so that Tomcat and manager users
-	    // do not clash when creating/writing files
-            Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwxrwxr-x");
-	    Files.createDirectory(path);
-	    Files.setPosixFilePermissions(path, perms);
-	    if (!success) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Container cannot be created");
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+        // Need to set permissions to 775 so that Tomcat and manager users
+        // do not clash when creating/writing files
+        Set<PosixFilePermission> perm = PosixFilePermissions.fromString("rwxrwxr-x");
+        Path path = null;
+        try {
+            path = Paths.get(new URI(location));
+            Files.createDirectory(path);
+            Files.setPosixFilePermissions(path, perm);
+        } catch (FileAlreadyExistsException fe) {
+            try {
+                if (!Files.isDirectory(path)) {
+                    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Container cannot be created");
+                } else {
+                    Files.setPosixFilePermissions(path, perm);
+                }
+            } catch (Exception e) {
+                throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            }
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
     /**
@@ -68,12 +77,12 @@ public class LocalFSStorageManager implements StorageManager {
      * @param location The location of the file
      */
     public void touch(String location) throws VOSpaceException {
-	try {
-	    File file = new File(new URI(location));
-	    FileUtils.touch(file);
-	} catch (Exception e) {
-	    if (!e.getMessage().contains("last modification date")) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+        try {
+            File file = new File(new URI(location));
+            FileUtils.touch(file);
+        } catch (Exception e) {
+            if (!e.getMessage().contains("last modification date")) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
 
@@ -84,16 +93,16 @@ public class LocalFSStorageManager implements StorageManager {
      * @param newLocation The new location of the bytes
      */
     public void moveBytes(String oldLocation, String newLocation) throws VOSpaceException {
-	try {
-	    File oldFile = new File(new URI(oldLocation));
-	    if (oldFile.isFile()) {
-		FileUtils.moveFile(oldFile, new File(new URI(newLocation)));
-	    } else {
-		FileUtils.moveDirectory(oldFile, new File(new URI(newLocation)));
-	    }
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+        try {
+            File oldFile = new File(new URI(oldLocation));
+            if (oldFile.isFile()) {
+                FileUtils.moveFile(oldFile, new File(new URI(newLocation)));
+            } else {
+                FileUtils.moveDirectory(oldFile, new File(new URI(newLocation)));
+            }
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     /**
@@ -103,16 +112,16 @@ public class LocalFSStorageManager implements StorageManager {
      * @param newLocation The new location of the bytes
      */
     public void copyBytes(String oldLocation, String newLocation) throws VOSpaceException {
-	try {
-	    File oldFile = new File(new URI(oldLocation));
-	    if (oldFile.isFile()) {
-		FileUtils.copyFile(oldFile, new File(new URI(newLocation)));
-	    } else {
-		FileUtils.copyDirectory(oldFile, new File(new URI(newLocation)));
-	    }
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+        try {
+            File oldFile = new File(new URI(oldLocation));
+            if (oldFile.isFile()) {
+                FileUtils.copyFile(oldFile, new File(new URI(newLocation)));
+            } else {
+                FileUtils.copyDirectory(oldFile, new File(new URI(newLocation)));
+            }
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     /**
@@ -122,10 +131,10 @@ public class LocalFSStorageManager implements StorageManager {
      * @param stream The stream containing the bytes
      */
     public void putBytes(String location, InputStream stream) throws VOSpaceException {
-	try {
-	    URI uri = new URI(location);
-	    BufferedInputStream bis = new BufferedInputStream(stream);
-	    FileOutputStream fos = new FileOutputStream(uri.getPath());
+        try {
+            URI uri = new URI(location);
+            BufferedInputStream bis = new BufferedInputStream(stream);
+            FileOutputStream fos = new FileOutputStream(uri.getPath());
             byte[] buffer = new byte[8192];
             int count = bis.read(buffer);
             while (count != -1 && count <= 8192) {
@@ -135,11 +144,11 @@ public class LocalFSStorageManager implements StorageManager {
             if (count != -1) {
                 fos.write(buffer, 0, count);
             }
-	    fos.close();
-	    bis.close();
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+            fos.close();
+            bis.close();
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     /**
@@ -148,13 +157,13 @@ public class LocalFSStorageManager implements StorageManager {
      * @return a stream containing the requested bytes
      */
     public InputStream getBytes(String location) throws VOSpaceException {
-	try {
-	    URI uri = new URI(location);
-	    InputStream in = new FileInputStream(uri.getPath());
-	    return in;
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+        try {
+            URI uri = new URI(location);
+            InputStream in = new FileInputStream(uri.getPath());
+            return in;
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     /**
@@ -162,11 +171,11 @@ public class LocalFSStorageManager implements StorageManager {
      * @param location The location of the bytes
      */
     public void removeBytes(String location) throws VOSpaceException {
-	try {
-	    boolean success = new File(new URI(location)).delete();
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+        try {
+            boolean success = new File(new URI(location)).delete();
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     /**
@@ -177,13 +186,13 @@ public class LocalFSStorageManager implements StorageManager {
      * @return when the location was last modified
      */
     public long lastModified(String location) throws VOSpaceException {
-	try {
-	    long lastModified = new File(new URI(location)).lastModified();
-	    return lastModified;
-	} catch (Exception e) {
-	    e.printStackTrace(System.err);
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+        try {
+            long lastModified = new File(new URI(location)).lastModified();
+            return lastModified;
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     /**
@@ -192,12 +201,12 @@ public class LocalFSStorageManager implements StorageManager {
      * @return how many bytes the location occupies
      */
     public long size(String location) throws VOSpaceException {
-	try {
+        try {
             long size = new File(new URI(location)).length();
-	    return size;
-	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+            return size;
+        } catch (Exception e) {
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     /**
@@ -206,28 +215,28 @@ public class LocalFSStorageManager implements StorageManager {
      * @return the md5 sum
      */
     public String md5(String location) throws VOSpaceException {
-	try {
-  	    StringBuffer md5 = new StringBuffer();
-	    if (size(location) > 0) {
-		MessageDigest md = MessageDigest.getInstance("MD5");
-		FileInputStream fis = new FileInputStream(new File(new URI(location)));
-		byte[] dataBytes = new byte[1024];
-		int nread = 0;
-		while ((nread = fis.read(dataBytes)) != -1) {
-		    md.update(dataBytes, 0, nread);
-		}
-		byte[] mdbytes = md.digest();
-		for (int i = 0; i < mdbytes.length; i++) {
-		    md5.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
-		}
-	    } else {
-		md5.append("d41d8cd98f00b204e9800998ecf8427e");
-	    }
-	    return md5.toString();
-	} catch (Exception e) {
-	    e.printStackTrace(System.err);
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
-	}
+        try {
+            StringBuffer md5 = new StringBuffer();
+            if (size(location) > 0) {
+                MessageDigest md = MessageDigest.getInstance("MD5");
+                FileInputStream fis = new FileInputStream(new File(new URI(location)));
+                byte[] dataBytes = new byte[1024];
+                int nread = 0;
+                while ((nread = fis.read(dataBytes)) != -1) {
+                    md.update(dataBytes, 0, nread);
+                }
+                byte[] mdbytes = md.digest();
+                for (int i = 0; i < mdbytes.length; i++) {
+                    md5.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+                }
+            } else {
+                md5.append("d41d8cd98f00b204e9800998ecf8427e");
+            }
+            return md5.toString();
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
 
