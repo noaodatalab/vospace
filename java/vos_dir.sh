@@ -18,7 +18,7 @@ sudo /bin/chown -R datalab:datalab ${v}/${u}
 
 /bin/sed -e "s/USER/${u}/g" -e "s/DATE/${d}/g" <<VOBASE | /usr/bin/mysql -u dba -pdba -h ${h} vospace_test
 # users/<USER>
-insert into nodes(identifier, type, owner, view, location, creationDate, node)
+insert ignore into nodes(identifier, type, owner, view, location, creationDate, node)
   values('vos://datalab.noao!vospace/USER', 3, 'USER',
      'ivo://ivoa.net/vospace/views/blob',
      'file:///data/vospace/users/USER',
@@ -35,15 +35,15 @@ insert into nodes(identifier, type, owner, view, location, creationDate, node)
 	    uri="ivo://ivoa.net/vospace/core#groupwrite">USER</property> \
       </properties> \
       <accepts/> <provides/> <capabilities/> <nodes/> </node>');
-insert into properties values('vos://datalab.noao!vospace/USER',
+insert ignore into properties values('vos://datalab.noao!vospace/USER',
 	'ivo://ivoa.net/vospace/core#date', 'DATE');
-insert into properties values('vos://datalab.noao!vospace/USER',
+insert ignore into properties values('vos://datalab.noao!vospace/USER',
 	'ivo://ivoa.net/vospace/core#groupread', 'USER');
-insert into properties values('vos://datalab.noao!vospace/USER',
+insert ignore into properties values('vos://datalab.noao!vospace/USER',
 	'ivo://ivoa.net/vospace/core#groupwrite', 'USER');
 
 # users/<USER>/public
-insert into nodes(identifier, type, owner, view, location, creationDate, node)
+insert ignore into nodes(identifier, type, owner, view, location, creationDate, node)
   values('vos://datalab.noao!vospace/USER/public', 3, 'USER',
      'ivo://ivoa.net/vospace/views/blob',
      'file:///data/vospace/users/USER/public',
@@ -60,15 +60,15 @@ insert into nodes(identifier, type, owner, view, location, creationDate, node)
 	    uri="ivo://ivoa.net/vospace/core#groupwrite">USER</property> \
       </properties> \
       <accepts/> <provides/> <capabilities/> <nodes/> </node>');
-insert into properties values('vos://datalab.noao!vospace/USER/public',
+insert ignore into properties values('vos://datalab.noao!vospace/USER/public',
 	'ivo://ivoa.net/vospace/core#date', 'DATE');
-insert into properties values('vos://datalab.noao!vospace/USER/public',
+insert ignore into properties values('vos://datalab.noao!vospace/USER/public',
 	'ivo://ivoa.net/vospace/core#groupread', 'USER');
-insert into properties values('vos://datalab.noao!vospace/USER/public',
+insert ignore into properties values('vos://datalab.noao!vospace/USER/public',
 	'ivo://ivoa.net/vospace/core#groupwrite', 'USER');
 
 # users/<USER>/tmp
-insert into nodes(identifier, type, owner, view, location, creationDate, node)
+insert ignore into nodes(identifier, type, owner, view, location, creationDate, node)
   values('vos://datalab.noao!vospace/USER/tmp', 3, 'USER',
      'ivo://ivoa.net/vospace/views/blob',
      'file:///data/vospace/users/USER/tmp',
@@ -85,11 +85,11 @@ insert into nodes(identifier, type, owner, view, location, creationDate, node)
 	    uri="ivo://ivoa.net/vospace/core#groupwrite">USER</property> \
       </properties> \
       <accepts/> <provides/> <capabilities/> <nodes/> </node>');
-insert into properties values('vos://datalab.noao!vospace/USER/tmp',
+insert ignore into properties values('vos://datalab.noao!vospace/USER/tmp',
 	'ivo://ivoa.net/vospace/core#date', 'DATE');
-insert into properties values('vos://datalab.noao!vospace/USER/tmp',
+insert ignore into properties values('vos://datalab.noao!vospace/USER/tmp',
 	'ivo://ivoa.net/vospace/core#groupread', 'USER');
-insert into properties values('vos://datalab.noao!vospace/USER/tmp',
+insert ignore into properties values('vos://datalab.noao!vospace/USER/tmp',
 	'ivo://ivoa.net/vospace/core#groupwrite', 'USER');
 VOBASE
 echo "$u VOSpace created on $h"
