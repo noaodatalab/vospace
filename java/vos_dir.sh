@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Arguments are <username>, <hostname>, <vospace_root>
 d=`date +%Y-%m-%dT%H:%M:%S%z`
 hn=`hostname -s`
 if [ $# -lt 1 ]; then u=$USER; else u=$1; fi
