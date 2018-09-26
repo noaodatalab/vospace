@@ -27,7 +27,7 @@ insert ignore into properties(identifier, date, groupread, groupwrite)
 insert ignore into nodes(identifier, type, owner, view, location, creationDate)
     values('vos://datalab.noao!vospace/USER/public', 3, 'USER',
     'ivo://ivoa.net/vospace/views/blob', 'file:///data/vospace/users/USER/public', now());
-insert ignoreinto properties(identifier, date, groupread, groupwrite)
+insert ignore into properties(identifier, date, groupread, groupwrite)
     values('vos://datalab.noao!vospace/USER/public', 'DATE', 'USER', 'USER');
 
 # users/<USER>/tmp
