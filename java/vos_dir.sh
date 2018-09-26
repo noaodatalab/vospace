@@ -5,7 +5,7 @@ hn=`hostname -s`
 if [ $# -lt 1 ]; then u=$USER; else u=$1; fi
 if [ $# -lt 2 ]; then h=$hn; else h=$2; fi
 if [ $# -lt 3 ]; then
-    if [ $hn == "dldev" ] then v="/data/vospace/users/"; else v="/dl2/vospace/users/"; fi
+    if [ $hn == "dldev" ]; then v="/data/vospace/users/"; else v="/dl2/vospace/users/"; fi
 else v=$3; fi
 
 if [ ! -e ${v}/${u}/public ]; then sudo /bin/mkdir -p ${v}/${u}/public; fi
