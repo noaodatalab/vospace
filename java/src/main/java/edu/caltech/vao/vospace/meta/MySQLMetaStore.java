@@ -338,16 +338,8 @@ public class MySQLMetaStore implements MetaStore{
      */
 /* TODO: Figure out how to deal with Views and Capabilities */
     private String createNode(String identifier) throws SQLException, VOSpaceException {
-        // Get the default node object
-        NodeFactory nf = NodeFactory.getInstance();
-        String defaultNode = nf.getDefaultNode().toString();
-        // Replace the data type, using the identifier in the database
-        // TODO: Consider adding a setType() to the Node object instead of doing the string manipulation here.
-        String newType = NodeType.getUriById(getType(identifier));
-    	int start = defaultNode.indexOf("\"", defaultNode.indexOf("xsi:type"));
-	    int end = defaultNode.indexOf("\"", start + 1);
         // Create a new Node object of the proper type
-	    Node node = nf.getNode(defaultNode.substring(0, start + 1) + newType + defaultNode.substring(end));
+	    Node node = NodeFactory.getInstance().getNodeByType(NodeType.getUriById(getType(identifier)));
         // Set the URI for the node to the identifier
         node.setUri(identifier);
         // Get the Properties for the node, and set them in the Node object
