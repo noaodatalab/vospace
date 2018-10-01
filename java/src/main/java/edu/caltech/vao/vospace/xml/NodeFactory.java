@@ -114,7 +114,7 @@ public class NodeFactory {
      * @return a Node of the default type
      */
     public Node getDefaultNode() throws VOSpaceException {
-	return getNodeByType("DataNode");
+	return getNodeByType("vos:DataNode");
     }
 
     /**
@@ -122,7 +122,7 @@ public class NodeFactory {
      * @return a Node of the default type
      */
     public Node getNodeByType(String type) throws VOSpaceException {
-	String datanode = "<node xmlns=\"http://www.ivoa.net/xml/VOSpace/v2.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"vos:"+type+"\" uri=\"\" busy=\"false\"><properties></properties><accepts></accepts><provides></provides><capabilities></capabilities></node>";
+	String datanode = "<node xmlns=\"http://www.ivoa.net/xml/VOSpace/v2.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\""+type+"\" uri=\"\" busy=\"false\"><properties></properties><accepts></accepts><provides></provides><capabilities></capabilities></node>";
 	return getNode(datanode);
     }
 
