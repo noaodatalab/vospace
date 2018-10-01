@@ -985,8 +985,10 @@ public class MySQLMetaStore implements MetaStore{
             HashMap<String, String> properties = node.getProperties();
             for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String property = prop.getKey();
-                columns.append(", ").append(property.substring(property.lastIndexOf('#') + 1));
-                values.append(", ").append("'").append(prop.getValue()).append("'");
+                if (property != "identifier") {
+                    columns.append(", ").append(property.substring(property.lastIndexOf('#') + 1));
+                    values.append(", ").append("'").append(prop.getValue()).append("'");
+                }
             }
             String query = "insert into properties (" + columns.toString() + ") values (" + values.toString() + ")";
             statement.executeUpdate(query);
@@ -1029,8 +1031,10 @@ public class MySQLMetaStore implements MetaStore{
             if (!properties.isEmpty()) {
                 for (Map.Entry<String, String> prop : properties.entrySet()) {
                     String property = prop.getKey();
-                    if (updates.length() != 0) { updates.append(", "); }
-                    updates.append(property.substring(property.lastIndexOf('#') + 1)).append(" = ").append("'").append(prop.getValue()).append("'");
+                    if (property != "identifier") {
+                        if (updates.length() != 0) { updates.append(", "); }
+                        updates.append(property.substring(property.lastIndexOf('#') + 1)).append(" = ").append("'").append(prop.getValue()).append("'");
+                    }
                 }
             }
             /* for (Map.Entry<String, String> prop : properties.entrySet()) {
