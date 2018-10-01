@@ -1032,9 +1032,10 @@ public class MySQLMetaStore implements MetaStore{
             if (!properties.isEmpty()) {
                 for (Map.Entry<String, String> prop : properties.entrySet()) {
                     String property = prop.getKey();
-                    if (property != "identifier") {
+                    String shortProp = property.substring(property.lastIndexOf('#') + 1);
+                    if (shortProp != "identifier") {
                         if (updates.length() != 0) { updates.append(", "); }
-                        updates.append(property.substring(property.lastIndexOf('#') + 1)).append(" = ").append("'").append(prop.getValue()).append("'");
+                        updates.append(shortProp).append(" = ").append("'").append(prop.getValue()).append("'");
                     }
                 }
             }
