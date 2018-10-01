@@ -984,9 +984,10 @@ public class MySQLMetaStore implements MetaStore{
             StringBuilder values = new StringBuilder("'" + identifier + "'");
             HashMap<String, String> properties = node.getProperties();
             for (Map.Entry<String, String> prop : properties.entrySet()) {
-                String property = prop.getKey().substring(property.lastIndexOf('#') + 1);
-                if (property != "identifier") {
-                    columns.append(", ").append(property);
+                String property = prop.getKey();
+                String shortProp = property.substring(property.lastIndexOf('#') + 1);
+                if (shortProp != "identifier") {
+                    columns.append(", ").append(shortProp);
                     values.append(", ").append("'").append(prop.getValue()).append("'");
                 }
             }
