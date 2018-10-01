@@ -986,7 +986,7 @@ public class MySQLMetaStore implements MetaStore{
             for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String property = prop.getKey();
                 String shortProp = property.substring(property.lastIndexOf('#') + 1);
-                if (shortProp != "identifier") {
+                if (!shortProp.equals("identifier")) {
                     columns.append(", ").append(shortProp);
                     values.append(", ").append("'").append(prop.getValue()).append("'");
                 }
@@ -1033,7 +1033,7 @@ public class MySQLMetaStore implements MetaStore{
                 for (Map.Entry<String, String> prop : properties.entrySet()) {
                     String property = prop.getKey();
                     String shortProp = property.substring(property.lastIndexOf('#') + 1);
-                    if (shortProp != "identifier") {
+                    if (!shortProp.equals("identifier")) {
                         if (updates.length() != 0) { updates.append(", "); }
                         updates.append(shortProp).append(" = ").append("'").append(prop.getValue()).append("'");
                     }
