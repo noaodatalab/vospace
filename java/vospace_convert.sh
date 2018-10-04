@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $# -lt 1 ]; then db='vospace_test'; else db=$1; fi
+if [ $# -lt 1 ]; then db='vospace_new'; else db=$1; fi
 if [ $# -lt 2 ]; then host='localhost'; else host=$2; fi
 
 P_MYSQL="/usr/bin/mysql -u dba -pdba -h $host"
@@ -14,11 +14,11 @@ for c in $(echo "select identifier from metaproperties" | $P_MYSQL vospace -N | 
 done
 
 # Create properties table with all the columns
-prop_create='CREATE TABLE `properties` (`identifier` varchar(512) NOT NULL'
+prop_create='CREATE TABLE `properties` (`identifier` varchar(4096) NOT NULL'
 for c in $(echo "select identifier from metaproperties" | $P_MYSQL $db -N | cut -f2 -d'#' | grep -v 'identifier'); do
     prop_create=$prop_create', `'${c}'` varchar(256) DEFAULT NULL'
 done
-prop_create=$prop_create', PRIMARY KEY (`identifier`) ) ENGINE=InnoDB DEFAULT CHARSET=latin1;'
+prop_create=$prop_create', PRIMARY KEY (`identifier`(767)) ) ENGINE=InnoDB DEFAULT CHARSET=latin1;'
 echo $prop_create | $P_MYSQL $db
 
 count=$(echo "select count(identifier) from properties" | $P_MYSQL vospace -N)

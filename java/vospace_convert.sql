@@ -4,9 +4,11 @@
 
 DROP TABLE IF EXISTS `capabilities`;
 CREATE TABLE `capabilities` (
-  `identifier` varchar(512) DEFAULT NULL,
+  `identifier` varchar(4096) DEFAULT NULL,
   `capability` varchar(128) DEFAULT NULL,
-  `active` int(4) DEFAULT NULL
+  `active` int(4) DEFAULT NULL,
+  INDEX cap_id_idx (`identifier`(767)),
+  INDEX cap_cap_idx (`capability`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 INSERT INTO capabilities SELECT * from vospace.capabilities;
@@ -26,7 +28,8 @@ CREATE TABLE `jobs` (
   `completed` datetime DEFAULT NULL,
   `resultid` varchar(45) DEFAULT NULL,
   `job` text,
-  PRIMARY KEY (`identifier`)
+  PRIMARY KEY (`identifier`),
+  INDEX job_typ_idx (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 INSERT INTO jobs SELECT * from vospace.jobs;
@@ -67,20 +70,25 @@ CREATE TABLE `metaproperties` (
 
 DROP TABLE IF EXISTS `nodes`;
 CREATE TABLE `nodes` (
-  `identifier` varchar(512) NOT NULL,
+  `identifier` varchar(4096) NOT NULL,
   `type` tinyint(4) NOT NULL,
   `view` varchar(128) DEFAULT NULL,
   `status` smallint(6) DEFAULT '0',
   `owner` varchar(128) DEFAULT NULL,
-  `location` varchar(512) DEFAULT NULL,
+  `location` varchar(4096) DEFAULT NULL,
   `creationDate` datetime DEFAULT NULL,
   `lastModificationDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `node` text,
-  PRIMARY KEY (`identifier`)
+  PRIMARY KEY (`identifier`(767)),
+  INDEX nod_typ_idx (`type`),
+  INDEX nod_own_idx (`owner`),
+  INDEX nod_loc_idx (`location`(767))
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 INSERT INTO nodes SELECT * from vospace.nodes;
 ALTER TABLE nodes DROP node;
+ALTER TABLE nodes ADD COLUMN `depth` smallint AFTER identifier;
+UPDATE nodes SET depth = (LENGTH(identifier)-LENGTH(REPLACE(identifier,'/',''))-3);
 
 --
 -- Table structure for table `results`
@@ -103,7 +111,7 @@ DROP TABLE IF EXISTS `transfers`;
 CREATE TABLE `transfers` (
   `identifier` int(11) NOT NULL AUTO_INCREMENT,
   `jobid` varchar(128) DEFAULT NULL,
-  `endpoint` varchar(512) NOT NULL,
+  `endpoint` varchar(4096) NOT NULL,
   `created` datetime DEFAULT NULL,
   `completed` datetime DEFAULT NULL,
   PRIMARY KEY (`identifier`)
