@@ -88,6 +88,7 @@ CREATE TABLE `nodes` (
 INSERT INTO nodes SELECT * from vospace.nodes;
 ALTER TABLE nodes DROP node;
 ALTER TABLE nodes ADD COLUMN `depth` smallint AFTER identifier;
+ALTER TABLE nodes ADD INDEX nod_dep_idx (`depth`);
 UPDATE nodes SET depth = (LENGTH(identifier)-LENGTH(REPLACE(identifier,'/',''))-3);
 
 --
