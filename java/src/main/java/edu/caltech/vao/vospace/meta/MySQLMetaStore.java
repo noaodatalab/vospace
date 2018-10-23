@@ -269,7 +269,6 @@ public class MySQLMetaStore implements MetaStore{
     }
 
 
-/* TODO */
     public String checkData(String[] identifiers, int limit) throws SQLException {
         String whereQuery = null, token = null;
         // Get count
@@ -550,7 +549,6 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Get a token
      */
-/* TODO */
     public String getToken(String[] identifiers) throws SQLException {
         String whereQuery = null, query = null;
         for (int i = 0; i < identifiers.length; i++) {
