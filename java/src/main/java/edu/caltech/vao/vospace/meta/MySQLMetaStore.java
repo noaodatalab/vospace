@@ -419,7 +419,7 @@ public class MySQLMetaStore implements MetaStore{
     public String[] getChildren(String identifier) throws SQLException {
         String query = "select identifier from nodes where depth = '" + (getIdDepth(identifier) + 1)
                 + "' and identifier like '" + escapeId(identifier) + "/%'";
-        System.err.println(query);
+//        System.err.println(query);
         return getAsStringArray(query);
         /*
         ArrayList<String> children = new ArrayList<String>();
@@ -443,7 +443,7 @@ public class MySQLMetaStore implements MetaStore{
         return children; */
         String query = "select identifier from nodes where depth = '" + (getIdDepth(identifier) + 1)
                 + "' and identifier like '" + escapeId(identifier) + "/%'";
-        // System.err.println(query);
+//        System.err.println(query);
         String[] childIDs = getAsStringArray(query);
         String[] children = new String[childIDs.length];
         for (int i = 0; i < childIDs.length; i++) {
@@ -459,7 +459,7 @@ public class MySQLMetaStore implements MetaStore{
     public String[] getAllChildren(String identifier) throws SQLException {
         ArrayList<String> children = new ArrayList<String>();
         String query = "select identifier from nodes where identifier like '" + escapeId(identifier) + "/%'";
-        // System.err.println(query);
+//        System.err.println(query);
         for (String child : getAsStringArray(query)) {
             if (!child.equals(fixId(identifier))) {
                 children.add(child);
