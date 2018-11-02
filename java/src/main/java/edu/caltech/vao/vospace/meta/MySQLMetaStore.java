@@ -43,6 +43,7 @@ public class MySQLMetaStore implements MetaStore{
     private String DB_UID;
     private String DB_PWD;
     private String connectionURL;
+    private String[] propertyColumns = null;
     private int STOREID = 0;
     private int CONNID = 0;
 
@@ -372,7 +373,7 @@ public class MySQLMetaStore implements MetaStore{
         // Set the URI for the node to the identifier
         node.setUri(fixedId);
         // Get the Properties for the node, and set them in the Node object
-        String[] propNames = getAllPropertyNames();
+        String[] propNames = getPropertyColumns();
         // First build a query of all column names to get all column values
         StringBuilder columns = new StringBuilder();
         boolean first = true;
@@ -741,15 +742,18 @@ public class MySQLMetaStore implements MetaStore{
     }
 
     /*
-     * Get the properties of the specified type
+     * Get the columns of the properties table
      */
-    private String[] getAllPropertyNames() throws SQLException {
-        String query = "select identifier from metaproperties";
-        ArrayList<String> list = new ArrayList<String>();
-        for (String url : getAsStringArray(query)) {
-            list.add(url.substring(url.lastIndexOf('#') + 1));
+    private String[] getPropertyColumns() throws SQLException {
+        if (propertyColumns == null) {
+            String db = DB_URL.substring(DB_URL.indexOf('/') + 1);
+            String query = "select column_name from INFORMATION_SCHEMA.COLUMNS where table_name = 'properties' and table_schema = '"
+                    + db + "' and column_name != 'identifier'";
+//            System.out.println(query);
+            propertyColumns = getAsStringArray(query);
+//            System.out.println(StringUtils.join(propertyColumns,','));
         }
-        return list.toArray(new String[0]);
+        return propertyColumns;
     }
 
     /*
