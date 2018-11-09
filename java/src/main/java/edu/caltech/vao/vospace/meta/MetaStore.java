@@ -43,22 +43,22 @@ public interface MetaStore {
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, Object metadata) throws SQLException;
+    public void storeData(String identifier, int type, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException;
+    public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String owner, String location, Object metadata) throws SQLException;
+    public void storeData(String identifier, int type, String owner, String location, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException;
+    public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException, VOSpaceException;
 
     public String checkData(String[] identifiers, int limit) throws SQLException;
 
@@ -78,19 +78,19 @@ public interface MetaStore {
     /*
      * Update the metadata for the specified identifier
      */
-    public void updateData(String identifier, Object metadata) throws SQLException;
+    public void updateData(String identifier, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Update the metadata for the specified identifier including updating the
      * identifier
      */
-    public void updateData(String identifier, String newIdentifier, Object metadata) throws SQLException;
+    public void updateData(String identifier, String newIdentifier, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Update the metadata for the specified identifier including updating the
      * identifier and the location
      */
-    public void updateData(String identifier, String newIdentifier, String newLocation, Object metadata) throws SQLException;
+    public void updateData(String identifier, String newIdentifier, String newLocation, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Get a token

@@ -212,7 +212,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, Object metadata) throws SQLException {
+    public void storeData(String identifier, int type, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             // String query = "insert into nodes (identifier, type, creationDate, node) values ('" + fixId(identifier)
             //      + "', '" + type + "', cast(now() as datetime), '" + (String) metadata + "')";
@@ -227,7 +227,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException {
+    public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             // String query = "insert into nodes (identifier, type, owner, creationDate, node) values ('" + fixId(identifier)
             //      + "', '" + type + "', '" + owner + "', cast(now() as datetime), '" + (String) metadata + "')";
@@ -242,7 +242,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String owner, String location, Object metadata) throws SQLException {
+    public void storeData(String identifier, int type, String owner, String location, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             // String query = "insert into nodes (identifier, type, owner, location, creationDate, node) values ('" + fixId(identifier)
             //      + "', '" + type + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
@@ -257,7 +257,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException {
+    public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             // String query = "insert into nodes (identifier, type, view, owner, location, creationDate, node) values ('" + fixId(identifier)
             //      + "', '" + type + "', '" + view + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
@@ -420,7 +420,6 @@ public class MySQLMetaStore implements MetaStore{
     public String[] getChildren(String identifier) throws SQLException {
         String query = "select identifier from nodes where depth = '" + (getIdDepth(identifier) + 1)
                 + "' and identifier like '" + escapeId(identifier) + "/%'";
-//        System.err.println(query);
         return getAsStringArray(query);
         /*
         ArrayList<String> children = new ArrayList<String>();
@@ -444,7 +443,6 @@ public class MySQLMetaStore implements MetaStore{
         return children; */
         String query = "select identifier from nodes where depth = '" + (getIdDepth(identifier) + 1)
                 + "' and identifier like '" + escapeId(identifier) + "/%'";
-//        System.err.println(query);
         String[] childIDs = getAsStringArray(query);
         String[] children = new String[childIDs.length];
         for (int i = 0; i < childIDs.length; i++) {
@@ -460,7 +458,6 @@ public class MySQLMetaStore implements MetaStore{
     public String[] getAllChildren(String identifier) throws SQLException {
         ArrayList<String> children = new ArrayList<String>();
         String query = "select identifier from nodes where identifier like '" + escapeId(identifier) + "/%'";
-//        System.err.println(query);
         for (String child : getAsStringArray(query)) {
             if (!child.equals(fixId(identifier))) {
                 children.add(child);
@@ -500,7 +497,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Update the metadata for the specified identifier
      */
-    public void updateData(String identifier, Object metadata) throws SQLException {
+    public void updateData(String identifier, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             String node = updateProperties((String) metadata);
             /* String encode = node.replace("\"", "'");
@@ -513,7 +510,7 @@ public class MySQLMetaStore implements MetaStore{
      * Update the metadata for the specified identifier including updating the
      * identifier
      */
-    public void updateData(String identifier, String newIdentifier, Object metadata) throws SQLException {
+    public void updateData(String identifier, String newIdentifier, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             String node = updateProperties((String) metadata);
             String fixedId = fixId(identifier);
@@ -532,7 +529,7 @@ public class MySQLMetaStore implements MetaStore{
      * Update the metadata for the specified identifier including updating the
      * identifier and the location
      */
-    public void updateData(String identifier, String newIdentifier, String newLocation, Object metadata) throws SQLException {
+    public void updateData(String identifier, String newIdentifier, String newLocation, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             String node = updateProperties((String) metadata);
             String fixedId = fixId(identifier);
@@ -970,6 +967,7 @@ public class MySQLMetaStore implements MetaStore{
      * Execute a query on the store
      */
     private ResultSet execute(String query) throws SQLException {
+//        System.err.println(query);
         ResultSet result = null;
         Statement statement = getConnection().createStatement();
         boolean success = statement.execute(query);
@@ -981,6 +979,7 @@ public class MySQLMetaStore implements MetaStore{
      * Insert/update query on the store
      */
     private void update(String query) throws SQLException {
+//        System.err.println(query);
         Connection connection = null;
         Statement statement = null;
         try {
@@ -1014,42 +1013,33 @@ public class MySQLMetaStore implements MetaStore{
      * Extract and store the properties from the specified node description
      * Updated to store each property into a column of the properties table
      */
-    private void storeProperties(String nodeAsString) throws SQLException {
-        Connection connection = getConnection();
-        Statement statement = connection.createStatement();
-        try {
-            Node node = new Node(nodeAsString.getBytes());
-            String identifier = fixId(node.getUri());
-            StringBuilder columns = new StringBuilder("identifier");
-            StringBuilder values = new StringBuilder("'" + identifier + "'");
-            HashMap<String, String> properties = node.getProperties();
-            for (Map.Entry<String, String> prop : properties.entrySet()) {
-                String property = prop.getKey();
-                String shortProp = property.substring(property.lastIndexOf('#') + 1);
-                if (!shortProp.equals("identifier")) {
-                    columns.append(", ").append(shortProp);
-                    values.append(", ").append("'").append(prop.getValue()).append("'");
-                }
+    private void storeProperties(String nodeAsString) throws SQLException, VOSpaceException {
+        Node node = new Node(nodeAsString.getBytes());
+        String identifier = fixId(node.getUri());
+        StringBuilder columns = new StringBuilder("identifier");
+        StringBuilder values = new StringBuilder("'" + identifier + "'");
+        HashMap<String, String> properties = node.getProperties();
+        for (Map.Entry<String, String> prop : properties.entrySet()) {
+            String property = prop.getKey();
+            String shortProp = property.substring(property.lastIndexOf('#') + 1);
+            if (!shortProp.equals("identifier")) {
+                columns.append(", ").append(shortProp);
+                values.append(", ").append("'").append(prop.getValue()).append("'");
             }
-            String query = "insert into properties (" + columns.toString() + ") values (" + values.toString() + ")";
-            statement.executeUpdate(query);
-            /*      for (Map.Entry<String, String> prop : properties.entrySet()) {
-                String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + prop.getKey() + "', '" + prop.getValue() + "')";
-                statement.executeUpdate(query);
-            } */
-            /*      NodeType node = NodeType.Factory.parse(nodeAsString);
-            String identifier = node.getUri();
-            PropertyListType properties = node.getProperties();
-            for (PropertyType property : properties.getPropertyArray()) {
-                String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + property.getUri() + "', '" + property.getStringValue() + "')";
-                statement.executeUpdate(query);
-                } */
-        } catch (Exception e) { e.printStackTrace(); }
-        finally {
-            statement.close();
-            connection.close();
-//          System.err.println("*** Closing db connection: "+ STOREID + "-" + CONNID);
         }
+        String query = "insert into properties (" + columns.toString() + ") values (" + values.toString() + ")";
+        update(query);
+        /*      for (Map.Entry<String, String> prop : properties.entrySet()) {
+            String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + prop.getKey() + "', '" + prop.getValue() + "')";
+            statement.executeUpdate(query);
+        } */
+        /*      NodeType node = NodeType.Factory.parse(nodeAsString);
+        String identifier = node.getUri();
+        PropertyListType properties = node.getProperties();
+        for (PropertyType property : properties.getPropertyArray()) {
+            String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + property.getUri() + "', '" + property.getStringValue() + "')";
+            statement.executeUpdate(query);
+        } */
     }
 
 
@@ -1059,52 +1049,42 @@ public class MySQLMetaStore implements MetaStore{
      * @param nodeAsString String representation of node whose properties are to be stored
      * @return string representation of node with updated properties (deleted where specified)
      */
-    private String updateProperties(String nodeAsString) throws SQLException {
-        Node node = null;
-        Connection connection = getConnection();
-        Statement statement = connection.createStatement();
-        try {
-            node = new Node(nodeAsString.getBytes());
-            String identifier = fixId(node.getUri());
-            StringBuilder updates = new StringBuilder();
-            HashMap<String, String> properties = node.getProperties();
-            if (!properties.isEmpty()) {
-                for (Map.Entry<String, String> prop : properties.entrySet()) {
-                    String property = prop.getKey();
-                    String shortProp = property.substring(property.lastIndexOf('#') + 1);
-                    if (!shortProp.equals("identifier")) {
-                        if (updates.length() != 0) { updates.append(", "); }
-                        updates.append(shortProp).append(" = ").append("'").append(prop.getValue()).append("'");
-                    }
-                }
-            }
-            /* for (Map.Entry<String, String> prop : properties.entrySet()) {
-                String query = "update properties set value = '" + prop.getValue() + "' where identifier = '" + identifier + "' and property = '" + prop.getKey() + "'";
-                statement.executeUpdate(query);
-            } */
-            // Check for deleted properties
-            String[] nilSet = node.get("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']/@uri");
-            if (nilSet.length > 0) {
-                for (String delProp : nilSet) {
+    private String updateProperties(String nodeAsString) throws SQLException, VOSpaceException {
+        Node node = new Node(nodeAsString.getBytes());
+        String identifier = fixId(node.getUri());
+        StringBuilder updates = new StringBuilder();
+        HashMap<String, String> properties = node.getProperties();
+        if (!properties.isEmpty()) {
+            for (Map.Entry<String, String> prop : properties.entrySet()) {
+                String property = prop.getKey();
+                String shortProp = property.substring(property.lastIndexOf('#') + 1);
+                if (!shortProp.equals("identifier")) {
                     if (updates.length() != 0) { updates.append(", "); }
-                    updates.append(delProp.substring(delProp.lastIndexOf('#') + 1)).append(" = NULL");
+                    updates.append(shortProp).append(" = ").append("'").append(prop.getValue()).append("'");
                 }
             }
-            /* for (String delProp : nilSet) {
-                String query = "delete from properties where identifier = '" + identifier + "' and property = '" + delProp + "'";
-                statement.executeUpdate(query);
-            } */
-            if (updates.length() > 0) {
-                String query = "update properties set " + updates.toString() + " where identifier = '" + identifier + "'";
-                statement.executeUpdate(query);
-            }
-            node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
-        } catch (Exception e) { e.printStackTrace(); }
-        finally {
-            statement.close();
-            connection.close();
-//          System.err.println("*** Closing db connection: "+ STOREID + "-" + CONNID);
         }
+        /* for (Map.Entry<String, String> prop : properties.entrySet()) {
+            String query = "update properties set value = '" + prop.getValue() + "' where identifier = '" + identifier + "' and property = '" + prop.getKey() + "'";
+            statement.executeUpdate(query);
+        } */
+        // Check for deleted properties
+        String[] nilSet = node.get("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']/@uri");
+        if (nilSet.length > 0) {
+            for (String delProp : nilSet) {
+                if (updates.length() != 0) { updates.append(", "); }
+                updates.append(delProp.substring(delProp.lastIndexOf('#') + 1)).append(" = NULL");
+            }
+        }
+        /* for (String delProp : nilSet) {
+            String query = "delete from properties where identifier = '" + identifier + "' and property = '" + delProp + "'";
+            statement.executeUpdate(query);
+        } */
+        if (updates.length() > 0) {
+            String query = "update properties set " + updates.toString() + " where identifier = '" + identifier + "'";
+            update(query);
+        }
+        node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
         return node.toString();
     }
 
