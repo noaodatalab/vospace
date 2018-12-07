@@ -65,7 +65,7 @@ public class VOSpaceManager {
     protected ArrayList<Views.View> SPACE_PROVIDES_OTHER;
     protected HashMap<String, Capability> CAPABILITIES;
     protected HashMap<String, Process> PROCESSES;
-    
+
     protected ArrayList<Protocol> SPACE_CLIENT_PROTOCOLS;
     protected ArrayList<Protocol> SPACE_SERVER_PROTOCOLS;
     protected HashMap<String, ProtocolHandler> PROTOCOLS;
@@ -105,8 +105,8 @@ public class VOSpaceManager {
             Properties props = new Properties();
             props.load(new FileInputStream(propFile));
             // Set space properties
-	    ROOT_NODE = props.containsKey("space.rootnode") ? props.getProperty("space.rootnode") : ROOT; 							       
-	    BASEURI = props.containsKey("space.baseuri") ? props.getProperty("space.baseuri") : BASE; 
+	    ROOT_NODE = props.containsKey("space.rootnode") ? props.getProperty("space.rootnode") : ROOT;
+	    BASEURI = props.containsKey("space.baseuri") ? props.getProperty("space.baseuri") : BASE;
 	    STAGING_LOCATION = props.containsKey("space.staging_area") ? props.getProperty("space.staging_area") : BASE;
             structure = Boolean.parseBoolean(props.getProperty("space.supports.structure"));
             if (structure) engine = new TransformEngine(STAGING_LOCATION);
@@ -116,7 +116,7 @@ public class VOSpaceManager {
 	    SPACE_ACCEPTS_IMAGE = getViewList(props.getProperty("space.accepts.image"));
             SPACE_ACCEPTS_TABLE = getViewList(props.getProperty("space.accepts.table"));
             SPACE_ACCEPTS_ARCHIVE = getViewList(props.getProperty("space.accepts.archive"));
-	    SPACE_ACCEPTS_OTHER = getViewList(props.getProperty("space.accepts.other")); 
+	    SPACE_ACCEPTS_OTHER = getViewList(props.getProperty("space.accepts.other"));
             SPACE_PROVIDES_IMAGE = getViewList(props.getProperty("space.provides.image"));
             SPACE_PROVIDES_TABLE = getViewList(props.getProperty("space.provides.table"));
             SPACE_PROVIDES_ARCHIVE = getViewList(props.getProperty("space.provides.archive"));
@@ -141,12 +141,12 @@ public class VOSpaceManager {
 	    // Identifier regex
 	    VOS_PATTERN = Pattern.compile("vos://[\\w\\d][\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]{2,}(![\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+(/[\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+)*)+");
 	    nfactory = NodeFactory.getInstance();
-        } catch (Exception e) {	  
+        } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
         }
     }
 
-    /** 
+    /**
      * Create the specified node
      * @param node The node to be created
      * @param owner The owner of the node
@@ -156,14 +156,14 @@ public class VOSpaceManager {
     public Node create(Node node, String owner, boolean overwrite) throws VOSpaceException {
 	String uri = node.getUri();
 	// Is identifier syntactically valid?
-	if (!validId(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid"); 
+	if (!validId(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid");
 	// Is the parent a valid container?
-	if (!validParent(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid - bad parent."); 
+	if (!validParent(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid - bad parent.");
 	try {
 	    // Does node already exist?
  	    boolean exists = store.isStored(uri);
-	    if (exists && !overwrite) throw new VOSpaceException(VOSpaceException.CONFLICT, "A Node already exists with the requested URI"); 
-	    // Check specified node type 
+	    if (exists && !overwrite) throw new VOSpaceException(VOSpaceException.CONFLICT, "A Node already exists with the requested URI");
+	    // Check specified node type
 	    if (exists) {
 		int type = store.getType(uri);
 		if (type != NodeType.getIdByUri(node.getType())) throw new VOSpaceException(VOSpaceException.PERMISSION_DENIED, "The node type cannot be changed");
@@ -299,7 +299,7 @@ public class VOSpaceManager {
     public Node getNode(String identifier, String detail, int limit) throws VOSpaceException {
 	Node node = null;
 	// Is identifier syntactically valid?
-	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid."); 
+	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid.");
 	// Retrieve original node
 	try {
 	    String[] result = store.getData(new String[] {identifier}, null, limit);
@@ -322,15 +322,27 @@ public class VOSpaceManager {
 		    if (node instanceof ContainerNode) {
 			ContainerNode container = (ContainerNode) node;
 			// Get children and check length property
-			for (String child: store.getChildrenNodes(identifier)) {
+//        	System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
+        	String[] childNodes = store.getChildrenNodes(identifier);
+        	int length = 0;
+			for (String child: childNodes) {
+			    length += child.length();
+			}
+        	StringBuilder children = new StringBuilder(length);
+			for (String child: childNodes) {
+			    children.append(child);
+			}
+			container.addNode(children.toString());
+//			for (String child: store.getChildrenNodes(identifier)) {
 //			    Node cnode = nfactory.getNode(store.getNode(child));
 //			    cnode = setLength(cnode);
-			    container.addNode(child);
+//			    container.addNode(child);
 //			for (String child: store.getChildren(identifier)) {
 //			    Node cnode = nfactory.getNode(store.getNode(child));
 //			    cnode = setLength(cnode);
 //			    container.addNode(cnode.toString());
-			}
+//			}
+//        	System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
 		    }
 		}
 		// Set properties
@@ -387,18 +399,18 @@ public class VOSpaceManager {
     }
 
 
-    
-    /** 
+
+    /**
      * Delete the specified node
      * @param nodeid The identifier of the node to be deleted
      */
     public void delete(String identifier) throws VOSpaceException {
 	// Is identifier syntactically valid?
-	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid"); 
+	if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid");
 	try {
 	    // Does node already exist?
 	    boolean exists = store.isStored(identifier);
-	    if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI"); 
+	    if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI");
 	    // Remove node
 	    if (store.getType(identifier) == NodeType.CONTAINER_NODE.ordinal()) {
 	        store.removeData(identifier, true);
@@ -481,7 +493,7 @@ public class VOSpaceManager {
     }
 
     /**
-     * Check whether the specified property is in the list of known properties - 
+     * Check whether the specified property is in the list of known properties -
      * if not, add it - and that the property is also not read only
      * @param uri The identifier of the property to check
      * @return whether a successful property check or not
@@ -502,11 +514,11 @@ public class VOSpaceManager {
     private String getLocation(String identifier) {
 	String name = identifier.substring(identifier.lastIndexOf("!"));
         String dataname = name.substring(name.indexOf("/") + 1);
-        return BASEURI + "/" + dataname; 
+        return BASEURI + "/" + dataname;
     }
 
     /**
-     * Resolve the specified location for a file 
+     * Resolve the specified location for a file
      * @param identifier The logical identifier for the file
      * @param viewCheck Whether to check if a view transformation should happen
      * @return the physical location for the file
@@ -533,7 +545,7 @@ public class VOSpaceManager {
 				//				break;
 			    }
 			}
-		    } 
+		    }
 		} else {
 		    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "The specified URL is no longer valid.");
 		}
@@ -544,7 +556,7 @@ public class VOSpaceManager {
 		    String oldView = store.getView(target);
 		    location = engine.transform(location, oldView, view);
 		}
-		// Make sure that a URI is returned 
+		// Make sure that a URI is returned
 		if (!location.startsWith("file://")) location = "file://" + location;
 		return location;
 	    } else {
@@ -583,7 +595,7 @@ public class VOSpaceManager {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
     }
-	
+
 
     /**
      * Infer the view from the file extension
@@ -597,7 +609,7 @@ public class VOSpaceManager {
 	return view;
     }
 
-    
+
     /**
      * Delete the bytes from the specified location
      * @param location The location of the bytes to be removed
@@ -684,7 +696,7 @@ public class VOSpaceManager {
         } catch (Exception e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
-    } 
+    }
 
     /**
      * Register a set of capabilities
@@ -722,7 +734,7 @@ public class VOSpaceManager {
 	}
     }
 
-    
+
     private Capability getCapabilityImpl(String className, String capKey, Properties props) throws VOSpaceException {
 	try {
 	    Capability capImpl = (Capability) Class.forName(className).newInstance();
@@ -791,10 +803,10 @@ public class VOSpaceManager {
 	}
     }
 
-    
+
     /**
      * Validate the requested access associated with the given DataLab token
-     * @param authToken The authority token associated with the user 
+     * @param authToken The authority token associated with the user
      * @param node The identifier of the node being accessed
      * @param isRead The mode of access - read/write
      */
