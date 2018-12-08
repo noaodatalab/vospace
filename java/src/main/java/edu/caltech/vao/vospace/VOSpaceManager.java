@@ -322,7 +322,6 @@ public class VOSpaceManager {
 		    if (node instanceof ContainerNode) {
 			ContainerNode container = (ContainerNode) node;
 			// Get children and check length property
-//        	System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
         	String[] childNodes = store.getChildrenNodes(identifier);
         	int length = 0;
 			for (String child: childNodes) {
@@ -342,7 +341,6 @@ public class VOSpaceManager {
 //			    cnode = setLength(cnode);
 //			    container.addNode(cnode.toString());
 //			}
-//        	System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()));
 		    }
 		}
 		// Set properties
