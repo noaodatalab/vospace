@@ -348,28 +348,35 @@ public class MySQLMetaStore implements MetaStore{
         }
         // Construct listing query
         // query = "select node from nodes ";
-        query = "select identifier from nodes ";
+        query = "select identifier, type from nodes ";
         //      query += whereQuery + " order by identifier ";
         query += whereQuery + " order by type ";
         if (limit > 0) query += " limit " + limit;
         if (offset > 0) query += " offset " + offset;
         // String[] nodes = getAsStringArray(fixId(query));
-        String[] ids = getAsStringArray(query);
-        String[] nodes = new String[ids.length];
-        for (int i = 0; i < ids.length; i++) {
-            nodes[i] = createNode(ids[i]);
+        ResultSet result = null;
+        ArrayList<String> nodes = new ArrayList<String>();
+        try {
+            result = execute(query);
+            while (result.next()) {
+                String nodeId = result.getString(1);
+                int nodeType = result.getInt(2);
+                nodes.add(createNode(nodeId, nodeType));
+            }
+        } finally {
+            closeResult(result);
         }
-        return nodes;
+        return nodes.toArray(new String[0]);
     }
 
     /*
      * Create the specified node string by combining the other data stored in the database
      */
 /* TODO: Figure out how to deal with Views and Capabilities */
-    private String createNode(String identifier) throws SQLException, VOSpaceException {
+    private String createNode(String identifier, int type) throws SQLException, VOSpaceException {
         // Create a new Node object of the proper type
         String fixedId = fixId(identifier);
-	    Node node = NodeFactory.getInstance().getNodeByType(NodeType.getUriById(getType(fixedId)));
+	    Node node = NodeFactory.getInstance().getNodeByType(NodeType.getUriById(type));
         // Set the URI for the node to the identifier
         node.setUri(fixedId);
         // Get the Properties for the node, and set them in the Node object
@@ -410,7 +417,7 @@ public class MySQLMetaStore implements MetaStore{
         String query = "select node from nodes where identifier = '" + fixId(identifier) + "'";
         node = getAsString(query);
         return node; */
-        return createNode(identifier);
+        return createNode(identifier, getType(identifier));
     }
 
 
@@ -441,14 +448,21 @@ public class MySQLMetaStore implements MetaStore{
         /* String query = "select node from nodes where identifier like '" + fixId(identifier) + "/%' and identifier not like '" + fixId(identifier) + "/%/%'";
         String[] children = getAsStringArray(query);
         return children; */
-        String query = "select identifier from nodes where depth = '" + (getIdDepth(identifier) + 1)
+        String query = "select identifier, type from nodes where depth = '" + (getIdDepth(identifier) + 1)
                 + "' and identifier like '" + escapeId(identifier) + "/%'";
-        String[] childIDs = getAsStringArray(query);
-        String[] children = new String[childIDs.length];
-        for (int i = 0; i < childIDs.length; i++) {
-            children[i] = createNode(childIDs[i]);
+        ResultSet result = null;
+        ArrayList<String> children = new ArrayList<String>();
+        try {
+            result = execute(query);
+            while (result.next()) {
+                String childId = result.getString(1);
+                int childType = result.getInt(2);
+                children.add(createNode(childId, childType));
+            }
+        } finally {
+            closeResult(result);
         }
-        return children;
+        return children.toArray(new String[0]);
     }
 
 
