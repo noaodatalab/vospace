@@ -66,9 +66,9 @@ def list_roots():
         if ac.isValidUser (line): timed_ls (line + '://')
 
 username = sys.argv[1] if len(sys.argv) > 1 else 'geychaner'
-fname = sys.argv[2] if len(sys.argv) > 1 else os.path.expanduser('~') + '/sampledata/grzw1_sn10_15M.jpg'
-n_files = int(sys.argv[3]) if len(sys.argv) > 1 else 10
-n_dirs = int(sys.argv[4]) if len(sys.argv) > 2 else n_files
+fname = sys.argv[2] if len(sys.argv) > 2 else os.path.expanduser('~') + '/sampledata/grzw1_sn10_15M.jpg'
+n_files = int(sys.argv[3]) if len(sys.argv) > 3 else 10
+n_dirs = int(sys.argv[4]) if len(sys.argv) > 4 else n_files
 while not ac.isUserLoggedIn(username):
     ac.login(username, getpass.getpass('Enter {} password (+ENTER): '.format(username)))
 else:
