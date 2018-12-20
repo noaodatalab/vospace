@@ -63,6 +63,7 @@ def list_roots():
     for line in sys.stdin:
         line = line.rstrip()
         if ac.isValidUser (line): timed_ls (line + '://')
+        else: print ("Invalid user " + line)
 
 username = sys.argv[1] if len(sys.argv) > 1 else 'geychaner'
 fname = sys.argv[2] if len(sys.argv) > 2 else os.path.expanduser('~') + '/sampledata/grzw1_sn10_15M.jpg'
