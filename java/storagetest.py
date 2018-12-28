@@ -65,20 +65,24 @@ def list_roots():
         if ac.isValidUser (line): timed_ls (line + '://')
         else: print ("Invalid user " + line)
 
-username = sys.argv[1] if len(sys.argv) > 1 else 'geychaner'
-fname = sys.argv[2] if len(sys.argv) > 2 else os.path.expanduser('~') + '/sampledata/grzw1_sn10_15M.jpg'
-n_files = int(sys.argv[3]) if len(sys.argv) > 3 else 5
-n_dirs = int(sys.argv[4]) if len(sys.argv) > 4 else n_files
-while not ac.isUserLoggedIn(username):
-    ac.login(username, getpass.getpass('Enter {} password (+ENTER): '.format(username)))
-else:
-    try:
-        print(timed_ls ('vos://'))
-        print(recursive_ls ('fitz://'))
-        flist = timed_ls ('fsvs://')
-        if len(flist) == 1: print (flist);
-        recursive_ls ('ls_dr7://')
-    except KeyboardInterrupt:
-        pass
-    finally:
-        test_copies(fname, n_files, n_dirs)
+def main():
+    username = sys.argv[1] if len(sys.argv) > 1 else 'geychaner'
+    fname = sys.argv[2] if len(sys.argv) > 2 else os.path.expanduser('~') + '/sampledata/grzw1_sn10_15M.jpg'
+    n_files = int(sys.argv[3]) if len(sys.argv) > 3 else 5
+    n_dirs = int(sys.argv[4]) if len(sys.argv) > 4 else n_files
+    while not ac.isUserLoggedIn(username):
+        ac.login(username, getpass.getpass('Enter {} password (+ENTER): '.format(username)))
+    else:
+        try:
+            print(timed_ls ('vos://'))
+            print(recursive_ls ('fitz://'))
+            flist = timed_ls ('fsvs://')
+            if len(flist) == 1: print (flist);
+            recursive_ls ('ls_dr7://')
+        except KeyboardInterrupt:
+            pass
+        finally:
+            test_copies(fname, n_files, n_dirs)
+
+if __name__ == '__main__':
+    main()
