@@ -8,13 +8,14 @@ package edu.caltech.vao.vospace.meta;
 
 import org.apache.commons.pool.ObjectPool;
 import java.sql.SQLException;
+import edu.caltech.vao.vospace.VOSpaceException;
 
 /**
- * This interface represents a metadata store for VOSpace 
+ * This interface represents a metadata store for VOSpace
  */
 public interface MetaStore {
 
-    /* 
+    /*
      * Get the job with the specified identifier
      * @param jobID The ID of the job to get
      * @return The requested job or <i>null</i> if there is no job with the given ID.
@@ -27,7 +28,7 @@ public interface MetaStore {
      */
     public void setStoreID(int id);
 
-    /* 
+    /*
      * Add the job with the specified identifier
      * @param jobID The ID of the job to get
      * @param job The XML string representation of the job
@@ -42,22 +43,22 @@ public interface MetaStore {
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, Object metadata) throws SQLException;
+    public void storeData(String identifier, int type, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException;
+    public void storeData(String identifier, int type, String owner, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String owner, String location, Object metadata) throws SQLException;
+    public void storeData(String identifier, int type, String owner, String location, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Store the metadata for the specified identifier
      */
-    public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException;
+    public void storeData(String identifier, int type, String view, String owner, String location, Object metadata) throws SQLException, VOSpaceException;
 
     public String checkData(String[] identifiers, int limit) throws SQLException;
 
@@ -67,29 +68,29 @@ public interface MetaStore {
      * Retrieve the metadata for the specified identifier at the specified level
      * of detail
      */
-    public String[] getData(String[] identifiers, String token, int limit) throws SQLException;
+    public String[] getData(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException;
 
     /*
      * Remove the metadata for the specified identifier
      */
     public void removeData(String identifier, boolean container) throws SQLException;
- 
+
     /*
      * Update the metadata for the specified identifier
      */
-    public void updateData(String identifier, Object metadata) throws SQLException;
+    public void updateData(String identifier, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Update the metadata for the specified identifier including updating the
      * identifier
      */
-    public void updateData(String identifier, String newIdentifier, Object metadata) throws SQLException;
+    public void updateData(String identifier, String newIdentifier, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Update the metadata for the specified identifier including updating the
      * identifier and the location
      */
-    public void updateData(String identifier, String newIdentifier, String newLocation, Object metadata) throws SQLException;
+    public void updateData(String identifier, String newIdentifier, String newLocation, Object metadata) throws SQLException, VOSpaceException;
 
     /*
      * Get a token
@@ -125,8 +126,8 @@ public interface MetaStore {
      * Get the owner of the object with the specified identifier
      */
     public String getOwner(String identifier) throws SQLException;
-    
-    /* 
+
+    /*
      * Check whether the specified property is known to the service
      */
     public boolean isKnownProperty(String identifier) throws SQLException;
@@ -191,7 +192,7 @@ public interface MetaStore {
      * Return the creation date of a transfer
      */
     public long getCreated(String endpoint) throws SQLException;
-    
+
     /*
      * Return the identifier associated with the specified location
      */
@@ -211,7 +212,7 @@ public interface MetaStore {
      * Get the property type of the specified node
      */
     public String getPropertyType(String identifier) throws SQLException;
-    
+
     /*
      * Check whether the property is read/only
      */
@@ -230,15 +231,15 @@ public interface MetaStore {
     /*
      * Get the direct children nodes of the specified container node
      */
-    public String[] getChildrenNodes(String identifier) throws SQLException; 
+    public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException;
 
 
-    
+
     /*
      * Get all the children of the specified container node
      */
     public String[] getAllChildren(String identifier) throws SQLException;
-    
+
     /*
      * Store a result associated with a Job
      */
@@ -252,7 +253,7 @@ public interface MetaStore {
     /*
      *     Get the specified node
      */
-    public String getNode(String identifier) throws SQLException;
+    public String getNode(String identifier) throws SQLException, VOSpaceException;
 
     /*
      * Check the status of a capability (active or not)
@@ -271,7 +272,7 @@ public interface MetaStore {
      */
     public void registerCapability(String identifier, String capability) throws SQLException;
 
-    /* 
+    /*
      * Check whether the capability is registered
      */
     public boolean isKnownCapability(String capability) throws SQLException;

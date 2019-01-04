@@ -14,7 +14,7 @@ import java.io.ByteArrayOutputStream;
 
 import edu.caltech.vao.vospace.VOSpaceException;
 
-/** 
+/**
  * A factory for creating nodes
  */
 public class NodeFactory {
@@ -114,7 +114,15 @@ public class NodeFactory {
      * @return a Node of the default type
      */
     public Node getDefaultNode() throws VOSpaceException {
-	String datanode = "<node xmlns=\"http://www.ivoa.net/xml/VOSpace/v2.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"vos:DataNode\" uri=\"\" busy=\"false\"><properties></properties><accepts></accepts><provides></provides><capabilities></capabilities></node>";
+	return getNodeByType("vos:DataNode");
+    }
+
+    /**
+     * Get a node of a specific type for the service
+     * @return a Node of the default type
+     */
+    public Node getNodeByType(String type) throws VOSpaceException {
+	String datanode = "<node xmlns=\"http://www.ivoa.net/xml/VOSpace/v2.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\""+type+"\" uri=\"\" busy=\"false\"><properties></properties><accepts></accepts><provides></provides><capabilities></capabilities></node>";
 	return getNode(datanode);
     }
 
