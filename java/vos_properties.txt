@@ -10,6 +10,7 @@ ivo://ivoa.net/vospace/core#format
 ivo://ivoa.net/vospace/core#groupread
 ivo://ivoa.net/vospace/core#groupwrite
 ivo://ivoa.net/vospace/core#identifier
+ivo://ivoa.net/vospace/core#ispublic
 ivo://ivoa.net/vospace/core#language
 ivo://ivoa.net/vospace/core#length
 ivo://ivoa.net/vospace/core#MD5
