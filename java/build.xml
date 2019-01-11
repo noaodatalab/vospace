@@ -58,7 +58,9 @@
 
 	<target name="dist" depends="compile" description="generate the distribution">
         <!-- Copy the properties file -->
-        <exec executable="hostname" outputproperty="computer.hostname"/>
+        <exec executable="hostname" outputproperty="computer.hostname">
+		<arg line="-s"/>
+	</exec>
         <copy file="vospace.properties.${computer.hostname}" tofile="${webapp}/WEB-INF/classes/vospace.properties"/>
 
 		<!-- Create the war file -->
