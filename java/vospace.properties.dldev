@@ -23,7 +23,7 @@ server.auth.url=http://dldev.datalab.noao.edu/auth/
 
 # Root directory for HTTP data server (should be same as space.baseuri without file:// scheme identifier)
 server.http.basedir=/data/vospace/users
-server.meta.dburl=gp05.datalab.noao.edu/vospace_new
+server.meta.dburl=gp05.datalab.noao.edu/vospace_dev
 
 # Username for db access
 server.meta.dbuid=dba
