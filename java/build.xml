@@ -20,7 +20,7 @@
 
 <project name="VOSpace-2.0" default="dist" basedir=".">
 	<description>
-        Ant build file for VOSpace 2.0 
+        Ant build file for VOSpace 2.0
     </description>
 
 	<property name="final.war.name" value="vospace-2.0.war" />
@@ -57,6 +57,9 @@
 
 
 	<target name="dist" depends="compile" description="generate the distribution">
+        <!-- Copy the properties file -->
+        <exec executable="hostname" outputproperty="computer.hostname"/>
+        <copy file="vospace.properties.${computer.hostname}" tofile="${webapp}/WEB-INF/classes/vospace.properties"/>
 
 		<!-- Create the war file -->
 		<war destfile="${final.war}" webxml="${webapp}/WEB-INF/web.xml">
