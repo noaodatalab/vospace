@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from dl import authClient as ac, queryClient as qc, storeClient as sc
 import getpass
 import os
@@ -6,27 +7,26 @@ import sys
 import datetime
 import filecmp
 import tempfile
+import argparse
 
-ac.set_svc_url('http://dldev.datalab.noao.edu/auth')
-sc.set_svc_url('http://dldev.datalab.noao.edu/storage')
-
-def timed_ls(dir):
+def timed_ls(dir, print_list=False):
     start = datetime.datetime.now()
     rawls = sc.ls (dir, format="long")
-    flist = rawls.rstrip().split('\n')
-    if not flist or not flist[0]: flist = []
-    print ("{} {} {}".format(datetime.datetime.now() - start, len(flist), dir))
-    return rawls;
+    if not rawls or rawls[-1] is not '\n':
+        print ("{} {} {}: {}".format(datetime.datetime.now() - start, 0, dir, rawls))
+        return []
+    else:
+        if print_list: print (rawls);
+        flist = rawls.rstrip().split('\n')
+        print ("{} {} {}".format(datetime.datetime.now() - start, len(flist), dir))
+        return flist
 
 def recursive_ls(dir, max_depth=None):
-    rawls = timed_ls(dir)
-    flist = rawls.rstrip().split('\n')
-    if not flist or not flist[0]: flist = []
+    flist = timed_ls(dir)
     for f in flist:
         name = f.split(' ')[-1]
         if f[0] == "d" and (max_depth is None or (dir.count('/') - 1 <= max_depth)):
             recursive_ls(dir + name, max_depth=max_depth)
-    return rawls;
 
 def make_copies(file, dir, n_copies):
     for i in range(n_copies):
@@ -66,23 +66,41 @@ def list_roots():
         else: print ("Invalid user " + line)
 
 def main():
-    username = sys.argv[1] if len(sys.argv) > 1 else 'geychaner'
-    fname = sys.argv[2] if len(sys.argv) > 2 else os.path.expanduser('~') + '/sampledata/grzw1_sn10_15M.jpg'
-    n_files = int(sys.argv[3]) if len(sys.argv) > 3 else 5
-    n_dirs = int(sys.argv[4]) if len(sys.argv) > 4 else n_files
-    while not ac.isUserLoggedIn(username):
-        ac.login(username, getpass.getpass('Enter {} password (+ENTER): '.format(username)))
+    host = os.uname().nodename.split('.')[0]
+    defhost = os.uname().nodename if host is 'dldev' or host is 'dltest' else None
+
+    parser = argparse.ArgumentParser(description='Test the VOSpace and storage manager.')
+    parser.add_argument('-u', '--username', default=os.environ['USER'], help="username")
+    parser.add_argument('-c', '--copyfile', default=None, help="file to copy")
+    parser.add_argument('-n', '--hostname', default=defhost, help="storage manager hostname")
+    parser.add_argument('--nfiles', default=5, help="number of files to create")
+    parser.add_argument('--ndirs', default=5, help="number of subdirectories to create")
+    parser.add_argument('-s', '--subdir', default='data', help="subdirectory name to create")
+    parser.add_argument('-f', '--fileservice', action='append', default=[], help="file services to list")
+    parser.add_argument('-p', '--print_list', action='store_true', help="print directory listings")
+    parser.add_argument('-r', '--recurse', action='store_true', help="list file services recursively")
+    args = parser.parse_args()
+
+    if args.hostname:
+        hostname = 'http://{}/'.format(args.hostname)
+        print (hostname)
+        ac.set_svc_url('{}/auth'.format(hostname))
+        sc.set_svc_url('{}/storage'.format(hostname))
+    while not ac.isUserLoggedIn(args.username):
+        ac.login(args.username, getpass.getpass('Enter {} password (+ENTER): '.format(args.username)))
     else:
         try:
-            print(timed_ls ('vos://'))
-            print(recursive_ls ('fitz://'))
-            flist = timed_ls ('fsvs://')
-            if len(flist) == 1: print (flist);
-            recursive_ls ('ls_dr7://')
+            timed_ls ('vos://', print_list=args.print_list)
+            for f in args.fileservice:
+                if args.recurse:
+                    recursive_ls ('{}://'.format(f))
+                else:
+                    timed_ls ('{}://'.format(f), print_list=args.print_list)
         except KeyboardInterrupt:
             pass
         finally:
-            test_copies(fname, n_files, n_dirs)
+            if args.copyfile:
+                test_copies(args.copyfile, args.nfiles, args.ndirs)
 
 if __name__ == '__main__':
     main()
