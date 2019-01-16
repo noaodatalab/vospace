@@ -16,9 +16,9 @@ def timed_ls(dir, print_list=False):
         print ("{} {} {}: {}".format(datetime.datetime.now() - start, 0, dir, rawls))
         return []
     else:
-        if print_list: print (rawls);
         flist = rawls.rstrip().split('\n')
         print ("{} {} {}".format(datetime.datetime.now() - start, len(flist), dir))
+        if print_list: print (rawls);
         return flist
 
 def recursive_ls(dir, max_depth=None):
@@ -41,23 +41,22 @@ def make_subdir_copies(file, n_dirs, n_copies):
         make_copies(file, subdir, n_copies)
         timed_ls(subdir+'/')
 
-def test_copies(fname, n_files, n_dirs):
+def test_copies(fname, subdir, n_files, n_dirs):
     tmpf = tempfile.NamedTemporaryFile(delete=False)
     tmpf.close()
     try:
-        print ('Making data dir ' + sc.mkdir('vos://data'))
-        print ('Copying ' + fname + ' ' + sc.put(fname, 'vos://data/'))
-        make_copies ('vos://data/' + os.path.basename(fname), 'vos://data', n_files)
-        make_subdir_copies ('vos://data/' + os.path.basename(fname), n_dirs, n_files)
-        timed_ls ('vos://data/')
-        print (sc.get('vos://data/' + os.path.basename(fname), tmpf.name))
+        print ('Making subdir {}: {}'.format(subdir, sc.mkdir('vos://{}'.format(subdir))))
+        print ('Copying {} to {}: {}'.format(fname, subdir, sc.put(fname, 'vos://{}/'.format(subdir))))
+        make_copies ('vos://{}/{}'.format(subdir, os.path.basename(fname)), 'vos://{}'.format(subdir), n_files)
+        make_subdir_copies ('vos://{}/{}'.format(subdir, os.path.basename(fname)), n_dirs, n_files)
+        timed_ls ('vos://{}/'.format(subdir))
+        print (sc.get('vos://{}/{}'.format(subdir, os.path.basename(fname)), tmpf.name))
         print ('GET same as PUT: ' + str(filecmp.cmp(tmpf.name, fname, shallow=False)))
     except KeyboardInterrupt:
         pass
     finally:
-        print ('Removing temp data: ' + sc.rmdir ('vos://data'))
+        print ('Removing temp data: ' + sc.rmdir ('vos://{}'.format(subdir)))
         os.remove(tmpf.name)
-        print (timed_ls ('vos://'))
 
 def list_roots():
     for line in sys.stdin:
@@ -66,24 +65,24 @@ def list_roots():
         else: print ("Invalid user " + line)
 
 def main():
-    host = os.uname().nodename.split('.')[0]
-    defhost = os.uname().nodename if host is 'dldev' or host is 'dltest' else None
+    host = os.uname().nodename
+    defhost = host if host.split('.')[0] is 'dltest' else 'dldev.datalab.noao.edu'
 
     parser = argparse.ArgumentParser(description='Test the VOSpace and storage manager.')
-    parser.add_argument('-u', '--username', default=os.environ['USER'], help="username")
+    parser.add_argument('-u', '--username', default=os.environ['USER'], help="username [%(default)s]")
     parser.add_argument('-c', '--copyfile', default=None, help="file to copy")
-    parser.add_argument('-n', '--hostname', default=defhost, help="storage manager hostname")
-    parser.add_argument('--nfiles', default=5, help="number of files to create")
-    parser.add_argument('--ndirs', default=5, help="number of subdirectories to create")
-    parser.add_argument('-s', '--subdir', default='data', help="subdirectory name to create")
+    parser.add_argument('-n', '--hostname', default=defhost, help="storage manager hostname [%(default)s]")
+    parser.add_argument('--nfiles', default=5, type=int, help="number of files to create [%(default)d]")
+    parser.add_argument('--ndirs', default=5, type=int, help="number of subdirectories to create [%(default)d]")
+    parser.add_argument('-s', '--subdir', default='data', help="subdirectory name to create [%(default)s]")
     parser.add_argument('-f', '--fileservice', action='append', default=[], help="file services to list")
-    parser.add_argument('-p', '--print_list', action='store_true', help="print directory listings")
-    parser.add_argument('-r', '--recurse', action='store_true', help="list file services recursively")
+    parser.add_argument('-p', '--print_list', action='store_true', help="print directory listings [%(default)s]")
+    parser.add_argument('-r', '--recurse', action='store_true', help="list file services recursively [%(default)s]")
     args = parser.parse_args()
 
     if args.hostname:
         hostname = 'http://{}/'.format(args.hostname)
-        print (hostname)
+        print ("Connecting to %s" % hostname)
         ac.set_svc_url('{}/auth'.format(hostname))
         sc.set_svc_url('{}/storage'.format(hostname))
     while not ac.isUserLoggedIn(args.username):
@@ -99,8 +98,9 @@ def main():
         except KeyboardInterrupt:
             pass
         finally:
-            if args.copyfile:
-                test_copies(args.copyfile, args.nfiles, args.ndirs)
+            if args.copyfile and os.path.isfile(args.copyfile) and args.subdir:
+                test_copies(os.path.abspath(args.copyfile), args.subdir, args.nfiles, args.ndirs)
+                timed_ls ('vos://', print_list=args.print_list)
 
 if __name__ == '__main__':
     main()
