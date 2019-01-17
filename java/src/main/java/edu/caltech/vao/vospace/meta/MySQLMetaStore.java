@@ -218,7 +218,7 @@ public class MySQLMetaStore implements MetaStore{
             //      + "', '" + type + "', cast(now() as datetime), '" + (String) metadata + "')";
             String fixedId = fixId(identifier);
             String query = "insert into nodes (identifier, depth, type, creationDate) values ('"
-                    +fixedId+ "', '" +getIdDepth(fixedId)+ "', '" +type+ "', cast(now() as datetime))";
+                    +fixedId+ "', " +getIdDepth(fixedId)+ ", " +type+ ", cast(now() as datetime))";
             update(query);
             storeProperties((String) metadata);
         }
@@ -233,7 +233,7 @@ public class MySQLMetaStore implements MetaStore{
             //      + "', '" + type + "', '" + owner + "', cast(now() as datetime), '" + (String) metadata + "')";
             String fixedId = fixId(identifier);
             String query = "insert into nodes (identifier, depth, type, owner, creationDate) values ('"
-                    +fixedId+ "', '" +getIdDepth(fixedId)+ "', '" +type+ "', '" +owner+ "', cast(now() as datetime))";
+                    +fixedId+ "', " +getIdDepth(fixedId)+ ", " +type+ ", '" +owner+ "', cast(now() as datetime))";
             update(query);
             storeProperties((String) metadata);
         }
@@ -248,7 +248,7 @@ public class MySQLMetaStore implements MetaStore{
             //      + "', '" + type + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
             String fixedId = fixId(identifier);
             String query = "insert into nodes (identifier, depth, type, owner, location, creationDate) values ('"
-                    +fixedId+ "', '" +getIdDepth(fixedId)+ "', '" +type+ "', '" +owner+ "', '" +location+ "', cast(now() as datetime))";
+                    +fixedId+ "', " +getIdDepth(fixedId)+ ", " +type+ ", '" +owner+ "', '" +location+ "', cast(now() as datetime))";
             update(query);
             storeProperties((String) metadata);
         }
@@ -263,7 +263,7 @@ public class MySQLMetaStore implements MetaStore{
             //      + "', '" + type + "', '" + view + "', '" + owner + "', '" + location + "', cast(now() as datetime), '" + (String) metadata + "')";
             String fixedId = fixId(identifier);
             String query = "insert into nodes (identifier, depth, type, view, owner, location, creationDate) values ('"
-                    +fixedId+ "', '" +getIdDepth(fixedId)+ "', '" +type+ "', '" +view+ "', '" +owner+ "', '" +location+ "', cast(now() as datetime))";
+                    +fixedId+ "', " +getIdDepth(fixedId)+ ", " +type+ ", '" +view+ "', '" +owner+ "', '" +location+ "', cast(now() as datetime))";
             update(query);
             storeProperties((String) metadata);
         }
@@ -425,8 +425,8 @@ public class MySQLMetaStore implements MetaStore{
      * Get the direct children of the specified container node
      */
     public String[] getChildren(String identifier) throws SQLException {
-        String query = "select identifier from nodes where depth = '" + (getIdDepth(identifier) + 1)
-                + "' and identifier like '" + escapeId(identifier) + "/%'";
+        String query = "select identifier from nodes where depth = " + (getIdDepth(identifier) + 1)
+                + " and identifier like '" + escapeId(identifier) + "/%'";
         return getAsStringArray(query);
         /*
         ArrayList<String> children = new ArrayList<String>();
@@ -448,8 +448,8 @@ public class MySQLMetaStore implements MetaStore{
         /* String query = "select node from nodes where identifier like '" + fixId(identifier) + "/%' and identifier not like '" + fixId(identifier) + "/%/%'";
         String[] children = getAsStringArray(query);
         return children; */
-        String query = "select identifier, type from nodes where depth = '" + (getIdDepth(identifier) + 1)
-                + "' and identifier like '" + escapeId(identifier) + "/%'";
+        String query = "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
+                + " and identifier like '" + escapeId(identifier) + "/%'";
         ResultSet result = null;
         ArrayList<String> children = new ArrayList<String>();
         try {
