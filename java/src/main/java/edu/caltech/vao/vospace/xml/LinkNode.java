@@ -13,4 +13,24 @@ public class LinkNode extends Node {
         super(bytes);
     }
 
+    /**
+     * Get the target of the node
+     * @return The target of the node
+     */
+    public String getTarget() throws VOSpaceException {
+        // System.err.println(Arrays.toString(get("/vos:node/vos:target")));
+        String[] targetURIs = get("/vos:node/vos:target");
+        if (targetURIs.length == 0) { return ""; } else { return targetURIs[0]; }
+    }
+
+
+    /**
+     * Set the target for the node.
+     * @param value The value of the <target> element
+     */
+    public void setTarget(String value) throws VOSpaceException {
+        if (value != null)
+            if (has("/vos:node/vos:target")) { remove("/vos:node/vos:target"); }
+            addChild("/vos:node", PREFIX == null ? "<target>" + value + "</target>" : "<" + PREFIX + ":target>" + value + "</target>");
+    }
 }
