@@ -18,7 +18,6 @@ public class LinkNode extends Node {
      * @return The target of the node
      */
     public String getTarget() throws VOSpaceException {
-        // System.err.println(Arrays.toString(get("/vos:node/vos:target")));
         String[] targetURIs = get("/vos:node/vos:target");
         if (targetURIs.length == 0) { return ""; } else { return targetURIs[0]; }
     }

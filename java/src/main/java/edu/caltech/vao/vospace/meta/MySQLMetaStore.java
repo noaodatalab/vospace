@@ -405,8 +405,8 @@ public class MySQLMetaStore implements MetaStore{
             closeResult(result);
         }
         if (node instanceof LinkNode) {
-            ((LinkNode) node).setTarget("vos://datalab.noao!vospace/test/testlink.jpg");
-            System.err.println(((LinkNode) NodeFactory.getInstance().getNode(node.toString())).getTarget());
+            String lquery = "select target from links where identifier = '" + fixedId + "'";
+            ((LinkNode) node).setTarget(getAsString(lquery));
         }
         // Set the Views; those aren't stored in the DB, and will have to be sourced from NodeManager
         // Also set the Capabilities from the database
@@ -499,11 +499,15 @@ public class MySQLMetaStore implements MetaStore{
             update(query);
             query = "delete from properties where identifier like '" + escaped + "/%'";
             update(query);
+            query = "delete from links where identifier like '" + escaped + "/%'";
+            update(query);
         }
         identifier = fixId(identifier);
-        query = "delete from nodes where identifier like '" + identifier + "'";
+        query = "delete from nodes where identifier = '" + identifier + "'";
         update(query);
-        query = "delete from properties where identifier like '" + identifier + "'";
+        query = "delete from properties where identifier = '" + identifier + "'";
+        update(query);
+        query = "delete from links where identifier = '" + identifier + "'";
         update(query);
         if (identifier.endsWith("_cap.conf")) {
             String parent = identifier.substring(0, identifier.lastIndexOf("/"));
@@ -986,7 +990,7 @@ public class MySQLMetaStore implements MetaStore{
      * Execute a query on the store
      */
     private ResultSet execute(String query) throws SQLException {
-        System.err.println(query);
+//        System.err.println(query);
         ResultSet result = null;
         Statement statement = getConnection().createStatement();
         boolean success = statement.execute(query);
@@ -998,7 +1002,7 @@ public class MySQLMetaStore implements MetaStore{
      * Insert/update query on the store
      */
     private void update(String query) throws SQLException {
-        System.err.println(query);
+//        System.err.println(query);
         Connection connection = null;
         Statement statement = null;
         try {
@@ -1031,14 +1035,17 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Extract and store the properties from the specified node description
      * Updated to store each property into a column of the properties table
+     * Also, for a LinkNode, stores the link target in the links table.
+     * @param nodeAsString String representation of node whose properties are to be stored
      */
     private void storeProperties(String nodeAsString) throws SQLException, VOSpaceException {
         Node node = NodeFactory.getInstance().getNode(nodeAsString);
-        System.err.println(node.getType()+ " " + node.getClass().getName());
-        if (node instanceof LinkNode) {
-            System.err.println(((LinkNode) node).getTarget());
-        }
         String identifier = fixId(node.getUri());
+        if (node instanceof LinkNode) {
+            String lquery = "insert into links (identifier, target) values ('" +
+                            identifier + "', '" + ((LinkNode) node).getTarget() + "')";
+            update(lquery);
+        }
         StringBuilder columns = new StringBuilder("identifier");
         StringBuilder values = new StringBuilder("'" + identifier + "'");
         HashMap<String, String> properties = node.getProperties();
@@ -1069,12 +1076,18 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Extract and store the properties from the specified node description
      * Updated to store each property into a column of the properties table
+     * Also, for a LinkNode, stores the link target in the links table.
      * @param nodeAsString String representation of node whose properties are to be stored
      * @return string representation of node with updated properties (deleted where specified)
      */
     private String updateProperties(String nodeAsString) throws SQLException, VOSpaceException {
         Node node = NodeFactory.getInstance().getNode(nodeAsString);
         String identifier = fixId(node.getUri());
+        if (node instanceof LinkNode) {
+            String lquery = "update links set target = '" + ((LinkNode) node).getTarget() +
+                            "' where identifier = '" + identifier + "'";
+            update(lquery);
+        }
         StringBuilder updates = new StringBuilder();
         HashMap<String, String> properties = node.getProperties();
         if (!properties.isEmpty()) {

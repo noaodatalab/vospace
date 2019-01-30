@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS `metaproperties`;
 DROP TABLE IF EXISTS `results`;
 DROP TABLE IF EXISTS `transfers`;
 DROP TABLE IF EXISTS `nodes`;
+DROP TABLE IF EXISTS `links`;
 
 --
 -- Table structure for table `capabilities`
@@ -107,4 +108,14 @@ CREATE TABLE `nodes` (
   INDEX nod_typ_idx (`type`),
   INDEX nod_own_idx (`owner`),
   INDEX nod_loc_idx (`location`(767))
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+--
+-- Table structure for table `links`
+--
+
+CREATE TABLE `links` (
+  `identifier` varchar(4096) NOT NULL,
+  `target` varchar(4096) DEFAULT NULL,
+  PRIMARY KEY (`identifier`(767))
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
