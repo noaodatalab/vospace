@@ -117,5 +117,6 @@ CREATE TABLE `nodes` (
 CREATE TABLE `links` (
   `identifier` varchar(4096) NOT NULL,
   `target` varchar(4096) DEFAULT NULL,
-  PRIMARY KEY (`identifier`(767))
+  PRIMARY KEY (`identifier`(767)),
+  INDEX lnk_tgt_idx (`target`(767))
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;

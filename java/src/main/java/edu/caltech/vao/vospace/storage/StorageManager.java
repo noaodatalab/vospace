@@ -29,9 +29,15 @@ public interface StorageManager {
      * @param location The location of the file
      */
     public void touch(String location) throws VOSpaceException;
-    
+
     /**
-     * Move the bytes from the specified old location to the specified new location 
+     * Create a soft link at the specified location in the current backend storage
+     * @param location The location of the file
+     */
+    public void createLink(String location, String target) throws VOSpaceException;
+
+    /**
+     * Move the bytes from the specified old location to the specified new location
      * in the current backend storage
      * @param oldLocation The old location of the bytes
      * @param newLocation The new location of the bytes
@@ -47,7 +53,7 @@ public interface StorageManager {
     public void copyBytes(String oldLocation, String newLocation) throws VOSpaceException;
 
     /**
-     * Put the bytes from the specified input stream at the specified location in 
+     * Put the bytes from the specified input stream at the specified location in
      * the current backend storage
      * @param location The location for the bytes
      * @param stream The stream containing the bytes

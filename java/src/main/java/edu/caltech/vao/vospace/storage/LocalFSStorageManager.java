@@ -73,6 +73,33 @@ public class LocalFSStorageManager implements StorageManager {
     }
 
     /**
+     * Create a symbolic link at the specified location in the current backend storage
+     * @param location The location of the link
+     * @param target The target of the link
+     */
+    public void createLink(String location, String target) throws VOSpaceException {
+        Path path = null;
+        Path tgtPath = null;
+        try {
+            path = Paths.get(new URI(location));
+            tgtPath = path.getParent().relativize(Paths.get(new URI(target)));
+            // System.out.println(location + " " + target + " " + path + " " + tgtPath);
+            Files.createSymbolicLink(path, tgtPath);
+        } catch (FileAlreadyExistsException fe) {
+            try {
+                if (!Files.isSymbolicLink(path)) {
+                    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Link cannot be created");
+                }
+            } catch (Exception e) {
+                throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            }
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+        }
+    }
+
+    /**
      * Create a zero-byte file at the specified location in the current backend storage
      * @param location The location of the file
      */
