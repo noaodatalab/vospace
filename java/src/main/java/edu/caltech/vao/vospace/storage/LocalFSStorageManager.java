@@ -197,9 +197,14 @@ public class LocalFSStorageManager implements StorageManager {
      * Remove the bytes at the specified location in the current backend storage
      * @param location The location of the bytes
      */
-    public void removeBytes(String location) throws VOSpaceException {
+    public void removeBytes(String location, boolean isContainer) throws VOSpaceException {
         try {
-            boolean success = new File(new URI(location)).delete();
+            File file = new File(new URI(location));
+            if (isContainer) {
+                FileUtils.deleteDirectory(file);
+            } else {
+                boolean success = file.delete();
+            }
         } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
         }

@@ -27,7 +27,7 @@ public class HttpPutProtocolHandler implements ProtocolHandler {
     private static String BASE_URL = "http://localhost:7007";
 
     /*
-     * Return the registered identifier for this protocol 
+     * Return the registered identifier for this protocol
      */
     public String getUri() {
 	return "ivo://ivoa.net/vospace/core#httpput";
@@ -43,14 +43,16 @@ public class HttpPutProtocolHandler implements ProtocolHandler {
     /*
      * Fill in the details for a ProtocolType
      */
-    public Protocol admin(String nodeUri, Protocol protocol, int mode) throws VOSpaceException { 
+    public Protocol admin(String nodeUri, Protocol protocol, int mode) throws VOSpaceException {
 	try {
-	    if (mode == SERVER) protocol.setEndpoint(BASE_URL + "/" + UUID.randomUUID());	
+	    if (mode == SERVER) protocol.setEndpoint(BASE_URL + "/" + UUID.randomUUID());
 	    return protocol;
+        } catch (VOSpaceException ve) {
+            throw ve;
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);	
+	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
-    } 
+    }
 
     /*
      * Invoke the protocol handler and transfer data

@@ -34,15 +34,15 @@ import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.xml.Param;
 
 /**
- * This interface represents the implementation details of a capability 
- * on a container which runs an arbitrary command string 
+ * This interface represents the implementation details of a capability
+ * on a container which runs an arbitrary command string
  */
 public class CapRunner implements Capability {
 
     private int port = 0;
 
     private static final NodeType[] domain = new NodeType[] {NodeType.CONTAINER_NODE};
-    
+
     /*
      * Return the registered identifier for this capability
      */
@@ -58,7 +58,7 @@ public class CapRunner implements Capability {
 	return Arrays.asList(domain);
     }
 
-    
+
     /*
      * Set the parameters for the capability
      */
@@ -70,7 +70,7 @@ public class CapRunner implements Capability {
 	}
     }
 
-     
+
     /*
      * Invoke the capability of the parent container on the specified
      * location
@@ -99,13 +99,13 @@ public class CapRunner implements Capability {
 	    e.printStackTrace(System.err);
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
 	} finally {
-	    IOUtils.closeQuietly(response);	    
+	    IOUtils.closeQuietly(response);
 	    IOUtils.closeQuietly(client);
 	    return success;
 	}
     }
 
-    
+
     /*
      * Parse the configuration file
      */
@@ -114,5 +114,5 @@ public class CapRunner implements Capability {
         props.load(new FileInputStream(configFile.substring(7)));
 	return props;
     }
-     
+
 }

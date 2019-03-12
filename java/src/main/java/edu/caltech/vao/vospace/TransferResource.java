@@ -63,10 +63,10 @@ public class TransferResource extends VOSpaceResource {
      * @return the BasicUWS associated with the request
      */
     private UWSService getUWS(HttpServletRequest req) throws UWSException {
-	
-	// Get the current servlet context 
+
+	// Get the current servlet context
 	ServletContext context = req.getSession(true).getServletContext();
-			
+
 	// Fetch the UWS from the current session:
 	UWSService uws = (UWSService)context.getAttribute("UWSService");
 
@@ -98,11 +98,11 @@ public class TransferResource extends VOSpaceResource {
 		    }
 	        }
 	    );
-	    
+
 	    // Create the job list
 	    uws.addJobList(new JobList("transfers"));
 //	    uws.addJobList(new JobList("sync"));
-	    
+
 	    // Add this UWS to the current session:
 	    context.setAttribute("UWSService", uws);
 	}
@@ -116,14 +116,14 @@ public class TransferResource extends VOSpaceResource {
 	    boolean done = uws.executeRequest(req, resp);
 	} catch (UWSException e) {
 	    // Display properly the caught UWSException:
-	    resp.sendError(e.getHttpErrorCode(), e.getMessage());		
-	}	
+	    resp.sendError(e.getHttpErrorCode(), e.getMessage());
+	}
     }
 
 
     /**
      * This method retrieves the specified transfer.
-     * 
+     *
      * @return the transfer JAXB object
      */
     @GET
@@ -135,7 +135,7 @@ public class TransferResource extends VOSpaceResource {
 
     /**
      * This method retrieves the specified transfer.
-     * 
+     *
      * @param jobid The identifier for the transfer job to return.
      * @return the transfer JAXB object
      */
@@ -149,7 +149,7 @@ public class TransferResource extends VOSpaceResource {
 
     /**
      * This method retrieves the specified transfer.
-     * 
+     *
      * @param jobid The identifier for the transfer job to return.
      * @return the transfer JAXB object
      */
@@ -164,7 +164,7 @@ public class TransferResource extends VOSpaceResource {
 
     /**
      * This method retrieves details for the specified transfer.
-     * 
+     *
      * @param jobid The identifier for the transfer job to return.
      * @return the transfer JAXB object
      */
@@ -186,9 +186,11 @@ public class TransferResource extends VOSpaceResource {
 	    }
 	    if (details == null) details = "<vos:transfer xmlns:vos=\"http://www.ivoa.net/xml/VOSpace/v2.0\"></vos:transfer>";
 	    return details;
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
-        }    
+        }
     }
 
 
@@ -250,15 +252,15 @@ public class TransferResource extends VOSpaceResource {
     public void getError(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
 	validateToken(authToken, resp);
 	executeRequest(req, resp);
-    }    
+    }
 
 
     private void validateToken(String authToken, HttpServletResponse resp) throws IOException{
 	try {
   	    manager.validateToken(authToken);
 	} catch (VOSpaceException e) {
-	    resp.sendError(e.getStatusCode(), e.getMessage());		
-	}	
+	    resp.sendError(e.getStatusCode(), e.getMessage());
+	}
     }
 
 }

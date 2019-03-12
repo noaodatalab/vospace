@@ -40,10 +40,10 @@ public class RegisterResource extends VOSpaceResource {
 	backend = manager.getStorageManager();
     }
 
-    
+
     /**
      * This method registers the specified node.
-     * 
+     *
      * @param node The node to create (contents of HTTP PUT).
      */
     @Path("{nodeid: .*}")
@@ -55,6 +55,8 @@ public class RegisterResource extends VOSpaceResource {
             manager.registerNode(node, user, "file://" + location);
 	    URI nodeUri = new URI(node.getUri());
 	    return Response.created(nodeUri).build();
+    } catch (VOSpaceException ve) {
+        throw ve;
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);

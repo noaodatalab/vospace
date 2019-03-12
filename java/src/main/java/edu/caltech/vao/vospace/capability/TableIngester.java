@@ -25,13 +25,13 @@ import uk.ac.starlink.table.StarTableOutput;
 
 
 /**
- * This interface represents the implementation details of a capability 
- * on a container which ingests any tables into a database 
+ * This interface represents the implementation details of a capability
+ * on a container which ingests any tables into a database
  */
 public class TableIngester implements Capability {
 
     private static final NodeType[] domain = new NodeType[] {NodeType.CONTAINER_NODE};
-    
+
     /*
      * Return the registered identifier for this capability
      */
@@ -47,7 +47,7 @@ public class TableIngester implements Capability {
 	return Arrays.asList(domain);
     }
 
-    
+
     /*
      * Set the parameters for the capability
      */
@@ -55,7 +55,7 @@ public class TableIngester implements Capability {
 
     }
 
-     
+
     /*
      * Invoke the capability of the parent container on the specified
      * location
@@ -81,7 +81,7 @@ public class TableIngester implements Capability {
 	return success;
     }
 
-    
+
     /*
      * Parse the configuration file
      */
@@ -90,5 +90,5 @@ public class TableIngester implements Capability {
         props.load(new FileInputStream(configFile.substring(7)));
 	return props;
     }
-     
+
 }

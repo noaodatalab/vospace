@@ -141,6 +141,8 @@ public class VOSpaceManager {
             // Identifier regex
             VOS_PATTERN = Pattern.compile("vos://[\\w\\d][\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]{2,}(![\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+(/[\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+)*)+");
             nfactory = NodeFactory.getInstance();
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
         }
@@ -299,6 +301,8 @@ public class VOSpaceManager {
             // }
             // Check for deleted properties
             node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
@@ -425,12 +429,13 @@ public class VOSpaceManager {
             // FIXME: We need to check for a LinkNode as a parent here!
             if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI");
             // Remove node
-            if (store.getType(identifier) == NodeType.CONTAINER_NODE.ordinal()) {
-                store.removeData(identifier, true);
-            } else {
-                store.removeData(identifier, false);
+            boolean isContainer = (store.getType(identifier) == NodeType.CONTAINER_NODE.ordinal());
+            String[] removedLinks = store.removeData(identifier, isContainer);
+            backend.removeBytes(getLocation(identifier), isContainer);
+            for (String link: removedLinks) {
+                System.out.println(link);
+                backend.removeBytes(getLocation(link), false);
             }
-            removeBytes(getLocation(identifier));
         } catch (SQLException e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
         }
@@ -575,6 +580,8 @@ public class VOSpaceManager {
             } else {
                 throw new VOSpaceException(VOSpaceException.NOT_FOUND, "The specified file cannot be found.");
             }
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
         }
@@ -624,17 +631,6 @@ public class VOSpaceManager {
 
 
     /**
-     * Delete the bytes from the specified location
-     * @param location The location of the bytes to be removed
-     * @return whether the bytes have been successfully removed or not
-     */
-    public void removeBytes(String location) throws VOSpaceException {
-        // success = (new File(new URI(location))).delete();
-        backend.removeBytes(location);
-    }
-
-
-    /**
      * Update the size property of a node
      */
     public void updateSize(String endpoint, String size) throws VOSpaceException {
@@ -647,6 +643,8 @@ public class VOSpaceManager {
                 node.setProperty(Props.get(Props.Property.LENGTH), size);
                 store.updateData(target, node.toString());
             }
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
@@ -662,6 +660,8 @@ public class VOSpaceManager {
             Node newNode = create(node, user, false);
             newNode.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(location)));
             store.updateData(newNode.getUri(), newNode.toString());
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
@@ -706,6 +706,8 @@ public class VOSpaceManager {
                 pType.setURI(protocolHandler.getUri());
                 SPACE_CLIENT_PROTOCOLS.add(pType);
             }
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
         }
@@ -742,6 +744,8 @@ public class VOSpaceManager {
                 }
                 CAPABILITIES.put(capUri, capImpl);
             }
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
         }
@@ -761,6 +765,8 @@ public class VOSpaceManager {
             }
             capImpl.setParams(params);
             return capImpl;
+        } catch (VOSpaceException ve) {
+            throw ve;
         } catch (Exception e) {
             throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
         }

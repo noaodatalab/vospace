@@ -71,7 +71,7 @@ public interface StorageManager {
      * Remove the bytes at the specified location in the current backend storage
      * @param location The location of the bytes
      */
-    public void removeBytes(String location) throws VOSpaceException;
+    public void removeBytes(String location, boolean isContainer) throws VOSpaceException;
 
     /**
      * Retrieve when the bytes at the specified location in the current backend storage

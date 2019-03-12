@@ -8,6 +8,7 @@ package edu.caltech.vao.vospace.meta;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -490,9 +491,12 @@ public class MySQLMetaStore implements MetaStore{
      * Remove the metadata for the specified identifier
      * @param identifier The (root) identifier of the node(s) to delete
      * @param container Does the identifier refer to a container?
+     * Returns a list of links which pointed to the deleted identifier and were
+     * also removed in the process of removing the identifier.
      */
-    public void removeData(String identifier, boolean container) throws SQLException {
+    public String[] removeData(String identifier, boolean container) throws SQLException {
         String query = "";
+        ArrayList<String> removedLinks = new ArrayList<String>();
         if (container) {
             String escaped = escapeId(identifier);
             query = "delete from nodes where identifier like '" + escaped + "/%'";
@@ -500,6 +504,10 @@ public class MySQLMetaStore implements MetaStore{
             query = "delete from properties where identifier like '" + escaped + "/%'";
             update(query);
             query = "delete from links where identifier like '" + escaped + "/%'";
+            update(query);
+            query = "select identifier from links where target like '" + escaped + "/%'";
+            removedLinks.addAll(Arrays.asList(getAsStringArray(query)));
+            query = "delete from links where target like '" + escaped + "/%'";
             update(query);
         }
         identifier = fixId(identifier);
@@ -509,12 +517,17 @@ public class MySQLMetaStore implements MetaStore{
         update(query);
         query = "delete from links where identifier = '" + identifier + "'";
         update(query);
+        query = "select identifier from links where target = '" + identifier + "'";
+        removedLinks.addAll(Arrays.asList(getAsStringArray(query)));
+        query = "delete from links where target = '" + identifier + "'";
+        update(query);
         if (identifier.endsWith("_cap.conf")) {
             String parent = identifier.substring(0, identifier.lastIndexOf("/"));
             String shortCap = identifier.substring(identifier.lastIndexOf("/") + 1, identifier.lastIndexOf("_cap.conf"));
             query = "update capabilities set active = 0 where identifier = '" + parent + "' and capability like '%" + escapeStr(shortCap) + "'";
             update(query);
         }
+        return removedLinks.toArray(new String[removedLinks.size()]);
     }
 
     /*

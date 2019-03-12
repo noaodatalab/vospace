@@ -32,7 +32,7 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
     private static String BASE_URL = "http://localhost:7007";
 
     /*
-     * Return the registered identifier for this protocol 
+     * Return the registered identifier for this protocol
      */
     public String getUri() {
 	return "ivo://ivoa.net/vospace/core#httpget";
@@ -57,10 +57,12 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
 		if (!Pattern.matches("^http\\://[a-zA-Z0-9\\-\\.]+\\.[a-zA-Z]{2,3}(/\\S*)?$", protocol.getEndpoint())) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Destination URI is invalid");
 	    }
 	    return protocol;
+        } catch (VOSpaceException ve) {
+            throw ve;
 	} catch (Exception e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
-    } 
+    }
 
     /*
      * Invoke the protocol handler and transfer data
@@ -77,7 +79,7 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
 	    backend.putBytes(location, in);
             /*
 	    BufferedInputStream bis = new BufferedInputStream(in);
-	    FileOutputStream fos = new FileOutputStream(uri.getPath()); 
+	    FileOutputStream fos = new FileOutputStream(uri.getPath());
             byte[] buffer = new byte[8192];
             int count = bis.read(buffer);
             while (count != -1 && count <= 8192) {
@@ -90,7 +92,7 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
 	    fos.close();
 	    bis.close();
 	    */
-	    get.releaseConnection();	
+	    get.releaseConnection();
 	    success = true;
 	    //	} catch (URISyntaxException e) {
 	    //	    throw new IOException(e.getMessage());

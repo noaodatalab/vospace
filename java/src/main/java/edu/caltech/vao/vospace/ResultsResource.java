@@ -27,7 +27,7 @@ public class ResultsResource extends VOSpaceResource {
 
     /**
      * This method retrieves the specified data.
-     * 
+     *
      * @param jobid The identifier for the data to return.
      * @return the specified data
      */
@@ -40,6 +40,8 @@ public class ResultsResource extends VOSpaceResource {
 	    MetaStore store = MetaStoreFactory.getInstance().getMetaStore();
             String details = store.getResult(jobid);
 	    return details;
+    } catch (VOSpaceException ve) {
+        throw ve;
 	} catch (Exception e) {
 	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
 	}
