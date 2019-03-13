@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 
 import edu.caltech.vao.vospace.meta.*;
 import edu.caltech.vao.vospace.xml.*;
+import edu.caltech.vao.vospace.VOSpaceException.VOFault;
 
 public class NodeManager {
 
@@ -103,13 +104,13 @@ public class NodeManager {
     public Node create(Node node, boolean overwrite) throws VOSpaceException {
         String uri = node.getUri();
         // Is identifier syntactically valid?
-        if (!validId(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid.");
+        if (!validId(uri)) throw new VOSpaceException(VOFault.InvalidURI);
         // Is the parent a valid container?
-        if (!validParent(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid - bad parent.");
+        if (!validParent(uri)) throw new VOSpaceException(VOFault.ContainerNotFound);
         try {
             // Does node already exist?
             boolean exists = store.isStored(uri);
-            if (exists && !overwrite) throw new VOSpaceException(VOSpaceException.CONFLICT, "A Node already exists with the requested URI.");
+            if (exists && !overwrite) throw new VOSpaceException(VOFault.DuplicateNode);
             NodeType type = NodeType.NODE;
             // Is a service-generated name required?
             if (uri.endsWith(AUTO_NODE)) {
@@ -185,9 +186,9 @@ public class NodeManager {
                 boolean success = (new File(new URI(getLocation(node.getUri())))).mkdir();
             }
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         } catch (URISyntaxException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
         return node;
     }
@@ -200,7 +201,7 @@ public class NodeManager {
      */
     public Node getNode(String identifier, String detail) throws VOSpaceException {
         // Is identifier syntactically valid?
-        if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid.");
+        if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
         // Retrieve original node
         try {
             String[] result = store.getData(new String[] {identifier}, null, 0);
@@ -229,10 +230,10 @@ public class NodeManager {
                 }
                 return node;
             } else {
-                throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI.");
+                throw new VOSpaceException(VOFault.NodeNotFound);
             }
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -242,16 +243,16 @@ public class NodeManager {
      */
     public void delete(String identifier) throws VOSpaceException {
         // Is identifier syntactically valid?
-        if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid.");
+        if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
         try {
             // Does node already exist?
             boolean exists = store.isStored(identifier);
-            if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI.");
+            if (!exists) throw new VOSpaceException(VOFault.NodeNotFound);
             // Remove node
             //      removeBytes(getLocation(identifier));
             store.removeData(identifier, false);
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -288,7 +289,7 @@ public class NodeManager {
             if (store.getType(parent) != NodeType.CONTAINER_NODE.ordinal()) return false;
             return true;
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 

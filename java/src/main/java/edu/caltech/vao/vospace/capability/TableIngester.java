@@ -76,7 +76,7 @@ public class TableIngester implements Capability {
 	    success = true;
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
 	return success;
     }

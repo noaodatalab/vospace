@@ -45,7 +45,7 @@ public class NodeUtil {
 	    if (store.getType(parent) != NodeType.CONTAINER_NODE.ordinal()) return false;
 	    return true;
 	} catch (SQLException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 }

@@ -59,16 +59,16 @@ public class LocalFSStorageManager implements StorageManager {
         } catch (FileAlreadyExistsException fe) {
             try {
                 if (!Files.isDirectory(path)) {
-                    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Container cannot be created");
+                    throw new VOSpaceException(VOSpaceException.VOFault.InternalFault, "Container cannot be created");
                 } else {
                     Files.setPosixFilePermissions(path, perm);
                 }
             } catch (Exception e) {
-                throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+                throw new VOSpaceException(e);
             }
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -88,14 +88,14 @@ public class LocalFSStorageManager implements StorageManager {
         } catch (FileAlreadyExistsException fe) {
             try {
                 if (!Files.isSymbolicLink(path)) {
-                    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Link cannot be created");
+                    throw new VOSpaceException(VOSpaceException.VOFault.InternalFault, "Link cannot be created");
                 }
             } catch (Exception e) {
-                throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+                throw new VOSpaceException(e);
             }
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -108,7 +108,8 @@ public class LocalFSStorageManager implements StorageManager {
             File file = new File(new URI(location));
             FileUtils.touch(file);
         } catch (Exception e) {
-            if (!e.getMessage().contains("last modification date")) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            if (!e.getMessage().contains("last modification date"))
+                throw new VOSpaceException(e);
         }
     }
 
@@ -128,7 +129,7 @@ public class LocalFSStorageManager implements StorageManager {
                 FileUtils.moveDirectory(oldFile, new File(new URI(newLocation)));
             }
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 
@@ -147,7 +148,7 @@ public class LocalFSStorageManager implements StorageManager {
                 FileUtils.copyDirectory(oldFile, new File(new URI(newLocation)));
             }
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 
@@ -174,7 +175,7 @@ public class LocalFSStorageManager implements StorageManager {
             fos.close();
             bis.close();
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 
@@ -189,7 +190,7 @@ public class LocalFSStorageManager implements StorageManager {
             InputStream in = new FileInputStream(uri.getPath());
             return in;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 
@@ -206,7 +207,7 @@ public class LocalFSStorageManager implements StorageManager {
                 boolean success = file.delete();
             }
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 
@@ -223,7 +224,7 @@ public class LocalFSStorageManager implements StorageManager {
             return lastModified;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 
@@ -237,7 +238,7 @@ public class LocalFSStorageManager implements StorageManager {
             long size = new File(new URI(location)).length();
             return size;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 
@@ -267,7 +268,7 @@ public class LocalFSStorageManager implements StorageManager {
             return md5.toString();
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 

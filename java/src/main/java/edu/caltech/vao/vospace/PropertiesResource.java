@@ -43,7 +43,7 @@ public class PropertiesResource extends VOSpaceResource {
 	    sbuf.append("</contains></properties>");
 	    return sbuf.toString();
 	} catch (SQLException e) {
-	    throw new VOSpaceException(e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 

@@ -22,7 +22,7 @@ import org.apache.http.HttpException;
 /**
  * Backend storage manager for OpenStack Swift system
  * @author Matthew Graham
- * @author Dmitry Mishin 
+ * @author Dmitry Mishin
  * (Uses code from edu.jhu.pha.vospace.swiftapi.SwiftClient)
  */
 public class SwiftStorageManager {
@@ -40,7 +40,7 @@ public class SwiftStorageManager {
 		cli = new FilesClient(credentials.get("user"), credentials.get("password"), endpoint);
 	    }
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -53,12 +53,12 @@ public class SwiftStorageManager {
 	try {
 	    getClient().createContainer(npath.getContainerName());
 	} catch (Exception ex) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, ex.getMessage());
+	    throw new VOSpaceException(ex);
 	}
     }
 
     /**
-     * Move the bytes from the specified old location to the specified new location 
+     * Move the bytes from the specified old location to the specified new location
      * in the current backend storage
      * @param oldLocation The old location of the bytes
      * @param newLocation The new location of the bytes
@@ -78,7 +78,7 @@ public class SwiftStorageManager {
     }
 
     /**
-     * Put the bytes from the specified input stream at the specified location in 
+     * Put the bytes from the specified input stream at the specified location in
      * the current backend storage
      * @param location The location for the bytes
      * @param stream The stream containing the bytes
@@ -89,11 +89,11 @@ public class SwiftStorageManager {
 	try {
 	    getClient().storeStreamedObject(npath.getContainerName(), stream, "application/file", npath.getNodePath(), null);
 	} catch (FilesException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (HttpException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (IOException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -107,15 +107,15 @@ public class SwiftStorageManager {
 	try {
 	    return getClient().getObjectAsStream(npath.getContainerName(), npath.getNodePath());
 	} catch (FilesAuthorizationException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (FilesInvalidNameException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (FilesNotFoundException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (HttpException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (IOException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -132,13 +132,13 @@ public class SwiftStorageManager {
 		getClient().deleteObject(npath.getContainerName(), npath.getNodePath());
 	    }
 	} catch (FilesNotFoundException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (FilesException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (HttpException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	} catch (IOException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -152,7 +152,7 @@ public class SwiftStorageManager {
     public long lastModified(String location) throws VOSpaceException {
 	return -1;
     }
-	
+
     /**
      * @return OpenStack connector
      */
@@ -165,12 +165,12 @@ public class SwiftStorageManager {
 		cli.login();
 		return cli;
 	    } catch (HttpException e) {
-		throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+		throw new VOSpaceException(e);
 	    } catch (IOException e) {
-		throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+		throw new VOSpaceException(e);
 	    }
 	} else {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "You should be logged in. Please initialise with login and password first."+cli.getUserName() +" "+ cli.getPassword());
+	    throw new VOSpaceException(VOSpaceException.VOFault.PermissionDenied, "You should be logged in. Please initialise with login and password first "+cli.getUserName() +" "+ cli.getPassword());
 	}
     }
 }

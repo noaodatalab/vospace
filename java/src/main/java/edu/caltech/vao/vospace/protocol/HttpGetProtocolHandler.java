@@ -54,13 +54,14 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
 		protocol.setEndpoint(BASE_URL + "/" + UUID.randomUUID());
 	    } else {
 		// Check url is valid
-		if (!Pattern.matches("^http\\://[a-zA-Z0-9\\-\\.]+\\.[a-zA-Z]{2,3}(/\\S*)?$", protocol.getEndpoint())) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Destination URI is invalid");
+		if (!Pattern.matches("^http\\://[a-zA-Z0-9\\-\\.]+\\.[a-zA-Z]{2,3}(/\\S*)?$", protocol.getEndpoint()))
+		        throw new VOSpaceException(VOSpaceException.VOFault.InternalFault, "Destination URI is invalid");
 	    }
 	    return protocol;
         } catch (VOSpaceException ve) {
             throw ve;
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	    throw new VOSpaceException(e);
 	}
     }
 

@@ -15,7 +15,7 @@ import java.util.Properties;
 
 import edu.caltech.vao.vospace.VOSpaceException;
 
-/** 
+/**
  * This class presents a factory for creating StorageManagers
  */
 public class StorageManagerFactory {
@@ -24,8 +24,8 @@ public class StorageManagerFactory {
     private Map backends;
     static Properties props;
 
-    /* 
-     * Construct a basic StorageManagerFactory: load the properties file 
+    /*
+     * Construct a basic StorageManagerFactory: load the properties file
      */
     private StorageManagerFactory(Properties props)  {
 	try {
@@ -69,7 +69,7 @@ public class StorageManagerFactory {
      * Get a StorageManagerFactory
      */
     public static StorageManagerFactory getInstance() throws VOSpaceException {
-	if (ref == null) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Store factory cannot be initialized.");
+	if (ref == null) throw new VOSpaceException(new NullPointerException("Store factory cannot be initialized."));
 	return ref;
     }
 

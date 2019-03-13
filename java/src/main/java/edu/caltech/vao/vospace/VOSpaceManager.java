@@ -37,6 +37,7 @@ import edu.caltech.vao.vospace.storage.StorageManager;
 import edu.caltech.vao.vospace.storage.StorageManagerFactory;
 import edu.caltech.vao.vospace.view.TransformEngine;
 import edu.caltech.vao.vospace.xml.*;
+import edu.caltech.vao.vospace.VOSpaceException.VOFault;
 
 public class VOSpaceManager {
 
@@ -95,7 +96,7 @@ public class VOSpaceManager {
     }
 
     public static VOSpaceManager getInstance() throws VOSpaceException {
-        if (ref == null) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "VOSpaceManager could not be initialized.");
+        if (ref == null) throw new VOSpaceException(new NullPointerException("VOSpaceManager could not be initialized."));
         return ref;
     }
 
@@ -144,7 +145,7 @@ public class VOSpaceManager {
         } catch (VOSpaceException ve) {
             throw ve;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -158,17 +159,17 @@ public class VOSpaceManager {
     public Node create(Node node, String owner, boolean overwrite) throws VOSpaceException {
         String uri = node.getUri();
         // Is identifier syntactically valid?
-        if (!validId(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid");
+        if (!validId(uri)) throw new VOSpaceException(VOFault.InvalidURI);
         // Is the parent a valid container?
-        if (!validParent(uri)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid - bad parent.");
+        if (!validParent(uri)) throw new VOSpaceException(VOFault.ContainerNotFound);
         try {
             // Does node already exist?
             boolean exists = store.isStored(uri);
-            if (exists && !overwrite) throw new VOSpaceException(VOSpaceException.CONFLICT, "A Node already exists with the requested URI");
+            if (exists && !overwrite) throw new VOSpaceException(VOFault.DuplicateNode);
             // Check specified node type
             if (exists) {
                 int type = store.getType(uri);
-                if (type != NodeType.getIdByUri(node.getType())) throw new VOSpaceException(VOSpaceException.PERMISSION_DENIED, "The node type cannot be changed");
+                if (type != NodeType.getIdByUri(node.getType())) throw new VOSpaceException(VOFault.PermissionDenied, "The node type cannot be changed.");
             }
             NodeType type = NodeType.NODE;
             // Is a service-generated name required?
@@ -242,13 +243,13 @@ public class VOSpaceManager {
                 targetURI = ((LinkNode)node).getTarget();
                 localLink = targetURI.startsWith(ROOT_NODE);
                 if (localLink && !store.isStored(targetURI)) {
-                    throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested target URI is invalid");
+                    throw new VOSpaceException(VOFault.InvalidURI, "The requested target URI is invalid");
                 }
             }
             // Check properties
             if (node.hasProperties()) {
                 for (String propUri: node.getProperties().keySet()) {
-                    if (!checkProperty(propUri)) throw new VOSpaceException(VOSpaceException.PERMISSION_DENIED, "The property " + propUri + " is read only");
+                    if (!checkProperty(propUri)) throw new VOSpaceException(VOFault.PermissionDenied, "The property " + propUri + " is read only");
                 }
             }
             // Set properties (date at least)
@@ -305,7 +306,7 @@ public class VOSpaceManager {
             throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
         return node;
     }
@@ -320,12 +321,12 @@ public class VOSpaceManager {
     public Node getNode(String identifier, String detail, int limit) throws VOSpaceException {
         Node node = null;
         // Is identifier syntactically valid?
-        if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid.");
+        if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
         // Retrieve original node
         // FIXME: Somewhere here we need to check if one of the parents is a LinkNode!
         try {
             String[] result = store.getData(new String[] {identifier}, null, limit);
-            if (result.length == 0) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI");
+            if (result.length == 0) throw new VOSpaceException(VOFault.NodeNotFound);
             for (String item: result) {
                 node = nfactory.getNode(item);
                 detail = (detail == null) ? "max" : detail; // Try with min - MJG
@@ -366,7 +367,7 @@ public class VOSpaceManager {
                 if (!(node instanceof ContainerNode)) node = setMD5(node);
             }
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
         return node;
     }
@@ -422,12 +423,12 @@ public class VOSpaceManager {
      */
     public void delete(String identifier) throws VOSpaceException {
         // Is identifier syntactically valid?
-        if (!validId(identifier)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "The requested URI is invalid");
+        if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
         try {
             // Does node already exist?
             boolean exists = store.isStored(identifier);
             // FIXME: We need to check for a LinkNode as a parent here!
-            if (!exists) throw new VOSpaceException(VOSpaceException.NOT_FOUND, "A Node does not exist with the requested URI");
+            if (!exists) throw new VOSpaceException(VOFault.NodeNotFound);
             // Remove node
             boolean isContainer = (store.getType(identifier) == NodeType.CONTAINER_NODE.ordinal());
             String[] removedLinks = store.removeData(identifier, isContainer);
@@ -437,7 +438,7 @@ public class VOSpaceManager {
                 backend.removeBytes(getLocation(link), false);
             }
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -474,7 +475,7 @@ public class VOSpaceManager {
             if (store.getType(parent) != NodeType.CONTAINER_NODE.ordinal()) return false;
             return true;
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
     }
 
@@ -565,7 +566,7 @@ public class VOSpaceManager {
                         }
                     }
                 } else {
-                    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "The specified URL is no longer valid.");
+                    throw new VOSpaceException(VOFault.InvalidURI, "The specified URI is no longer valid.");
                 }
                 // View transformation
                 target = target.replace("~", "!");
@@ -578,12 +579,12 @@ public class VOSpaceManager {
                 if (!location.startsWith("file://")) location = "file://" + location;
                 return location;
             } else {
-                throw new VOSpaceException(VOSpaceException.NOT_FOUND, "The specified file cannot be found.");
+                throw new VOSpaceException(VOFault.NodeNotFound, "The specified file cannot be found.");
             }
         } catch (VOSpaceException ve) {
             throw ve;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -595,7 +596,7 @@ public class VOSpaceManager {
         try {
             store.completeTransfer(endpoint);
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -612,7 +613,7 @@ public class VOSpaceManager {
             if (System.currentTimeMillis() - created > 3600000) expired = true;
             return expired;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -647,7 +648,7 @@ public class VOSpaceManager {
             throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -664,7 +665,7 @@ public class VOSpaceManager {
             throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -709,7 +710,7 @@ public class VOSpaceManager {
         } catch (VOSpaceException ve) {
             throw ve;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -747,7 +748,7 @@ public class VOSpaceManager {
         } catch (VOSpaceException ve) {
             throw ve;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -768,7 +769,7 @@ public class VOSpaceManager {
         } catch (VOSpaceException ve) {
             throw ve;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -801,7 +802,7 @@ public class VOSpaceManager {
                 if (osTime - dbTime < 0) updated = false;
             }
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
         return updated;
     }
@@ -816,9 +817,9 @@ public class VOSpaceManager {
         GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
         try {
             int statusCode = client.executeMethod(get);
-            if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOSpaceException.PERMISSION_DENIED, "The provided DataLab token is invalid");
+            if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
         } catch (IOException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -849,11 +850,11 @@ public class VOSpaceManager {
             HttpClient client = new HttpClient();
             GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + authToken + "&owner=" + owner + "&groups=" + groups);
             int statusCode = client.executeMethod(get);
-            if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOSpaceException.PERMISSION_DENIED, "The user does not have sufficient access privileges for this operation");
+            if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied);
         } catch (IOException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         } catch (SQLException e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 

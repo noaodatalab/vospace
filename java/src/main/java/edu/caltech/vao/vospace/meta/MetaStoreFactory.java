@@ -15,7 +15,7 @@ import java.util.Properties;
 
 import edu.caltech.vao.vospace.VOSpaceException;
 
-/** 
+/**
  * This class presents a factory for creating MetaStores
  */
 public class MetaStoreFactory {
@@ -24,9 +24,9 @@ public class MetaStoreFactory {
     private Map stores;
     static Properties props;
     private int STORECOUNT = 0;
-    private MetaStore store;    
+    private MetaStore store;
 
-    /* 
+    /*
      * Construct a basic MetaStoreFactory: load the properties file and
      * initialize the db
      */
@@ -72,7 +72,7 @@ public class MetaStoreFactory {
      * Get a MetaStoreFactory
      */
     public static MetaStoreFactory getInstance() throws VOSpaceException {
-	if (ref == null) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "Store factory cannot be initialized.");
+	if (ref == null) throw new VOSpaceException(new NullPointerException("Store factory cannot be initialized."));
 	return ref;
     }
 

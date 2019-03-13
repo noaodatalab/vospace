@@ -32,6 +32,7 @@ import com.ximpleware.*;
 import com.ximpleware.xpath.*;
 
 import edu.caltech.vao.vospace.xml.*;
+import edu.caltech.vao.vospace.VOSpaceException.VOFault;
 
 @Path("nodes")
 public class NodeResource extends VOSpaceResource {
@@ -84,14 +85,14 @@ public class NodeResource extends VOSpaceResource {
     public Node updateNode(@PathParam("nodeid") String nodeid, Node node, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
 	String id = getId(nodeid);
 	manager.validateAccess(authToken, id, false);
-	if (!node.getUri().equals(id)) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "A specified URI is invalid");
+	if (!node.getUri().equals(id)) throw new VOSpaceException(VOFault.InvalidURI);
 	try {
 	    Node newNode = manager.create(node, getUser(authToken), true);
 	    return newNode;
     } catch (VOSpaceException ve) {
         throw ve;
 	} catch (Exception e) {
-	    throw new VOSpaceException(e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -108,7 +109,7 @@ public class NodeResource extends VOSpaceResource {
     public Response putNode(@PathParam("nodeid") String nodeid, Node node, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
 	String id = getId(nodeid);
 	manager.validateAccess(authToken, id, false);
-	if (!node.getUri().equals(id)) throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, "A specified URI is invalid");
+	if (!node.getUri().equals(id)) throw new VOSpaceException(VOFault.InvalidURI);
 	try {
     	Node newNode = manager.create(node, getUser(authToken), false);
 	    URI nodeUri = new URI(newNode.getUri());
@@ -116,7 +117,7 @@ public class NodeResource extends VOSpaceResource {
     } catch (VOSpaceException ve) {
         throw ve;
 	} catch (Exception e) {
-	    throw new VOSpaceException(e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 

@@ -56,7 +56,7 @@ public class Node {
         try {
             return node.has("/vos:node/vos:properties/vos:property");
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -82,7 +82,7 @@ public class Node {
             }
             return properties;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -105,7 +105,7 @@ public class Node {
                 node.addChild("/vos:node/vos:properties", newProp);
             }
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -154,7 +154,7 @@ public class Node {
             String[] capUris = node.xpath("/vos:node/vos:capabilities/vos:capability/@uri");
             return capUris;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 

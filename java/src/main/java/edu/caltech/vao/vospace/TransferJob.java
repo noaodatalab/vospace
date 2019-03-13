@@ -72,7 +72,7 @@ public class TransferJob extends JobThread {
     public TransferJob(UWSJob j) throws UWSException {
 	super(j);
     }
-    
+
    /**
      * Validate the transfer representation - check URIs, views and protocols
      */
@@ -85,7 +85,7 @@ public class TransferJob extends JobThread {
 	    // Validate access
 	    String token = getToken();
 	    if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) {
-		manager.validateAccess(token, target, false); 
+		manager.validateAccess(token, target, false);
 	    } else if (direction.equals("pullFromVoSpace") || direction.equals("pushFromVoSpace")) {
 		manager.validateAccess(token, target, true);
 	    }
@@ -101,13 +101,13 @@ public class TransferJob extends JobThread {
 	    if (store.isStored(target)) {
 		if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) {
 		    // Container
-		    if (store.getType(target) == NodeType.CONTAINER_NODE.ordinal()) throw new UWSException(UWSException.BAD_REQUEST, "Data cannot be uploaded to a container"); 
+		    if (store.getType(target) == NodeType.CONTAINER_NODE.ordinal()) throw new UWSException(UWSException.BAD_REQUEST, "Data cannot be uploaded to a container");
 		}
 	    } else {
-		if (!external || (direction.equals("pullFromVoSpace") || direction.equals("pushFromVoSpace"))) throw new UWSException(VOSpaceException.CONFLICT, "A Node does not exist with the requested URI"); 
+		if (!external || (direction.equals("pullFromVoSpace") || direction.equals("pushFromVoSpace"))) throw new UWSException(UWSException.NOT_FOUND, "A Node does not exist with the requested URI");
 	    }
-	    if (!external && store.isStored(direction) && store.getType(direction) != NodeType.CONTAINER_NODE.ordinal()) { 
-       		throw new UWSException(VOSpaceException.CONFLICT, "A Node already exists with the requested URI");		
+	    if (!external && store.isStored(direction) && store.getType(direction) != NodeType.CONTAINER_NODE.ordinal()) {
+       		throw new UWSException(UWSException.BAD_REQUEST, "A Node already exists with the requested URI");
 	    }
 	    if (external) {
 		// Views
@@ -135,7 +135,7 @@ public class TransferJob extends JobThread {
      * The main business logic of the data transfer
      */
     protected void jobWork() throws UWSException, InterruptedException {
-     
+
 	String target, direction;
 	boolean status = false;
 	long startInstance = System.currentTimeMillis();
@@ -179,7 +179,7 @@ public class TransferJob extends JobThread {
 	} catch (VOSpaceException e) {
 	    throw new UWSException(e.getStatusCode(), e.getMessage());
 	}
-	
+
 	// Executing
 	if (!isInterrupted()) {
 	    try {
@@ -206,14 +206,14 @@ public class TransferJob extends JobThread {
 
 	    if (direction.equals("pushToVoSpace") || direction.equals("pullFromVoSpace")) {
 
-		String file = getLocation(target); 
+		String file = getLocation(target);
 		if (target.endsWith(".auto")) {
 		    String jobId = getJobId();
 		    try {
 			String details = store.getResult(jobId);
 			file = details.substring(details.indexOf("<vos:target>") + 12, details.indexOf("</vos:target>"));
 			target = file;
-			file = file.replace("vos://datalab.noao.edu!vospace", manager.BASEURI); 
+			file = file.replace("vos://datalab.noao.edu!vospace", manager.BASEURI);
 		    } catch (SQLException e) {
 			throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 		    }
@@ -228,13 +228,13 @@ public class TransferJob extends JobThread {
 			    status = store.isCompleted(jobId);
 			} else if (direction.equals("pullFromVoSpace")) {
 			    status = checkTime(startInstance);
-			} 
+			}
 		    } catch (SQLException e) {
 			throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-		    } 
+		    }
 		}
 
-		// Update length property for pushToVoSpace	
+		// Update length property for pushToVoSpace
 		try {
 		    if (manager.hasBeenUpdated(target)) {
 			Node node = getNode(target);
@@ -248,17 +248,17 @@ public class TransferJob extends JobThread {
 		} catch (NullPointerException e) {
 		    System.err.println("No node for target: " + target);
 		}
-	    } 
+	    }
 
 	    if (!isInterrupted()) {
 		// Reset node status
-	        if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) { 
+	        if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) {
 		    Node node = getNode(target);
 		    if (node != null) setNodeStatus(node, STATUS_FREE);
 		}
 	    }
 	}
-	
+
 	// Check whether any capabilities need to be triggered
 	Node parent = getNode(target.substring(0, target.lastIndexOf("/")));
 	if (!direction.equals("pushFromVoSpace") && !direction.equals("pullFromVoSpace")) {
@@ -273,7 +273,7 @@ public class TransferJob extends JobThread {
 	    } catch (SQLException e) {
 		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 	    } catch (VOSpaceException e) {
-		throw new UWSException(e.getStatusCode(), e.getMessage());	                   }  
+		throw new UWSException(e.getStatusCode(), e.getMessage());	                   }
 	}
 
 	// Check whether capability enabled - assumes naming convention
@@ -293,10 +293,10 @@ public class TransferJob extends JobThread {
 		    System.err.println(manager.CAPABILITY_EXE + " " + "-port" + " " +  String.valueOf(manager.CAPABILITY_PORT));
 		    Process p = Runtime.getRuntime().exec(cmdArgs);
 		    manager.addProcess(target, p);
-		}		
+		}
 	    } catch (Exception e) {
 		throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-            }  
+            }
 	}
 
 	if (isInterrupted()) {
@@ -335,7 +335,7 @@ public class TransferJob extends JobThread {
 	    setNodeStatus(node, STATUS_BUSY);
 	    // Add to results
 	    if (target.endsWith(".auto")) transfer.setTarget(uri);
-	    store.addResult(getJobId(), transfer.toString());  
+	    store.addResult(getJobId(), transfer.toString());
 	    if (target.endsWith(".auto")) {
 		getJob().addResult(new Result(getJob(), "nodeDetails", manager.BASE_URL + "nodes/" + uri.substring(uri.lastIndexOf("/") + 1)));
 	    }
@@ -408,7 +408,7 @@ public class TransferJob extends JobThread {
 	}
     }
 
-    /** 
+    /**
      * Get the job id associated with this thread
      * @return jobId The job id for this task
      */
@@ -429,7 +429,7 @@ public class TransferJob extends JobThread {
 	if (System.currentTimeMillis() - start < 3600000) {
 	    // Any activity with the past five seconds?
 	    //long lastModified = location.lastModified();
-	    long lastModified = backend.lastModified(location); 
+	    long lastModified = backend.lastModified(location);
 	    if (lastModified > start && System.currentTimeMillis() - lastModified > 5000) changed = true;
 	} else {
 	    changed = true;
@@ -475,7 +475,7 @@ public class TransferJob extends JobThread {
 	if (direction.endsWith(".null")) {
 	    manager.delete(target);
 	} else {
-	    if (direction.endsWith(".auto")) direction = generateUri(direction, ".auto"); 
+	    if (direction.endsWith(".auto")) direction = generateUri(direction, ".auto");
 	    // Check whether endpoint is a container
 	    if (isContainer(direction)) direction += target.substring(target.lastIndexOf("/"));
 	    // Change identifier
@@ -502,7 +502,7 @@ public class TransferJob extends JobThread {
 	}
 	// Update job results with details
 //	if (direction.endsWith(".auto")) {
-//	  
+//
 //	}
 
     }
@@ -519,13 +519,13 @@ public class TransferJob extends JobThread {
 	if (result.length == 0) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Node not in metastore");
 	Node node = null;
 	for (String item: result) {
-	    node = factory.getNode(item);	
+	    node = factory.getNode(item);
 	}
 	// Check whether endpoint is reserved URI
 	if (direction.endsWith(".null")) {
 	    manager.delete(target);
 	} else {
-	    if (direction.endsWith(".auto")) direction = generateUri(direction, ".auto"); 
+	    if (direction.endsWith(".auto")) direction = generateUri(direction, ".auto");
 	    // Check whether endpoint is a container
 	    if (isContainer(direction)) direction += target.substring(target.lastIndexOf("/"));
 	    // Change identifier
@@ -584,7 +584,7 @@ public class TransferJob extends JobThread {
     private String getLocation(String identifier) {
 	String name = identifier.substring(identifier.lastIndexOf("!"));
         String dataname = name.substring(name.indexOf("/") + 1);
-        return manager.BASEURI + "/" + dataname; 
+        return manager.BASEURI + "/" + dataname;
     }
 
     /**
@@ -697,7 +697,7 @@ public class TransferJob extends JobThread {
 	    String[] result = store.getData(new String[] {identifier}, null, 0);
 	    for (String item: result) {
 		node = factory.getNode(item);
-	    } 
+	    }
 	} catch (SQLException e) {
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 	} catch (VOSpaceException e) {
@@ -728,7 +728,7 @@ public class TransferJob extends JobThread {
 	try {
 	    String jobId = getJobId();
 	    for (Protocol protocol : transfer.getProtocol()) {
-		store.storeTransfer(jobId, protocol.getEndpoint()); 
+		store.storeTransfer(jobId, protocol.getEndpoint());
 	    }
 	} catch (Exception e) {
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
@@ -772,7 +772,7 @@ public class TransferJob extends JobThread {
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
 	} catch (VOSpaceException e) {
 	    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-	}	
+	}
 	if (!success) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "None of the requested protocols was successful");
     }
 

@@ -33,10 +33,10 @@ public class XMLObject {
 	    ap.declareXPathNameSpace("xsi", "http://www.w3.org/2001/XMLSchema-instance");
 	    PREFIX = getNamespacePrefix();
 	    if (!validStructure())
-		throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "Invalid node representation");
+		throw new VOSpaceException(VOSpaceException.VOFault.InvalidURI);
 	} catch (Exception e) {
 	    e.printStackTrace();
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -56,21 +56,21 @@ public class XMLObject {
 		    elements.add(vn.toNormalizedString(result + 1));
 		} else {
 		    int t = vn.getText();
-		    if (t > 0) 
+		    if (t > 0)
 			elements.add(vn.toNormalizedString(t));
 		}
 	    }
 	    ap.resetXPath();
 	    return elements.toArray(new String[0]);
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	    throw new VOSpaceException(e);
 	}
     }
 
     /**
      * Update the value of the text identified by the XPath expression with the specified string
      * @param expression The XPath expression identifying the text to be replaced
-     * @param value The new text value 
+     * @param value The new text value
      */
     public void replace(String expression, String value) throws VOSpaceException {
 	try {
@@ -90,7 +90,7 @@ public class XMLObject {
 	    vn = xm.outputAndReparse();
 	    ap.resetXPath();
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -110,7 +110,7 @@ public class XMLObject {
 	    vn = xm.outputAndReparse();
 	    ap.resetXPath();
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -131,7 +131,7 @@ public class XMLObject {
 	    vn = xm.outputAndReparse();
 	    ap.resetXPath();
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -154,7 +154,7 @@ public class XMLObject {
 	    ap.resetXPath();
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -173,7 +173,7 @@ public class XMLObject {
 	    ap.resetXPath();
 	    return has;
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	    throw new VOSpaceException(e);
 	}
     }
 
@@ -200,10 +200,10 @@ public class XMLObject {
 	try {
 	    return vn.getPrefixString(1);
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+	    throw new VOSpaceException(e);
 	}
     }
-    
+
     /**
      * Get a string representation of the object
      * @return a string representation of the object

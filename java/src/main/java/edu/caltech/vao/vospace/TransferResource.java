@@ -189,7 +189,7 @@ public class TransferResource extends VOSpaceResource {
         } catch (VOSpaceException ve) {
             throw ve;
         } catch (Exception e) {
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 

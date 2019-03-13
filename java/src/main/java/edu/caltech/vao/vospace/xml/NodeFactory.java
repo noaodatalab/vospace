@@ -40,7 +40,7 @@ public class NodeFactory {
 	try {
 	    in.read(bytes, 0, len);
 	} catch (IOException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
 	return getNode(bytes);
     }
@@ -59,7 +59,7 @@ public class NodeFactory {
             }
         } catch (IOException e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new VOSpaceException(e);
         }
         return getNode(baos.toByteArray());
     }
@@ -76,7 +76,7 @@ public class NodeFactory {
 	    bytes = new byte[len];
 	    in.read(bytes, 0, len);
 	} catch (IOException e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
 	}
 	return getNode(bytes);
     }
@@ -91,12 +91,12 @@ public class NodeFactory {
 
     private Node getNode(byte[] bytes) throws VOSpaceException {
 	String type = getType(bytes);
-	if (!SUPPORTED_TYPES.contains(type)) throw new VOSpaceException(VOSpaceException.BAD_REQUEST, "Node type not supported");
+	if (!SUPPORTED_TYPES.contains(type)) throw new VOSpaceException(VOSpaceException.VOFault.TypeNotSupported);
 	Node node = null;
 	try {
 	    node = (Node) Class.forName("edu.caltech.vao.vospace.xml." + type).getConstructor(byte[].class).newInstance(bytes);
 	} catch (Exception e) {
-	    throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e.getMessage());
+	    throw new VOSpaceException(e);
       	}
 	return node;
     }

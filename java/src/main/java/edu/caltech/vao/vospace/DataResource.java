@@ -64,7 +64,7 @@ public class DataResource extends VOSpaceResource {
             throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -82,7 +82,7 @@ public class DataResource extends VOSpaceResource {
             return hashText;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         }
     }
 
@@ -117,7 +117,7 @@ public class DataResource extends VOSpaceResource {
             throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(VOSpaceException.INTERNAL_SERVER_ERROR, e);
+            throw new VOSpaceException(e);
         } finally {
             /*
             if (in != null)
