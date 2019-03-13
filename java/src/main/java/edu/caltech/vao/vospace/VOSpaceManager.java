@@ -161,6 +161,7 @@ public class VOSpaceManager {
         // Is identifier syntactically valid?
         if (!validId(uri)) throw new VOSpaceException(VOFault.InvalidURI);
         // Is the parent a valid container?
+        // FIXME: We need to check for a LinkNode in the path here.
         if (!validParent(uri)) throw new VOSpaceException(VOFault.ContainerNotFound);
         try {
             // Does node already exist?
