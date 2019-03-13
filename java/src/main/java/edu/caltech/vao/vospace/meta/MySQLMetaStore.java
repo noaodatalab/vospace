@@ -8,7 +8,7 @@ package edu.caltech.vao.vospace.meta;
 
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -486,7 +486,6 @@ public class MySQLMetaStore implements MetaStore{
         return children.toArray(new String[0]);
     }
 
-
     /*
      * Remove the metadata for the specified identifier
      * @param identifier The (root) identifier of the node(s) to delete
@@ -505,10 +504,9 @@ public class MySQLMetaStore implements MetaStore{
             update(query);
             query = "delete from links where identifier like '" + escaped + "/%'";
             update(query);
+            // Find all the links to the container contents
             query = "select identifier from links where target like '" + escaped + "/%'";
-            removedLinks.addAll(Arrays.asList(getAsStringArray(query)));
-            query = "delete from links where target like '" + escaped + "/%'";
-            update(query);
+            Collections.addAll(removedLinks, getAsStringArray(query));
         }
         identifier = fixId(identifier);
         query = "delete from nodes where identifier = '" + identifier + "'";
@@ -517,10 +515,14 @@ public class MySQLMetaStore implements MetaStore{
         update(query);
         query = "delete from links where identifier = '" + identifier + "'";
         update(query);
+        // Find all the links to the identifier
         query = "select identifier from links where target = '" + identifier + "'";
-        removedLinks.addAll(Arrays.asList(getAsStringArray(query)));
-        query = "delete from links where target = '" + identifier + "'";
-        update(query);
+        Collections.addAll(removedLinks, getAsStringArray(query));
+        // Recursively remove all the links to the nodes we removed.
+        for (String link: (ArrayList<String>)removedLinks.clone()) {
+            // System.out.println("Removing " + link);
+            Collections.addAll(removedLinks, removeData(link, false));
+        }
         if (identifier.endsWith("_cap.conf")) {
             String parent = identifier.substring(0, identifier.lastIndexOf("/"));
             String shortCap = identifier.substring(identifier.lastIndexOf("/") + 1, identifier.lastIndexOf("_cap.conf"));

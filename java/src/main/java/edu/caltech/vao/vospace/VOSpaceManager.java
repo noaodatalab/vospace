@@ -433,7 +433,7 @@ public class VOSpaceManager {
             String[] removedLinks = store.removeData(identifier, isContainer);
             backend.removeBytes(getLocation(identifier), isContainer);
             for (String link: removedLinks) {
-                System.out.println(link);
+                // System.out.println(link);
                 backend.removeBytes(getLocation(link), false);
             }
         } catch (SQLException e) {

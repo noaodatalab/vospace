@@ -11,8 +11,8 @@ public class VOSpaceException extends Exception {
     public final static int SUCCESSFUL = 200;
     public final static int CREATED = 201;
     public final static int BAD_REQUEST = 400; /* InvalidURI, TypeNotSupported, LinkFound, InvalidArgument */
-    public final static int PERMISSION_DENIED = 401;
-    public final static int FORBIDDEN = 403; /* PermissionDenied */
+    public final static int PERMISSION_DENIED = 403; /* PermissionDenied */
+    public final static int FORBIDDEN = 403;
     public final static int NOT_FOUND = 404; /* ContainerNotFound, NodeNotFound */
     public final static int CONFLICT = 409; /* DuplicateNode */
     public final static int INTERNAL_SERVER_ERROR = 500; /* InternalFault */
