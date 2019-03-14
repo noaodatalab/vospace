@@ -48,8 +48,9 @@ public class DataResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response getData(@PathParam("fileid") String fileid) throws VOSpaceException {
+        String location = null;
         try {
-            String location = manager.resolveLocation(fileid, true);
+            location = manager.resolveLocation(fileid, true);
             // Invalidating after an hour
             if (manager.hasExpired(fileid)) manager.invalidateLocation(fileid);
             //      System.err.println(fileid + " " + location);
@@ -64,7 +65,7 @@ public class DataResource extends VOSpaceResource {
             throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(e);
+            throw new VOSpaceException(e, location);
         }
     }
 
@@ -82,7 +83,7 @@ public class DataResource extends VOSpaceResource {
             return hashText;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(e);
+            throw new VOSpaceException(e, location);
         }
     }
 
@@ -98,8 +99,9 @@ public class DataResource extends VOSpaceResource {
     public void putNode(@PathParam("fileid") String fileid, File file) throws VOSpaceException {
         FileInputStream in = null;
         FileOutputStream out = null;
+        String location = null;
         try {
-            String location = manager.resolveLocation(fileid, false);
+            location = manager.resolveLocation(fileid, false);
             in = new FileInputStream(file);
             backend.putBytes(location, in);
             manager.updateSize(fileid, Long.toString(backend.size(location)));
@@ -117,7 +119,7 @@ public class DataResource extends VOSpaceResource {
             throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(e);
+            throw new VOSpaceException(e, location);
         } finally {
             /*
             if (in != null)

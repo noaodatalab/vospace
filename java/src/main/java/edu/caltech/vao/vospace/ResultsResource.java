@@ -43,7 +43,7 @@ public class ResultsResource extends VOSpaceResource {
     } catch (VOSpaceException ve) {
         throw ve;
 	} catch (Exception e) {
-	    throw new VOSpaceException(e);
+	    throw new VOSpaceException(e, jobid);
 	}
     }
 

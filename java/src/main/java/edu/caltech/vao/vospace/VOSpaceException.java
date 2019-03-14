@@ -92,8 +92,15 @@ public class VOSpaceException extends Exception {
         super(t);
     }
 
+    /* Should be used only in the case of an InternalFault */
     public VOSpaceException(Throwable t, String id) {
         this(t);
+        identifier = id;
+    }
+
+    /* Should be used only in the case of an InternalFault */
+    public VOSpaceException(Throwable t, String message, String id) {
+        super(message, t);
         identifier = id;
     }
 

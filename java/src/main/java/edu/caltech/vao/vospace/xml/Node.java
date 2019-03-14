@@ -53,11 +53,7 @@ public class Node {
      * @return whether the node has any properties set
      */
     public boolean hasProperties() throws VOSpaceException {
-        try {
-            return node.has("/vos:node/vos:properties/vos:property");
-        } catch (Exception e) {
-            throw new VOSpaceException(e);
-        }
+        return node.has("/vos:node/vos:properties/vos:property");
     }
 
     /**
@@ -150,12 +146,8 @@ public class Node {
      * @return any capabilities the node has set on it
      */
     public String[] getCapabilities() throws VOSpaceException {
-        try {
-            String[] capUris = node.xpath("/vos:node/vos:capabilities/vos:capability/@uri");
-            return capUris;
-        } catch (Exception e) {
-            throw new VOSpaceException(e);
-        }
+        String[] capUris = node.xpath("/vos:node/vos:capabilities/vos:capability/@uri");
+        return capUris;
     }
 
 

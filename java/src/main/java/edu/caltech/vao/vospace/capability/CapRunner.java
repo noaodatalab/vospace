@@ -97,7 +97,7 @@ public class CapRunner implements Capability {
 	    success = true;
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
-	    throw new VOSpaceException(e);
+	    throw new VOSpaceException(e, location);
 	} finally {
 	    IOUtils.closeQuietly(response);
 	    IOUtils.closeQuietly(client);

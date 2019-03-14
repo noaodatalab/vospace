@@ -55,13 +55,13 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
 	    } else {
 		// Check url is valid
 		if (!Pattern.matches("^http\\://[a-zA-Z0-9\\-\\.]+\\.[a-zA-Z]{2,3}(/\\S*)?$", protocol.getEndpoint()))
-		        throw new VOSpaceException(VOSpaceException.VOFault.InternalFault, "Destination URI is invalid");
+		        throw new VOSpaceException(VOSpaceException.VOFault.InternalFault, "Destination URI is invalid", nodeUri);
 	    }
 	    return protocol;
         } catch (VOSpaceException ve) {
             throw ve;
 	} catch (Exception e) {
-	    throw new VOSpaceException(e);
+	    throw new VOSpaceException(e, nodeUri);
 	}
     }
 

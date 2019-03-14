@@ -59,7 +59,7 @@ public class RegisterResource extends VOSpaceResource {
         throw ve;
 	} catch (Exception e) {
 	    e.printStackTrace(System.err);
-	    throw new VOSpaceException(e);
+	    throw new VOSpaceException(e, nodeid);
 	}
     }
 }
