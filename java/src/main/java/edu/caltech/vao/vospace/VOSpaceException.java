@@ -2,6 +2,7 @@
 package edu.caltech.vao.vospace;
 
 import java.util.EnumMap;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Any exception thrown by a VOSpace service must be associated with an HTTP status code and a
@@ -122,6 +123,10 @@ public class VOSpaceException extends Exception {
 
     public String getIdentifier() {
         return identifier;
+    }
+
+    public String getFault() {
+        return StringUtils.deleteWhitespace(faultNames.get(faultCode));
     }
 
     public String toString() {
