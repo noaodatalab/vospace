@@ -12,7 +12,7 @@ import javax.ws.rs.ext.Provider;
 public class VOSpaceExceptionMapper implements ExceptionMapper<VOSpaceException> {
 
     public Response toResponse(VOSpaceException e) {
-        return Response.status(e.getStatusCode()).entity(e.getMessage()).build();
+        return Response.status(e.getStatusCode()).entity(e.getMessage()).header("X-VO-Identifier",e.getIdentifier()).build();
     }
 
 }

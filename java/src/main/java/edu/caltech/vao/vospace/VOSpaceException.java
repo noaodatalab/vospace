@@ -69,10 +69,17 @@ public class VOSpaceException extends Exception {
     }
 
     protected VOFault faultCode = VOFault.InternalFault;
+    protected String identifier = null;
 
     public VOSpaceException(VOFault fault, String message) {
         super(message);
         faultCode = fault;
+    }
+
+    public VOSpaceException(VOFault fault, String message, String id) {
+        super(message);
+        faultCode = fault;
+        identifier = id;
     }
 
     public VOSpaceException(VOFault fault) {
@@ -84,18 +91,37 @@ public class VOSpaceException extends Exception {
         super(t);
     }
 
-    public VOSpaceException(Throwable t, VOFault fault) {
+    public VOSpaceException(Throwable t, String id) {
+        this(t);
+        identifier = id;
+    }
+
+    public VOSpaceException(VOFault fault, Throwable t) {
         super(t);
         faultCode = fault;
     }
 
-    public VOSpaceException(String message, Throwable t, VOFault fault) {
+    public VOSpaceException(VOFault fault, Throwable t, String id) {
+        this(fault, t);
+        faultCode = fault;
+    }
+
+    public VOSpaceException(VOFault fault, String message, Throwable t) {
         super(message, t);
         faultCode = fault;
     }
 
+    public VOSpaceException(VOFault fault, String message, Throwable t, String id) {
+        this(fault, message, t);
+        identifier = id;
+    }
+
     public int getStatusCode() {
         return statusCodes.get(faultCode);
+    }
+
+    public String getIdentifier() {
+        return identifier;
     }
 
     public String toString() {
