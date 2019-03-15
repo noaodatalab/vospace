@@ -164,12 +164,8 @@ public class VOSpaceManager {
         // Is the parent a valid container?
         if (!validParent(uri)) {
             // Check for a LinkNode in the path.
-            String trueURI = resolveLinks(uri);
-            if (trueURI != null) {
-                throw new VOSpaceException(VOFault.LinkFoundFault, "", trueURI);
-            } else {
-                throw new VOSpaceException(VOFault.ContainerNotFound, "", uri);
-            }
+            resolveLinks(uri);
+            throw new VOSpaceException(VOFault.ContainerNotFound, "", uri);
         }
         try {
             // Does node already exist?
@@ -338,12 +334,8 @@ public class VOSpaceManager {
             String[] result = store.getData(new String[] {identifier}, null, limit);
             if (result.length == 0) {
                 // Check for a LinkNode in the path.
-                String trueURI = resolveLinks(identifier);
-                if (trueURI != null) {
-                    throw new VOSpaceException(VOFault.LinkFoundFault, "", trueURI);
-                } else {
-                    throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
-                }
+                resolveLinks(identifier);
+                throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
             }
             for (String item: result) {
                 node = nfactory.getNode(item);
@@ -447,12 +439,8 @@ public class VOSpaceManager {
             boolean exists = store.isStored(identifier);
             if (!exists) {
                 // Check for a LinkNode in the path.
-                String trueURI = resolveLinks(identifier);
-                if (trueURI != null) {
-                    throw new VOSpaceException(VOFault.LinkFoundFault, "", trueURI);
-                } else {
-                    throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
-                }
+                resolveLinks(identifier);
+                throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
             }
             // Remove node
             boolean isContainer = (store.getType(identifier) == NodeType.CONTAINER_NODE.ordinal());
@@ -505,14 +493,11 @@ public class VOSpaceManager {
     }
 
     /**
-     * Check whether any parent of the node is a LinkNode. If so, resolve the LinkNode
-     * and return the canonical path.
+     * Check whether any parent of the node is a LinkNode. If so, throw a LinkFoundFault.
      * @param id The identifier to check
-     * @return the canonical path for the node
      */
-    private String resolveLinks(String id) throws VOSpaceException {
-        if (!id.startsWith(ROOT_NODE)) return null;
-        try {
+    private void resolveLinks(String id) throws VOSpaceException {
+        if (id.startsWith(ROOT_NODE)) try {
             String parent = id;
             while (!store.isStored(parent) && !ROOT_NODE.equals(parent) && parent.contains("/")) {
                 parent = parent.substring(0, parent.lastIndexOf("/"));
@@ -521,10 +506,10 @@ public class VOSpaceManager {
                     while (store.getType(linkTarget) == NodeType.LINK_NODE.ordinal()) {
                         linkTarget = store.getTarget(linkTarget);
                     }
-                    return linkTarget + id.substring(parent.length());
+                    throw new VOSpaceException(VOFault.LinkFoundFault, "",
+                            linkTarget + id.substring(parent.length()));
                 }
             }
-            return null;
         } catch (SQLException e) {
             throw new VOSpaceException(e, id);
         }
