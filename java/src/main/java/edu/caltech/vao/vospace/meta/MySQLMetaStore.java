@@ -372,6 +372,14 @@ public class MySQLMetaStore implements MetaStore{
     }
 
     /*
+     * Get the target of a link node
+     */
+    public String getTarget(String linkId) throws SQLException {
+        String lquery = "select target from links where identifier = '" + fixId(linkId) + "'";
+        return getAsString(lquery);
+    }
+
+    /*
      * Create the specified node string by combining the other data stored in the database
      */
 /* TODO: Figure out how to deal with Views and Capabilities */
@@ -405,10 +413,7 @@ public class MySQLMetaStore implements MetaStore{
         } finally {
             closeResult(result);
         }
-        if (node instanceof LinkNode) {
-            String lquery = "select target from links where identifier = '" + fixedId + "'";
-            ((LinkNode) node).setTarget(getAsString(lquery));
-        }
+        if (node instanceof LinkNode) ((LinkNode) node).setTarget(getTarget(fixedId));
         // Set the Views; those aren't stored in the DB, and will have to be sourced from NodeManager
         // Also set the Capabilities from the database
         // Return the Node cast back to String

@@ -96,7 +96,8 @@ public class VOSpaceManager {
     }
 
     public static VOSpaceManager getInstance() throws VOSpaceException {
-        if (ref == null) throw new VOSpaceException(new NullPointerException("VOSpaceManager could not be initialized."));
+        if (ref == null) throw new VOSpaceException(
+                new NullPointerException("VOSpaceManager could not be initialized."));
         return ref;
     }
 
@@ -159,18 +160,25 @@ public class VOSpaceManager {
     public Node create(Node node, String owner, boolean overwrite) throws VOSpaceException {
         String uri = node.getUri();
         // Is identifier syntactically valid?
-        if (!validId(uri)) throw new VOSpaceException(VOFault.InvalidURI);
+        if (!validId(uri)) throw new VOSpaceException(VOFault.InvalidURI, "", uri);
         // Is the parent a valid container?
-        // FIXME: We need to check for a LinkNode in the path here.
-        if (!validParent(uri)) throw new VOSpaceException(VOFault.ContainerNotFound);
+        if (!validParent(uri)) {
+            // Check for a LinkNode in the path.
+            String trueURI = resolveLinks(uri);
+            if (trueURI != null) {
+                throw new VOSpaceException(VOFault.LinkFoundFault, "", trueURI);
+            } else {
+                throw new VOSpaceException(VOFault.ContainerNotFound, "", uri);
+            }
+        }
         try {
             // Does node already exist?
             boolean exists = store.isStored(uri);
-            if (exists && !overwrite) throw new VOSpaceException(VOFault.DuplicateNode);
+            if (exists && !overwrite) throw new VOSpaceException(VOFault.DuplicateNode, "", uri);
             // Check specified node type
             if (exists) {
                 int type = store.getType(uri);
-                if (type != NodeType.getIdByUri(node.getType())) throw new VOSpaceException(VOFault.PermissionDenied, "The node type cannot be changed.");
+                if (type != NodeType.getIdByUri(node.getType())) throw new VOSpaceException(VOFault.PermissionDenied, "The node type cannot be changed.", uri);
             }
             NodeType type = NodeType.NODE;
             // Is a service-generated name required?
@@ -244,13 +252,15 @@ public class VOSpaceManager {
                 targetURI = ((LinkNode)node).getTarget();
                 localLink = targetURI.startsWith(ROOT_NODE);
                 if (localLink && !store.isStored(targetURI)) {
-                    throw new VOSpaceException(VOFault.InvalidURI, "The requested target URI is invalid");
+                    throw new VOSpaceException(VOFault.NodeNotFound,
+                            "A Node does not exist with the requested target URI.", targetURI);
                 }
             }
             // Check properties
             if (node.hasProperties()) {
                 for (String propUri: node.getProperties().keySet()) {
-                    if (!checkProperty(propUri)) throw new VOSpaceException(VOFault.PermissionDenied, "The property " + propUri + " is read only");
+                    if (!checkProperty(propUri)) throw new VOSpaceException(VOFault.PermissionDenied,
+                            "The property " + propUri + " is read only", uri);
                 }
             }
             // Set properties (date at least)
@@ -307,7 +317,7 @@ public class VOSpaceManager {
             throw ve;
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new VOSpaceException(e);
+            throw new VOSpaceException(e, uri);
         }
         return node;
     }
@@ -324,10 +334,17 @@ public class VOSpaceManager {
         // Is identifier syntactically valid?
         if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
         // Retrieve original node
-        // FIXME: Somewhere here we need to check if one of the parents is a LinkNode!
         try {
             String[] result = store.getData(new String[] {identifier}, null, limit);
-            if (result.length == 0) throw new VOSpaceException(VOFault.NodeNotFound);
+            if (result.length == 0) {
+                // Check for a LinkNode in the path.
+                String trueURI = resolveLinks(identifier);
+                if (trueURI != null) {
+                    throw new VOSpaceException(VOFault.LinkFoundFault, "", trueURI);
+                } else {
+                    throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
+                }
+            }
             for (String item: result) {
                 node = nfactory.getNode(item);
                 detail = (detail == null) ? "max" : detail; // Try with min - MJG
@@ -428,8 +445,15 @@ public class VOSpaceManager {
         try {
             // Does node already exist?
             boolean exists = store.isStored(identifier);
-            // FIXME: We need to check for a LinkNode as a parent here!
-            if (!exists) throw new VOSpaceException(VOFault.NodeNotFound);
+            if (!exists) {
+                // Check for a LinkNode in the path.
+                String trueURI = resolveLinks(identifier);
+                if (trueURI != null) {
+                    throw new VOSpaceException(VOFault.LinkFoundFault, "", trueURI);
+                } else {
+                    throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
+                }
+            }
             // Remove node
             boolean isContainer = (store.getType(identifier) == NodeType.CONTAINER_NODE.ordinal());
             String[] removedLinks = store.removeData(identifier, isContainer);
@@ -476,7 +500,33 @@ public class VOSpaceManager {
             if (store.getType(parent) != NodeType.CONTAINER_NODE.ordinal()) return false;
             return true;
         } catch (SQLException e) {
-            throw new VOSpaceException(e);
+            throw new VOSpaceException(e, id);
+        }
+    }
+
+    /**
+     * Check whether any parent of the node is a LinkNode. If so, resolve the LinkNode
+     * and return the canonical path.
+     * @param id The identifier to check
+     * @return the canonical path for the node
+     */
+    private String resolveLinks(String id) throws VOSpaceException {
+        if (!id.startsWith(ROOT_NODE)) return null;
+        try {
+            String parent = id;
+            while (!store.isStored(parent) && !ROOT_NODE.equals(parent) && parent.contains("/")) {
+                parent = parent.substring(0, parent.lastIndexOf("/"));
+                if (store.getType(parent) == NodeType.LINK_NODE.ordinal()) {
+                    String linkTarget = parent;
+                    while (store.getType(linkTarget) == NodeType.LINK_NODE.ordinal()) {
+                        linkTarget = store.getTarget(linkTarget);
+                    }
+                    return linkTarget + id.substring(parent.length());
+                }
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new VOSpaceException(e, id);
         }
     }
 

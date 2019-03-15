@@ -73,12 +73,12 @@ public class VOSpaceException extends Exception {
     protected String identifier = null;
 
     public VOSpaceException(VOFault fault, String message) {
-        super(message);
+        super(message == null || message.isEmpty() ? faultMessages.get(fault) : message);
         faultCode = fault;
     }
 
     public VOSpaceException(VOFault fault, String message, String id) {
-        super(message);
+        super(message == null || message.isEmpty() ? faultMessages.get(fault) : message);
         faultCode = fault;
         identifier = id;
     }

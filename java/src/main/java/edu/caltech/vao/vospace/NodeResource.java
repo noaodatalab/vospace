@@ -41,7 +41,7 @@ public class NodeResource extends VOSpaceResource {
     private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
 
     public NodeResource() throws VOSpaceException {
-	super();
+        super();
     }
 
     /**
@@ -52,8 +52,8 @@ public class NodeResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
-	Node node = manager.getNode(manager.ROOT_NODE, detail, limit);
-	return node;
+        Node node = manager.getNode(manager.ROOT_NODE, detail, limit);
+        return node;
     }
 
     /**
@@ -66,10 +66,10 @@ public class NodeResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
-	String id = getId(nodeid);
-	manager.validateAccess(authToken, id, true);
-	Node node = manager.getNode(id, detail, limit);
-	return node;
+        String id = getId(nodeid);
+        manager.validateAccess(authToken, id, true);
+        Node node = manager.getNode(id, detail, limit);
+        return node;
     }
 
     /**
@@ -83,17 +83,17 @@ public class NodeResource extends VOSpaceResource {
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces(MediaType.APPLICATION_XML)
     public Node updateNode(@PathParam("nodeid") String nodeid, Node node, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
-	String id = getId(nodeid);
-	manager.validateAccess(authToken, id, false);
-	if (!node.getUri().equals(id)) throw new VOSpaceException(VOFault.InvalidURI);
-	try {
-	    Node newNode = manager.create(node, getUser(authToken), true);
-	    return newNode;
-    } catch (VOSpaceException ve) {
-        throw ve;
-	} catch (Exception e) {
-	    throw new VOSpaceException(e);
-	}
+        String id = getId(nodeid);
+        manager.validateAccess(authToken, id, false);
+        if (!node.getUri().equals(id)) throw new VOSpaceException(VOFault.InvalidURI);
+        try {
+            Node newNode = manager.create(node, getUser(authToken), true);
+            return newNode;
+        } catch (VOSpaceException ve) {
+            throw ve;
+        } catch (Exception e) {
+            throw new VOSpaceException(e, id);
+        }
     }
 
     /**
@@ -107,18 +107,18 @@ public class NodeResource extends VOSpaceResource {
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces(MediaType.APPLICATION_XML)
     public Response putNode(@PathParam("nodeid") String nodeid, Node node, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
-	String id = getId(nodeid);
-	manager.validateAccess(authToken, id, false);
-	if (!node.getUri().equals(id)) throw new VOSpaceException(VOFault.InvalidURI);
-	try {
-    	Node newNode = manager.create(node, getUser(authToken), false);
-	    URI nodeUri = new URI(newNode.getUri());
-  	    return Response.created(nodeUri).entity(newNode).build();
-    } catch (VOSpaceException ve) {
-        throw ve;
-	} catch (Exception e) {
-	    throw new VOSpaceException(e);
-	}
+        String id = getId(nodeid);
+        manager.validateAccess(authToken, id, false);
+        if (!node.getUri().equals(id)) throw new VOSpaceException(VOFault.InvalidURI);
+        try {
+            Node newNode = manager.create(node, getUser(authToken), false);
+            URI nodeUri = new URI(newNode.getUri());
+            return Response.created(nodeUri).entity(newNode).build();
+        } catch (VOSpaceException ve) {
+            throw ve;
+        } catch (Exception e) {
+            throw new VOSpaceException(e, id);
+        }
     }
 
     /**
@@ -129,17 +129,17 @@ public class NodeResource extends VOSpaceResource {
     @Path("{nodeid: .*}")
     @DELETE
     public void deleteNode(@PathParam("nodeid") String nodeid, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
-	String id = getId(nodeid);
-	manager.validateAccess(authToken, id, false);
-	manager.delete(id);
+        String id = getId(nodeid);
+        manager.validateAccess(authToken, id, false);
+        manager.delete(id);
     }
 
     private String getId(String nodeid) {
-	return manager.ROOT_NODE + "/" + nodeid;
+        return manager.ROOT_NODE + "/" + nodeid;
     }
 
     private String getUser(String authToken) {
-	String[] parts = authToken.split("\\.");
-	return parts[0];
+        String[] parts = authToken.split("\\.");
+        return parts[0];
     }
 }

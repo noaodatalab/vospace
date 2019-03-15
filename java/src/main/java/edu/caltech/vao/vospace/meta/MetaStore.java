@@ -71,6 +71,11 @@ public interface MetaStore {
     public String[] getData(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException;
 
     /*
+     * Get the target of a link node
+     */
+    public String getTarget(String linkId) throws SQLException;
+
+    /*
      * Remove the metadata for the specified identifier
      */
     public String[] removeData(String identifier, boolean container) throws SQLException;
