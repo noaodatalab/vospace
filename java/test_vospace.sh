@@ -145,8 +145,8 @@ vo_get "${USER}" "${USER}/${datenode}" "${USER}/${datenode}/Z" "${USER}/${dateno
         "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/Z/LINKLINKLINK" \
         "${USER}/${datenode}/NOEXIST" "demo00/${datenode}"
 read -rsp $'Press any key to continue...\n' -n1 key
-vo_delete "${USER}/${datenode}/ZLINK/Y/DATAY" "${USER}/${datenode}/NOEXIST" \
-        "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/Z/Y/DATAY"
+vo_delete "${USER}/${datenode}/ZLINK/Y/DATAY" "${USER}/${datenode}/Z/DATAZ" \
+        "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/NOEXIST"
 vo_get "${USER}/${datenode}/Z"
 vo_delete "${USER}/${datenode}"
 vo_get "${USER}"
