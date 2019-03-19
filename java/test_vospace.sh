@@ -6,7 +6,12 @@ if [ ! -e $HOME/.datalab/id_token.${USER} ]; then
 fi
 token="X-Dl-Authtoken: $(cat $HOME/.datalab/id_token.${USER})"
 ROOT="vos://datalab.noao!vospace"
-BASE="http://dldev:8080/vospace-2.0/vospace"
+
+if [ $# -ge 1 ]; then host=$1
+elif [ $(hostname -s) == "dltest" ]; then host=$(hostname)
+else host='dldev.datalab.noao.edu'
+fi
+BASE="http://${host}:8080/vospace-2.0/vospace"
 
 read -r -d '' LINKNODE <<'EOF'
 <ns0:node xmlns:ns0="http://www.ivoa.net/xml/VOSpace/v2.0"
