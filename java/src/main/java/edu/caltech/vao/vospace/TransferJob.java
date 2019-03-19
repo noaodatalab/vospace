@@ -127,8 +127,7 @@ public class TransferJob extends JobThread {
         } catch (SQLException e) {
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
-            // Issue here with non-500 status codes not terminating job
-            throw new UWSException(e.getStatusCode(), e.getMessage());
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
     }
 
