@@ -112,10 +112,10 @@ function vo_data {
 function vo_link {
     echo "--- CREATE LINK ---"
     while [ $# -gt 1 ]; do
-        local vout=$(echo "$LINKNODE" | sed -e "s|URI|${ROOT}/${1}|g" -e "s|TARGET|${ROOT}/${2}|g" | vo_curl "nodes/$1" "PUT")
+        local vout=$(echo "$LINKNODE" | sed -e "s|URI|${ROOT}/${2}|g" -e "s|TARGET|${ROOT}/${1}|g" | vo_curl "nodes/$2" "PUT")
         local vstat=${vout%%[[:space:]]*}
         if [ $vstat -eq 201 ]; then
-            echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${1}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g"
+            echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${2}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g"
         else
             echo $vout
         fi
@@ -129,16 +129,16 @@ datenode=$(date +"Z%Y%m%d%H%M")
 vo_get "${USER}"
 vo_container "${USER}/${datenode}" "${USER}/${datenode}/Z" "${USER}/${datenode}/Z/Y"
 vo_data "${USER}/${datenode}/DATAX" "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/Z/Y/DATAY"
-vo_link "${USER}/${datenode}/ZLINK" "${USER}/${datenode}/Z" \
-        "${USER}/${datenode}/Z/DATAZLINK" "${USER}/${datenode}/Z/DATAZ" \
-        "${USER}/${datenode}/Z/DATAYLINK" "${USER}/${datenode}/Z/Y/DATAY" \
-        "${USER}/${datenode}/Z/LINKLINK" "${USER}/${datenode}/Z/DATAYLINK" \
-        "${USER}/${datenode}/Z/LINKLINKLINK" "${USER}/${datenode}/Z/LINKLINK"
+vo_link "${USER}/${datenode}/Z" "${USER}/${datenode}/ZLINK" \
+        "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/Z/DATAZLINK" \
+        "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/Z/DATAYLINK" \
+        "${USER}/${datenode}/Z/DATAYLINK" "${USER}/${datenode}/Z/LINKLINK" \
+        "${USER}/${datenode}/Z/LINKLINK" "${USER}/${datenode}/Z/LINKLINKLINK"
 vo_container "${USER}/${datenode}" "${USER}/${datenode}/DATAX"
 vo_data "${USER}/${datenode}" "${USER}/${datenode}/DATAX"
-vo_link "${USER}/${datenode}/ZLINK" "${USER}/${datenode}/Z/DATAZ" \
-        "${USER}/${datenode}/Z" "${USER}/${datenode}/DATAX" \
-        "${USER}/${datenode}/Z/Y/DATAYLINK" "${USER}/${datenode}/Z/Y/NOEXIST"
+vo_link "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/ZLINK" \
+        "${USER}/${datenode}/DATAX" "${USER}/${datenode}/Z" \
+        "${USER}/${datenode}/Z/Y/NOEXIST" "${USER}/${datenode}/Z/Y/DATAYLINK"
 vo_data "${USER}/${datenode}/Z/Y/X/DATAX" "${USER}/${datenode}/ZLINK/Y/DATAW" "demo00/NOEXIST"
 read -rsp $'Press any key to continue...\n' -n1 key
 vo_get "${USER}" "${USER}/${datenode}" "${USER}/${datenode}/Z" "${USER}/${datenode}/Z/Y" \
