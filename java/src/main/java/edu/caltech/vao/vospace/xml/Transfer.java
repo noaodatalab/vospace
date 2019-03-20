@@ -20,7 +20,7 @@ public class Transfer {
     public Transfer(String bytes) throws VOSpaceException {
 	this(bytes.getBytes());
     }
-    
+
 
     /**
      * Get the target of the transfer
@@ -31,7 +31,7 @@ public class Transfer {
         return target.replace("~", "!");
     }
 
-    /** 
+    /**
      * Set the target of the transfer
      * @param uri The new target of the transfer
      */
@@ -45,6 +45,14 @@ public class Transfer {
      */
     public String getDirection() throws VOSpaceException {
 	return transfer.xpath("/vos:transfer/vos:direction")[0];
+    }
+
+    /**
+     * Set the direction of the transfer
+     * @param uri The new direction of the transfer
+     */
+    public void setDirection(String direction) throws VOSpaceException {
+	transfer.replace("/vos:transfer/vos:direction", direction);
     }
 
     /**

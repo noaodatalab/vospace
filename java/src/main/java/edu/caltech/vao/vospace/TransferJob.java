@@ -82,6 +82,19 @@ public class TransferJob extends JobThread {
             String target = transfer.getTarget();
             String direction = transfer.getDirection();
             boolean external = !direction.startsWith("vos");
+            // Resolve links in paths
+            String canonical = manager.resolveLinks(target);
+            if (canonical != null) {
+                target = canonical;
+                transfer.setTarget(canonical);
+            }
+            if (!external) {
+                canonical = manager.resolveLinks(direction);
+                if (canonical != null) {
+                    direction = canonical;
+                    transfer.setDirection(canonical);
+                }
+            }
             // Validate access
             String token = getToken();
             if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) {
@@ -102,8 +115,6 @@ public class TransferJob extends JobThread {
                 if (direction.equals("pushToVoSpace") || direction.equals("pullToVoSpace")) {
                     // Container
                     if (store.getType(target) == NodeType.CONTAINER_NODE.ordinal()) throw new UWSException(UWSException.BAD_REQUEST, "Data cannot be uploaded to a container");
-                    // LinkNode
-                    if (store.getType(target) == NodeType.LINK_NODE.ordinal()) throw new UWSException(UWSException.BAD_REQUEST, "Data cannot be uploaded to a link");
                 }
             } else {
                 if (!external || (direction.equals("pullFromVoSpace") || direction.equals("pushFromVoSpace"))) throw new UWSException(UWSException.NOT_FOUND, "A Node does not exist with the requested URI");
@@ -170,7 +181,7 @@ public class TransferJob extends JobThread {
             transfer = new Transfer(document);
             validateTransfer();
         } catch (VOSpaceException e) {
-            throw new UWSException(e.getStatusCode(), e.getMessage());
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
 
         // Determine operation
@@ -178,7 +189,7 @@ public class TransferJob extends JobThread {
             target = transfer.getTarget();
             direction = transfer.getDirection();
         } catch (VOSpaceException e) {
-            throw new UWSException(e.getStatusCode(), e.getMessage());
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
 
         // Executing
@@ -199,7 +210,7 @@ public class TransferJob extends JobThread {
                 }
             } catch (VOSpaceException e) {
                 e.printStackTrace(System.err);
-                throw new UWSException(e.getStatusCode(), e.getMessage());
+                throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
             } catch (SQLException e) {
                 e.printStackTrace(System.err);
                 throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
@@ -245,7 +256,7 @@ public class TransferJob extends JobThread {
                 } catch (SQLException e) {
                     throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
                 } catch (VOSpaceException e) {
-                    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+                    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
                 } catch (NullPointerException e) {
                     System.err.println("No node for target: " + target);
                 }
@@ -274,7 +285,8 @@ public class TransferJob extends JobThread {
             } catch (SQLException e) {
                 throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
             } catch (VOSpaceException e) {
-                throw new UWSException(e.getStatusCode(), e.getMessage());                         }
+                throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
+            }
         }
 
         // Check whether capability enabled - assumes naming convention
@@ -341,6 +353,8 @@ public class TransferJob extends JobThread {
                 getJob().addResult(new Result(getJob(), "nodeDetails", manager.BASE_URL + "nodes/" + uri.substring(uri.lastIndexOf("/") + 1)));
             }
             getJob().addResult(new Result(getJob(), "transferDetails", manager.BASE_URL + "transfers/" + getJobId() + "/results/transferDetails"));
+        } catch (VOSpaceException e) {
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         } catch (Exception e) {
             //      e.printStackTrace(System.err);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
@@ -357,6 +371,8 @@ public class TransferJob extends JobThread {
             Node node = getNode(target);
             // Perform data transfer
             performTransfer(node);
+        } catch (VOSpaceException e) {
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         } catch (Exception e) {
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
@@ -384,8 +400,10 @@ public class TransferJob extends JobThread {
             setNodeStatus(node, STATUS_BUSY);
             // Perform data transfer
             performTransfer(node);
+        } catch (VOSpaceException e) {
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            // e.printStackTrace(System.err);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
     }
@@ -404,6 +422,8 @@ public class TransferJob extends JobThread {
             // Add to results
             store.addResult(getJobId(), transfer.toString());
             getJob().addResult(new Result(getJob(), "transferDetails", manager.BASE_URL + "transfers/" + getJobId() + "/results/transferDetails"));
+        } catch (VOSpaceException e) {
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         } catch (Exception e) {
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
@@ -702,7 +722,7 @@ public class TransferJob extends JobThread {
         } catch (SQLException e) {
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
-            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
         return node;
     }
@@ -718,7 +738,7 @@ public class TransferJob extends JobThread {
         } catch (SQLException e) {
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
-            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
     }
 
@@ -772,7 +792,7 @@ public class TransferJob extends JobThread {
         } catch (IOException e) {
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
-            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
         if (!success) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "None of the requested protocols was successful");
     }
