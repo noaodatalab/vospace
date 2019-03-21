@@ -61,7 +61,7 @@
         <exec executable="hostname" outputproperty="computer.hostname">
 		<arg line="-s"/>
 	</exec>
-        <copy file="vospace.properties.${computer.hostname}" tofile="${webapp}/WEB-INF/classes/vospace.properties"/>
+        <copy file="vospace.properties.${computer.hostname}" tofile="${webapp}/WEB-INF/classes/vospace.properties" overwrite="true"/>
 
 		<!-- Create the war file -->
 		<war destfile="${final.war}" webxml="${webapp}/WEB-INF/web.xml">
