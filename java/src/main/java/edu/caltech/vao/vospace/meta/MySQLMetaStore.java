@@ -50,8 +50,6 @@ public class MySQLMetaStore implements MetaStore{
     private String[] propertyColumns = null;
     private int STOREID = 0;
     private int CONNID = 0;
-    // We need the VOSpaceManager in order to deal with Views and Capabilities
-    private VOSpaceManager manager;
 
     /**
      * Construct a basic MySQLMetaStore
@@ -76,8 +74,6 @@ public class MySQLMetaStore implements MetaStore{
             Class.forName("org.apache.commons.dbcp.PoolingDriver");
             PoolingDriver driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
             driver.registerPool("connPool", connectionPool);
-            // Get the VOSpaceManager in order to deal with Views and Capabilities
-            manager = VOSpaceManager.getInstance();
         } catch (Exception e) {
             e.printStackTrace();
             //      log.error(e.getMessage());
@@ -419,8 +415,8 @@ public class MySQLMetaStore implements MetaStore{
             closeResult(result);
         }
         if (node instanceof LinkNode) ((LinkNode) node).setTarget(getTarget(fixedId));
-        // Set the Views and Capabilities
-        if (node instanceof DataNode) manager.addViewsAndCapabilities((DataNode) node);
+        // Set the Views and Capabilities; unfortunately requires the VOSpaceManager
+        if (node instanceof DataNode) VOSpaceManager.getInstance().addViewsAndCapabilities((DataNode) node);
         // Return the Node cast back to String
         return node.toString();
     }
