@@ -26,8 +26,10 @@ import org.apache.commons.dbcp.DriverManagerConnectionFactory;
 import edu.caltech.vao.vospace.xml.Node;
 import edu.caltech.vao.vospace.xml.NodeFactory;
 import edu.caltech.vao.vospace.xml.LinkNode;
+import edu.caltech.vao.vospace.xml.DataNode;
 import edu.caltech.vao.vospace.NodeType;
 import edu.caltech.vao.vospace.VOSpaceException;
+import edu.caltech.vao.vospace.VOSpaceManager;
 
 /**
  * This class represents a metadata store for VOSpace based on the MySQL
@@ -48,6 +50,8 @@ public class MySQLMetaStore implements MetaStore{
     private String[] propertyColumns = null;
     private int STOREID = 0;
     private int CONNID = 0;
+    // We need the VOSpaceManager in order to deal with Views and Capabilities
+    private VOSpaceManager manager;
 
     /**
      * Construct a basic MySQLMetaStore
@@ -72,6 +76,8 @@ public class MySQLMetaStore implements MetaStore{
             Class.forName("org.apache.commons.dbcp.PoolingDriver");
             PoolingDriver driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
             driver.registerPool("connPool", connectionPool);
+            // Get the VOSpaceManager in order to deal with Views and Capabilities
+            manager = VOSpaceManager.getInstance();
         } catch (Exception e) {
             e.printStackTrace();
             //      log.error(e.getMessage());
@@ -382,7 +388,6 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Create the specified node string by combining the other data stored in the database
      */
-/* TODO: Figure out how to deal with Views and Capabilities */
     private String createNode(String identifier, int type) throws SQLException, VOSpaceException {
         // Create a new Node object of the proper type
         String fixedId = fixId(identifier);
@@ -414,8 +419,8 @@ public class MySQLMetaStore implements MetaStore{
             closeResult(result);
         }
         if (node instanceof LinkNode) ((LinkNode) node).setTarget(getTarget(fixedId));
-        // Set the Views; those aren't stored in the DB, and will have to be sourced from NodeManager
-        // Also set the Capabilities from the database
+        // Set the Views and Capabilities
+        if (node instanceof DataNode) manager.addViewsAndCapabilities((DataNode) node);
         // Return the Node cast back to String
         return node.toString();
     }

@@ -183,62 +183,16 @@ public class VOSpaceManager {
                 node.setUri(uri.substring(0, uri.length() - AUTO_NODE.length()) + UUID.randomUUID().toString());
                 uri = node.getUri();
             }
-            // Clear any <accepts>, <provides>, <capabilities> and <nodes> that the user might specify
             if (node instanceof DataNode) {
-                type = NodeType.DATA_NODE;
+                // Clear any <accepts>, <provides>, <capabilities> and <nodes> that the user might specify
                 DataNode datanode = (DataNode) node;
                 datanode.removeAccepts();
                 datanode.removeProvides();
                 datanode.removeCapabilities();
-                // Set <accepts> for UnstructuredDataNode
-                if (node instanceof UnstructuredDataNode) {
-                    type = NodeType.UNSTRUCTURED_DATA_NODE;
-                    datanode.addAccepts(Views.get(Views.View.ANY));
-                }
-                // Set <accepts> for StructuredDataNode
-                if (node instanceof StructuredDataNode) {
-                    type = NodeType.STRUCTURED_DATA_NODE;
-                    for (Views.View view: SPACE_ACCEPTS_IMAGE) {
-                        datanode.addAccepts(Views.get(view));
-                    }
-                    for (Views.View view: SPACE_ACCEPTS_TABLE) {
-                        datanode.addAccepts(Views.get(view));
-                    }
-                    for (Views.View view: SPACE_ACCEPTS_OTHER) {
-                        datanode.addAccepts(Views.get(view));
-                    }
-                    for (Views.View view: SPACE_PROVIDES_IMAGE) {
-                        datanode.addProvides(Views.get(view));
-                    }
-                    for (Views.View view: SPACE_PROVIDES_TABLE) {
-                        datanode.addProvides(Views.get(view));
-                    }
-                    for (Views.View view: SPACE_PROVIDES_OTHER) {
-                        datanode.addProvides(Views.get(view));
-                    }
-                }
-                // Set <accepts> for ContainerNode
-                if (node instanceof ContainerNode) {
-                    type = NodeType.CONTAINER_NODE;
-                    for (Views.View view: SPACE_ACCEPTS_ARCHIVE) {
-                        datanode.addAccepts(Views.get(view));
-                    }
-                    for (Views.View view: SPACE_PROVIDES_ARCHIVE) {
-                        datanode.addProvides(Views.get(view));
-                    }
-                    // Clear any children that may be set
+                if (datanode instanceof ContainerNode) {
                     datanode.remove("/vos:node/vos:nodes/*");
                 }
-                // Set capabilities
-                if (CAPABILITIES.size() > 0) {
-                    for (String capUri: CAPABILITIES.keySet()) {
-                        Capability cap = (Capability) CAPABILITIES.get(capUri);
-                        if (cap.getApplicability().contains(type)) {
-                            datanode.addCapabilities(capUri);
-                        }
-                    }
-
-                }
+                type = addViewsAndCapabilities(datanode);
             }
             // Link node
             boolean localLink = false;
@@ -321,6 +275,57 @@ public class VOSpaceManager {
             throw new VOSpaceException(e, uri);
         }
         return node;
+    }
+
+    public NodeType addViewsAndCapabilities(DataNode datanode) throws VOSpaceException {
+        NodeType type = NodeType.DATA_NODE;
+        // Set <accepts> for UnstructuredDataNode
+        if (datanode instanceof UnstructuredDataNode) {
+            type = NodeType.UNSTRUCTURED_DATA_NODE;
+            datanode.addAccepts(Views.get(Views.View.ANY));
+        }
+        // Set <accepts> for StructuredDataNode
+        if (datanode instanceof StructuredDataNode) {
+            type = NodeType.STRUCTURED_DATA_NODE;
+            for (Views.View view: SPACE_ACCEPTS_IMAGE) {
+                datanode.addAccepts(Views.get(view));
+            }
+            for (Views.View view: SPACE_ACCEPTS_TABLE) {
+                datanode.addAccepts(Views.get(view));
+            }
+            for (Views.View view: SPACE_ACCEPTS_OTHER) {
+                datanode.addAccepts(Views.get(view));
+            }
+            for (Views.View view: SPACE_PROVIDES_IMAGE) {
+                datanode.addProvides(Views.get(view));
+            }
+            for (Views.View view: SPACE_PROVIDES_TABLE) {
+                datanode.addProvides(Views.get(view));
+            }
+            for (Views.View view: SPACE_PROVIDES_OTHER) {
+                datanode.addProvides(Views.get(view));
+            }
+        }
+        // Set <accepts> for ContainerNode
+        if (datanode instanceof ContainerNode) {
+            type = NodeType.CONTAINER_NODE;
+            for (Views.View view: SPACE_ACCEPTS_ARCHIVE) {
+                datanode.addAccepts(Views.get(view));
+            }
+            for (Views.View view: SPACE_PROVIDES_ARCHIVE) {
+                datanode.addProvides(Views.get(view));
+            }
+        }
+        // Set capabilities
+        if (CAPABILITIES.size() > 0) {
+            for (String capUri: CAPABILITIES.keySet()) {
+                Capability cap = (Capability) CAPABILITIES.get(capUri);
+                if (cap.getApplicability().contains(type)) {
+                    datanode.addCapabilities(capUri);
+                }
+            }
+        }
+        return type;
     }
 
     /**
