@@ -252,9 +252,9 @@ public class VOSpaceManager {
                     // Check for a LinkNode in the path.
                     String linkedURI = resolveLinks(targetURI);
                     if (linkedURI != null) throw new VOSpaceException(VOFault.LinkFoundFault,
-                            "The requested target URI contains a LinkNode.", linkedURI);
+                            "The requested target URI contains a LinkNode.", "TARGET " + linkedURI);
                     else throw new VOSpaceException(VOFault.NodeNotFound,
-                                "A Node does not exist with the requested target URI.", targetURI);
+                            "A Node does not exist with the requested target URI.", targetURI);
                 }
             }
             // Check properties
