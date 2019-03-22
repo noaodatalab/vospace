@@ -192,6 +192,7 @@ public class VOSpaceManager {
                 if (datanode instanceof ContainerNode) {
                     datanode.remove("/vos:node/vos:nodes/*");
                 }
+                // Add our <accepts>, <provides>, <capabilities> (though they will only be returned, not saved)
                 type = addViewsAndCapabilities(datanode);
             }
             // Link node
