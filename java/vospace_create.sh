@@ -9,8 +9,9 @@ exd=`dirname $0`
 $P_MYSQL $db < ${exd}/vospace_create.sql
 
 # Fill the new metaproperties table
-for c in $(cat ${exd}/vos_properties.txt); do
-    echo "INSERT INTO metaproperties (identifier,type,readonly) VALUES ('${c}','4','0');" | $P_MYSQL $db
+for c in $(cat ${exd}/src/main/webapp/WEB-INF/classes/ivoa_props.properties | cut -f1 -d'='); do
+    # This does not handle the Accepts/Provides/Contains/Read-only settings.
+    echo "INSERT INTO metaproperties (identifier,type,readonly) VALUES ('ivo://ivoa.net/vospace/core#${c}','4','0');" | $P_MYSQL $db
 done
 
 # Create properties table with all the columns
