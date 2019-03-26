@@ -380,7 +380,7 @@ public class VOSpaceManager {
                 }
                 // Set properties
                 node = setLength(node);
-                if (!(node instanceof ContainerNode)) node = setMD5(node);
+                if (!(node instanceof ContainerNode) && !(node instanceof LinkNode)) node = setMD5(node);
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
