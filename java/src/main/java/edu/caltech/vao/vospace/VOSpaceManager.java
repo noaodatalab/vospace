@@ -386,7 +386,7 @@ public class VOSpaceManager {
                 }
                 // Set properties
                 node = setLength(node);
-                if (!(node instanceof ContainerNode)) node = setMD5(node);
+                if (!(node instanceof ContainerNode) && !(node instanceof LinkNode)) node = setMD5(node);
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
@@ -520,7 +520,10 @@ public class VOSpaceManager {
                     while (store.getType(linkTarget) == NodeType.LINK_NODE.ordinal()) {
                         linkTarget = store.getTarget(linkTarget);
                     }
-                    return linkTarget + id.substring(parent.length());
+                    // Recursively test for more links
+                    String canonTest = linkTarget + id.substring(parent.length());
+                    id = resolveLinks(canonTest);
+                    return (id != null) ? id : canonTest;
                 }
             }
         } catch (SQLException e) {
