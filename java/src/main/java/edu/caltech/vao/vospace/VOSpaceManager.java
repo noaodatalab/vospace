@@ -514,7 +514,10 @@ public class VOSpaceManager {
                     while (store.getType(linkTarget) == NodeType.LINK_NODE.ordinal()) {
                         linkTarget = store.getTarget(linkTarget);
                     }
-                    return linkTarget + id.substring(parent.length());
+                    // Recursively test for more links
+                    String canonTest = linkTarget + id.substring(parent.length());
+                    id = resolveLinks(canonTest);
+                    return (id != null) ? id : canonTest;
                 }
             }
         } catch (SQLException e) {
