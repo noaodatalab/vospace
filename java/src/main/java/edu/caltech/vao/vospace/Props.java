@@ -11,7 +11,7 @@ public class Props {
     // Some commonly used Properties
     public static String GROUPREAD = "groupread";
     public static String GROUPWRITE = "groupwrite";
-    public static String PUBLICREAD = "publicread";
+    public static String PUBLICREAD = "ispublic";
     public static String LENGTH = "length";
     public static String MD5 = "MD5";
     public static String DATE = "date";
