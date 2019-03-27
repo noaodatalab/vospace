@@ -16,6 +16,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.pool.ObjectPool;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.commons.dbcp.ConnectionFactory;
@@ -779,6 +780,15 @@ public class MySQLMetaStore implements MetaStore{
      */
     public void updateProperty(String property, int type) throws SQLException {
         String query = "update metaproperties set type = " + type + " where identifier = '" + property + "'";
+        update(query);
+    }
+
+    /*
+     * Update the specified property
+     */
+    public void updateProperty(String property, int type, boolean readOnly) throws SQLException {
+        String query = "update metaproperties set type = " + type + ", readonly = "
+                + BooleanUtils.toInteger(readOnly) + " where identifier = '" + property + "'";
         update(query);
     }
 

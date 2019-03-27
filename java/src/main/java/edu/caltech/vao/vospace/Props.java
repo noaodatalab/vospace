@@ -1,51 +1,70 @@
-
 package edu.caltech.vao.vospace;
 
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Properties;
+import java.io.FileInputStream;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.BooleanUtils;
 
 public class Props {
+    // Some commonly used Properties
+    public static String GROUPREAD = "groupread";
+    public static String GROUPWRITE = "groupwrite";
+    public static String PUBLICREAD = "publicread";
+    public static String LENGTH = "length";
+    public static String MD5 = "MD5";
+    public static String DATE = "date";
 
-    public enum Property { 
-	TITLE, CREATOR, SUBJECT, DESCRIPTION, PUBLISHER, CONTRIBUTOR, DATE, TYPE, FORMAT,
-	IDENTIFIER, SOURCE, LANGUAGE, RELATION, COVERAGE, RIGHTS, AVAILABLE_SPACE, LENGTH, GROUPREAD, GROUPWRITE, ISPUBLIC, MD5
-    }
-    
-    private static EnumMap<Property, String> propMap; 
-
-    static {
-	propMap = new EnumMap<Property, String>(Property.class);
-	propMap.put(Property.TITLE, "ivo://ivoa.net/vospace/core#title");
-	propMap.put(Property.CREATOR, "ivo://ivoa.net/vospace/core#creator");
-	propMap.put(Property.SUBJECT, "ivo://ivoa.net/vospace/core#subject");
-	propMap.put(Property.DESCRIPTION, "ivo://ivoa.net/vospace/core#description");
-	propMap.put(Property.PUBLISHER, "ivo://ivoa.net/vospace/core#publisher");
-	propMap.put(Property.CONTRIBUTOR, "ivo://ivoa.net/vospace/core#contributor");
-	propMap.put(Property.DATE, "ivo://ivoa.net/vospace/core#date");
-	propMap.put(Property.TYPE, "ivo://ivoa.net/vospace/core#type");
-	propMap.put(Property.FORMAT, "ivo://ivoa.net/vospace/core#format");
-	propMap.put(Property.IDENTIFIER, "ivo://ivoa.net/vospace/core#identifier");
-	propMap.put(Property.SOURCE, "ivo://ivoa.net/vospace/core#source");
-	propMap.put(Property.LANGUAGE, "ivo://ivoa.net/vospace/core#language");
-	propMap.put(Property.RELATION, "ivo://ivoa.net/vospace/core#relation");
-	propMap.put(Property.COVERAGE, "ivo://ivoa.net/vospace/core#coverage");
-	propMap.put(Property.RIGHTS, "ivo://ivoa.net/vospace/core#rights");
-	propMap.put(Property.AVAILABLE_SPACE, "ivo://ivoa.net/vospace/core#availableSpace");
-	propMap.put(Property.LENGTH, "ivo://ivoa.net/vospace/core#length");
-	propMap.put(Property.MD5, "ivo://ivoa.net/vospace/core#MD5");
-	propMap.put(Property.GROUPREAD, "ivo://ivoa.net/vospace/core#groupread");
-	propMap.put(Property.GROUPWRITE, "ivo://ivoa.net/vospace/core#groupwrite");
-	propMap.put(Property.ISPUBLIC, "ivo://ivoa.net/vospace/core#ispublic");
+    public static void initialize(String propFile) throws VOSpaceException {
+        try {
+            // Get property file
+            Properties props = new Properties();
+            props.load (new FileInputStream(propFile));
+            for (String k: props.stringPropertyNames()) {
+                String[] s_attrs = StringUtils.split(props.getProperty(k), ',');
+                if (s_attrs.length == 4) {
+                    boolean[] attrs = new boolean[4];
+                    for (int i=0; i < 4; i++) { attrs[i] = Boolean.parseBoolean(s_attrs[i]); }
+                    propertyURIs.put(k, "ivo://ivoa.net/vospace/core#" + k);
+                    propertyAttrs.put(k, attrs);
+                }
+            }
+        } catch (Exception e) {
+            throw new VOSpaceException(e);
+        }
     }
 
-    public static String get(Property prop) {
-	return propMap.get(prop);
+    private static HashMap<String, String> propertyURIs = new HashMap();
+    private static HashMap<String, boolean[]> propertyAttrs = new HashMap();
+
+    private Props() {}
+
+    public static String[] allProps() {
+        return propertyURIs.keySet().toArray(new String[0]);
     }
 
-    public static Property fromString(String str) {
-	for (Property prop: Property.values()) {
-	    if (prop.toString().equals(str.trim())) 
-		return prop;
-	}
-	return null;
+    public static String getURI(String propName) {
+        return propertyURIs.get(propName);
+    }
+
+    public static String fromURI(String uri) {
+        for (String k: propertyURIs.keySet()) {
+            if (getURI(k).equals(uri.trim())) return k;
+        }
+        return null;
+    }
+
+    public static int getAttributes(String propName) {
+        boolean[] attrs = propertyAttrs.get(propName);
+        if (attrs != null) {
+            return BooleanUtils.toInteger(attrs[0]) + 2 * BooleanUtils.toInteger(attrs[1])
+                   + 4 * BooleanUtils.toInteger(attrs[2]);
+        } else return -1;
+    }
+
+    public static boolean isReadOnly(String propName) {
+        boolean[] attrs = propertyAttrs.get(propName);
+        return (attrs != null) ? propertyAttrs.get(propName)[3] : false;
     }
 }

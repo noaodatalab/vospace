@@ -137,8 +137,9 @@ public class VOSpaceManager {
             // Placeholder to authenticate to the backend storage
             // backend.authenticate(...)
             // Get known properties
-            for (Props.Property prop : Props.Property.values()) {
-                checkProperty(Props.get(prop));
+            Props.initialize(Thread.currentThread().getContextClassLoader().getResource("ivoa_props.properties").toURI().getRawPath());
+            for (String prop: Props.allProps()) {
+                checkProperty(Props.getURI(prop), Props.getAttributes(prop), Props.isReadOnly(prop));
             }
             // Identifier regex
             VOS_PATTERN = Pattern.compile("vos://[\\w\\d][\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]{2,}(![\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+(/[\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+)*)+");
@@ -221,22 +222,23 @@ public class VOSpaceManager {
             }
             // Set properties (date at least)
             if (!exists) {
-                node.setProperty(Props.get(Props.Property.DATE), new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()));
+                node.setProperty(Props.getURI(Props.DATE),
+                        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()));
                 // Inherit permissions from parent if none set
                 HashMap<String, String> nodeProps = node.getProperties();
                 String parent = uri.substring(0, uri.lastIndexOf("/"));
-                String grpRd = Props.get(Props.Property.GROUPREAD);
-                String grpWr = Props.get(Props.Property.GROUPWRITE);
-                String isPub = Props.get(Props.Property.ISPUBLIC);
+                String grpRd = Props.getURI(Props.GROUPREAD);
+                String grpWr = Props.getURI(Props.GROUPWRITE);
+                String isPub = Props.getURI(Props.PUBLICREAD);
                 String parentGrpRd = store.getPropertyValue(parent, grpRd);
                 String parentGrpWr = store.getPropertyValue(parent, grpWr);
                 String parentIsPub = store.getPropertyValue(parent, isPub);
                 if (nodeProps.get(grpRd) == "") node.setProperty(grpRd, parentGrpRd);
                 if (nodeProps.get(grpWr) == "") node.setProperty(grpWr, parentGrpWr);
                 if (nodeProps.get(isPub) == "") node.setProperty(isPub, parentIsPub);
-                node.setProperty(Props.get(Props.Property.LENGTH), "0");
-                node.setProperty(Props.get(Props.Property.MD5), "");
-                //          node.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(getLocation(node.getUri()))));
+                node.setProperty(Props.getURI(Props.LENGTH), "0");
+                node.setProperty(Props.getURI(Props.MD5), "");
+                // node.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(getLocation(node.getUri()))));
             }
             // Store node
             if (exists) {
@@ -399,7 +401,7 @@ public class VOSpaceManager {
      * Set the length property on the specified node
      */
     public Node setLength(Node node) throws VOSpaceException {
-        String length = Props.get(Props.Property.LENGTH);
+        String length = Props.getURI(Props.LENGTH);
         String lengthUri = "/vos:node/vos:properties/vos:property[@uri = \"" + length + "\"]";
 //      boolean setLength = false;
 //      if (!node.has(lengthUri)) {
@@ -419,7 +421,7 @@ public class VOSpaceManager {
      * Need to optimize this for large files where a stored value is better
      */
     public Node setMD5(Node node) throws VOSpaceException {
-        String md5 = Props.get(Props.Property.MD5);
+        String md5 = Props.getURI(Props.MD5);
         String md5Uri = "/vos:node/vos:properties/vos:property[@uri = \"" + md5 + "\"]";
         boolean setmd5 = false;
         if (!node.has(md5Uri)) {
@@ -566,16 +568,25 @@ public class VOSpaceManager {
 
     /**
      * Check whether the specified property is in the list of known properties -
-     * if not, add it - and that the property is also not read only
+     *      if not, add it - and that the property is also not read only
      * @param uri The identifier of the property to check
      * @return whether a successful property check or not
      */
     private boolean checkProperty(String uri) throws SQLException {
-        boolean success = true;
-        if (!store.isKnownProperty(uri))
-            store.registerProperty(uri, PROPERTIES_SPACE_CONTAINS, false);
-        if (store.isReadOnly(uri)) success = false;
-        return success;
+        if (!store.isKnownProperty(uri)) store.registerProperty(uri, PROPERTIES_SPACE_CONTAINS, false);
+        return (!store.isReadOnly(uri));
+    }
+
+    /**
+     * Check whether the specified property is in the list of known properties -
+     *      if not, add it - and that the property is also not read only
+     * @param uri The identifier of the property to check
+     * @return whether a successful property check or not
+     */
+    private boolean checkProperty(String uri, int attrs, boolean readOnly) throws SQLException {
+        if (!store.isKnownProperty(uri)) store.registerProperty(uri, attrs, readOnly);
+        else store.updateProperty(uri, attrs, readOnly);
+        return readOnly;
     }
 
     /**
@@ -694,7 +705,7 @@ public class VOSpaceManager {
                 Transfer transfer = new Transfer(result);
                 String target = transfer.getTarget();
                 Node node = nfactory.getNode(store.getNode(target));
-                node.setProperty(Props.get(Props.Property.LENGTH), size);
+                node.setProperty(Props.getURI(Props.LENGTH), size);
                 store.updateData(target, node.toString());
             }
         } catch (VOSpaceException ve) {
@@ -712,7 +723,7 @@ public class VOSpaceManager {
     public void registerNode(Node node, String user, String location) throws VOSpaceException {
         try {
             Node newNode = create(node, user, false);
-            newNode.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(location)));
+            newNode.setProperty(Props.getURI(Props.LENGTH), Long.toString(backend.size(location)));
             store.updateData(newNode.getUri(), newNode.toString());
         } catch (VOSpaceException ve) {
             throw ve;
@@ -894,9 +905,9 @@ public class VOSpaceManager {
             // Get owner and groups for requested node
             String groups = "";
             if (isRead) {
-                groups = store.getPropertyValue(node, Props.get(Props.Property.GROUPREAD));
+                groups = store.getPropertyValue(node, Props.getURI(Props.GROUPREAD));
             } else {
-                groups = store.getPropertyValue(node, Props.get(Props.Property.GROUPWRITE));
+                groups = store.getPropertyValue(node, Props.getURI(Props.GROUPWRITE));
             }
             String owner = store.getOwner(node);
             // Validates the access request

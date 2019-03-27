@@ -209,6 +209,11 @@ public interface MetaStore {
     public void updateProperty(String property, int type) throws SQLException;
 
     /*
+     * Update the specified property
+     */
+    public void updateProperty(String property, int type, boolean readOnly) throws SQLException;
+
+    /*
      * Get the properties of the specified type
      */
     public String[] getProperties(int type) throws SQLException;
