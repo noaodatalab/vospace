@@ -1,0 +1,6 @@
+FROM mariadb:5.5
+
+COPY vos_properties.txt account_create.sql vospace_create.sql /docker-entrypoint-initdb.d/
+COPY vospace_create.sh /docker-entrypoint-initdb.d/z_vospace_create.sh
+
+RUN sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/vospace_create.sql
