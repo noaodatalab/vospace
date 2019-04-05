@@ -26,7 +26,6 @@
 	<property name="final.war.name" value="vospace-2.0.war" />
 	<property file="build.properties" />
 
-
 	<!-- set global properties for this build -->
 	<property name="build" location="build" />
 	<property name="build.classes" location="${build}/classes" />
@@ -35,7 +34,6 @@
 	<property name="final.war" location="${basedir}/${final.war.name}" />
 	<property name="main" location="${basedir}/src/main" />
 	<property name="webapp" location="${main}/webapp" />
-
 
 	<target name="init">
 		<!-- Create the build directory structure used by compile -->
@@ -50,7 +48,7 @@
 		</path>
 
 		<!-- Compile the java code -->
-		<javac srcdir="${main}/java" destdir="${build.classes}" target="1.6" source="1.6">
+		<javac includeantruntime="false" srcdir="${main}/java" destdir="${build.classes}" target="1.6" source="1.6">
 			<classpath refid="sdk.classpath" />
 		</javac>
 	</target>
@@ -59,9 +57,12 @@
 	<target name="dist" depends="compile" description="generate the distribution">
         <!-- Copy the properties file -->
         <exec executable="hostname" outputproperty="computer.hostname">
-		<arg line="-s"/>
-	</exec>
-        <copy file="vospace.properties.${computer.hostname}" tofile="${webapp}/WEB-INF/classes/vospace.properties" overwrite="true"/>
+		    <arg line="-s"/>
+	    </exec>
+	    <available file="vospace.properties.${computer.hostname}" property="javaprop.filename" value="vospace.properties.${computer.hostname}"/>
+	    <property name="javaprop.filename" value="vospace.properties.default"/>
+        <echo message="Copying ${javaprop.filename}"/>
+        <copy file="${javaprop.filename}" tofile="${webapp}/WEB-INF/classes/vospace.properties" overwrite="true"/>
 
 		<!-- Create the war file -->
 		<war destfile="${final.war}" webxml="${webapp}/WEB-INF/web.xml">
@@ -72,15 +73,12 @@
 		</war>
 	</target>
 
-
-        <target name="deploy" depends="compile" description="deploy to Tomcat webapps directory">
-                <deploy url="${manager.url}"
-                        username="${manager.username}"
-                        password="${manager.password}"
-                        path="${app.path}"
-                        localWar="file://${build.home}"/>
-        </target>
-
+    <target name="deploy" depends="dist" description="deploy to Tomcat webapps directory">
+	    <available file="/usr/share/tomcat/webapps" type="dir" property="tomcat.dest" value="/usr/share/tomcat/webapps"/>
+	    <available file="/usr/local/tomcat/webapps" type="dir" property="tomcat.dest" value="/usr/local/tomcat/webapps"/>
+	    <available file="/opt/tomcat/webapps" type="dir" property="tomcat.dest" value="/opt/tomcat/webapps"/>
+        <copy file="${final.war}" todir="${tomcat.dest}" overwrite="true"/>
+    </target>
 
 	<target name="clean" description="clean up">
 		<!-- Delete the ${build} and ${dist} directory trees -->
