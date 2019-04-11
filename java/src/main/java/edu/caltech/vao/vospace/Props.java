@@ -11,10 +11,14 @@ public class Props {
     // Some commonly used Properties
     public static String GROUPREAD = "groupread";
     public static String GROUPWRITE = "groupwrite";
-    public static String PUBLICREAD = "ispublic";
+    public static String PUBLICREAD = "publicread";
+    public static String ISPUBLIC = "ispublic";     // Legacy publicread; kept same as ispublic whenever possible
     public static String LENGTH = "length";
     public static String MD5 = "MD5";
     public static String DATE = "date";
+    public static String BTIME = "btime";   // creation time
+    public static String CTIME = "ctime";   // metadata mod time
+    public static String MTIME = "mtime";   // data mod time
 
     public static void initialize(String propFile) throws VOSpaceException {
         try {
@@ -33,6 +37,7 @@ public class Props {
         } catch (Exception e) {
             throw new VOSpaceException(e);
         }
+        System.out.println(allProps());
     }
 
     private static HashMap<String, String> propertyURIs = new HashMap();

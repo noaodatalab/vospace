@@ -29,6 +29,7 @@ import edu.caltech.vao.vospace.xml.NodeFactory;
 import edu.caltech.vao.vospace.xml.LinkNode;
 import edu.caltech.vao.vospace.xml.DataNode;
 import edu.caltech.vao.vospace.NodeType;
+import edu.caltech.vao.vospace.Props;
 import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.VOSpaceManager;
 
@@ -36,8 +37,7 @@ import edu.caltech.vao.vospace.VOSpaceManager;
  * This class represents a metadata store for VOSpace based on the MySQL
  * open source database
  */
-public class MySQLMetaStore implements MetaStore{
-
+public class MySQLMetaStore implements MetaStore {
     private static final String DEFAULT_DB_URL = "localhost/vospace";
     private static final String DEFAULT_DB_UID = "dba";
     private static final String DEFAULT_DB_PWD = "dba";
@@ -392,7 +392,7 @@ public class MySQLMetaStore implements MetaStore{
         // Set the URI for the node to the identifier
         node.setUri(fixedId);
         // Get the Properties for the node, and set them in the Node object
-        String[] propNames = getPropertyColumns();
+        String[] propNames = Props.allProps();
         // First build a query of all column names to get all column values
         StringBuilder columns = new StringBuilder();
         boolean first = true;
@@ -545,6 +545,9 @@ public class MySQLMetaStore implements MetaStore{
     public void updateData(String identifier, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             String node = updateProperties((String) metadata);
+            // Force an update to lastModificationTime
+            String query = "update nodes set lastModificationTime=cast(now() as datetime) where identifier = '" + fixId(identifier) + "'";
+            update(query);
             /* String encode = node.replace("\"", "'");
             String query = "update nodes set node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
             update(query); */
@@ -790,21 +793,6 @@ public class MySQLMetaStore implements MetaStore{
         String query = "update metaproperties set type = " + type + ", readonly = "
                 + BooleanUtils.toInteger(readOnly) + " where identifier = '" + property + "'";
         update(query);
-    }
-
-    /*
-     * Get the columns of the properties table
-     */
-    private String[] getPropertyColumns() throws SQLException {
-        if (propertyColumns == null) {
-            String db = DB_URL.substring(DB_URL.indexOf('/') + 1);
-            String query = "select column_name from INFORMATION_SCHEMA.COLUMNS where table_name = 'properties' and table_schema = '"
-                    + db + "' and column_name != 'identifier'";
-//            System.out.println(query);
-            propertyColumns = getAsStringArray(query);
-//            System.out.println(StringUtils.join(propertyColumns,','));
-        }
-        return propertyColumns;
     }
 
     /*
@@ -1080,6 +1068,10 @@ public class MySQLMetaStore implements MetaStore{
         StringBuilder columns = new StringBuilder("identifier");
         StringBuilder values = new StringBuilder("'" + identifier + "'");
         HashMap<String, String> properties = node.getProperties();
+        String nodeIsPub = Boolean.toString(Boolean.parseBoolean(properties.get(Props.getURI(Props.ISPUBLIC)))
+                || Boolean.parseBoolean(properties.get(Props.getURI(Props.PUBLICREAD))));
+        node.setProperty(Props.getURI(Props.ISPUBLIC), nodeIsPub);
+        node.setProperty(Props.getURI(Props.PUBLICREAD), nodeIsPub);
         for (Map.Entry<String, String> prop : properties.entrySet()) {
             String property = prop.getKey();
             String shortProp = property.substring(property.lastIndexOf('#') + 1);
@@ -1121,6 +1113,11 @@ public class MySQLMetaStore implements MetaStore{
         }
         StringBuilder updates = new StringBuilder();
         HashMap<String, String> properties = node.getProperties();
+        // Make sure the public read properties match at all times.
+        String nodeIsPub = Boolean.toString(Boolean.parseBoolean(properties.get(Props.getURI(Props.ISPUBLIC)))
+                || Boolean.parseBoolean(properties.get(Props.getURI(Props.PUBLICREAD))));
+        node.setProperty(Props.getURI(Props.ISPUBLIC), nodeIsPub);
+        node.setProperty(Props.getURI(Props.PUBLICREAD), nodeIsPub);
         if (!properties.isEmpty()) {
             for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String property = prop.getKey();

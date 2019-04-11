@@ -214,28 +214,45 @@ public class VOSpaceManager {
                 }
             }
             // Check properties
+            HashMap<String, String> nodeProps = node.getProperties();
             if (node.hasProperties()) {
-                for (String propUri: node.getProperties().keySet()) {
-                    if (!checkProperty(propUri)) throw new VOSpaceException(VOFault.PermissionDenied,
+                for (String propUri: nodeProps.keySet()) {
+                    if (nodeProps.get(propUri) != "" && !checkProperty(propUri))
+                            throw new VOSpaceException(VOFault.PermissionDenied,
                             "The property " + propUri + " is read only", uri);
                 }
             }
-            // Set properties (date at least)
+            // Set properties (dates at least)
+            String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
+            node.setProperty(Props.getURI(Props.CTIME), date);
             if (!exists) {
-                node.setProperty(Props.getURI(Props.DATE),
-                        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()));
+                node.setProperty(Props.getURI(Props.DATE), date);
+                node.setProperty(Props.getURI(Props.BTIME), date);
+                node.setProperty(Props.getURI(Props.MTIME), date);
                 // Inherit permissions from parent if none set
-                HashMap<String, String> nodeProps = node.getProperties();
                 String parent = uri.substring(0, uri.lastIndexOf("/"));
                 String grpRd = Props.getURI(Props.GROUPREAD);
                 String grpWr = Props.getURI(Props.GROUPWRITE);
-                String isPub = Props.getURI(Props.PUBLICREAD);
-                String parentGrpRd = store.getPropertyValue(parent, grpRd);
-                String parentGrpWr = store.getPropertyValue(parent, grpWr);
-                String parentIsPub = store.getPropertyValue(parent, isPub);
-                if (nodeProps.get(grpRd) == "") node.setProperty(grpRd, parentGrpRd);
-                if (nodeProps.get(grpWr) == "") node.setProperty(grpWr, parentGrpWr);
-                if (nodeProps.get(isPub) == "") node.setProperty(isPub, parentIsPub);
+                String isPub = Props.getURI(Props.ISPUBLIC);
+                String pubRd = Props.getURI(Props.PUBLICREAD);
+                if (nodeProps.get(grpRd) == "") node.setProperty(grpRd,
+                        store.getPropertyValue(parent, grpRd));
+                if (nodeProps.get(grpWr) == "") node.setProperty(grpWr,
+                        store.getPropertyValue(parent, grpWr));
+                // A string indicating if the node is public; logical OR of the two properties
+                String nodeIsPub = Boolean.toString(Boolean.parseBoolean(nodeProps.get(isPub))
+                        || Boolean.parseBoolean(nodeProps.get(pubRd)));
+                if (nodeProps.get(isPub) == "" && nodeProps.get(pubRd) == "") {
+                    // If both are empty, set from parent
+                    String parentIsPub = Boolean.toString(Boolean.parseBoolean(store.getPropertyValue(parent, isPub))
+                            || Boolean.parseBoolean(store.getPropertyValue(parent, pubRd)));
+                    node.setProperty(isPub, parentIsPub);
+                    node.setProperty(pubRd, parentIsPub);
+                } else {
+                    // Set them the same; both cannot be empty
+                    node.setProperty(isPub, nodeIsPub);
+                    node.setProperty(isPub, nodeIsPub);
+                }
                 node.setProperty(Props.getURI(Props.LENGTH), "0");
                 node.setProperty(Props.getURI(Props.MD5), "");
                 // node.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(getLocation(node.getUri()))));
@@ -246,12 +263,12 @@ public class VOSpaceManager {
             } else {
                 String view = getView(uri);
                 String location = getLocation(uri);
-                //              store.storeData(uri, type.ordinal(), USER, getLocation(uri), node.toString());
+                // store.storeData(uri, type.ordinal(), USER, getLocation(uri), node.toString());
                 store.storeData(uri, type.ordinal(), view, owner, location, node.toString());
                 for (String capUri: node.getCapabilities()) {
                     store.registerCapability(uri, capUri);
                 }
-//              if (type.equals(NodeType.CONTAINER_NODE) && overwrite) {
+                // if (type.equals(NodeType.CONTAINER_NODE) && overwrite) {
                 if (type.equals(NodeType.CONTAINER_NODE)) {
                     backend.createContainer(location);
                 } else if (type.equals(NodeType.LINK_NODE)) {
@@ -402,7 +419,7 @@ public class VOSpaceManager {
      */
     public Node setLength(Node node) throws VOSpaceException {
         String length = Props.getURI(Props.LENGTH);
-        String lengthUri = "/vos:node/vos:properties/vos:property[@uri = \"" + length + "\"]";
+//      String lengthUri = "/vos:node/vos:properties/vos:property[@uri = \"" + length + "\"]";
 //      boolean setLength = false;
 //      if (!node.has(lengthUri)) {
 //          setLength = true;
@@ -706,6 +723,10 @@ public class VOSpaceManager {
                 String target = transfer.getTarget();
                 Node node = nfactory.getNode(store.getNode(target));
                 node.setProperty(Props.getURI(Props.LENGTH), size);
+                // Update the timestamps for modification
+                String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
+                node.setProperty(Props.getURI(Props.CTIME), date);
+                node.setProperty(Props.getURI(Props.MTIME), date);
                 store.updateData(target, node.toString());
             }
         } catch (VOSpaceException ve) {
@@ -905,6 +926,10 @@ public class VOSpaceManager {
             // Get owner and groups for requested node
             String groups = "";
             if (isRead) {
+                // Check the publicRead and isPublic properties and return if true
+                boolean isPublic = Boolean.parseBoolean(store.getPropertyValue(node, Props.getURI(Props.ISPUBLIC)))
+                        || Boolean.parseBoolean(store.getPropertyValue(node, Props.getURI(Props.PUBLICREAD)));
+                if (isPublic) return;
                 groups = store.getPropertyValue(node, Props.getURI(Props.GROUPREAD));
             } else {
                 groups = store.getPropertyValue(node, Props.getURI(Props.GROUPWRITE));
