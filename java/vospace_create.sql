@@ -130,5 +130,5 @@ CREATE TABLE `addl_props` (
   `identifier` varchar(4096) NOT NULL,
   `property` varchar(128) NOT NULL,
   `value` varchar(256) NOT NULL,
-  INDEX add_id_idx (`identifier`(767)),
+  INDEX add_id_idx (`identifier`(767))
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
