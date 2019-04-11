@@ -37,13 +37,16 @@ public class Props {
         } catch (Exception e) {
             throw new VOSpaceException(e);
         }
-        System.out.println(allProps());
     }
 
     private static HashMap<String, String> propertyURIs = new HashMap();
     private static HashMap<String, boolean[]> propertyAttrs = new HashMap();
 
     private Props() {}
+
+    public static boolean isIvoaProp(String shortName) {
+        return propertyURIs.containsKey(shortName);
+    }
 
     public static String[] allProps() {
         return propertyURIs.keySet().toArray(new String[0]);

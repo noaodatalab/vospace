@@ -17,7 +17,7 @@ done
 
 # Create properties table with all the columns
 prop_create='CREATE TABLE `properties` (`identifier` varchar(4096) NOT NULL'
-for c in $(echo "select identifier from metaproperties" | $P_MYSQL $db -N | cut -f2 -d'#' | grep -v 'identifier'); do
+for c in $(echo "select identifier from metaproperties" | $P_MYSQL $db -N | cut -f2 -d'#'); do
     prop_create=$prop_create', `'${c}'` varchar(256) DEFAULT NULL'
 done
 prop_create=$prop_create', PRIMARY KEY (`identifier`(767)) ) ENGINE=InnoDB DEFAULT CHARSET=latin1;'
