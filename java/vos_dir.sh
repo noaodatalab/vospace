@@ -44,21 +44,21 @@ fi
 insert ignore into nodes(identifier, depth, type, owner, view, location, creationDate)
     values('vos://datalab.noao!vospace/USER', 0, 3, 'USER',
     'ivo://ivoa.net/vospace/views/blob', 'file://ROOT/USER', now());
-insert ignore into properties(identifier, date, groupread, groupwrite)
-    values('vos://datalab.noao!vospace/USER', 'DATE', 'USER', 'USER');
+insert ignore into properties(identifier, date, ctime, btime, mtime, groupread, groupwrite, ispublic, publicread)
+    values('vos://datalab.noao!vospace/USER', 'DATE', 'DATE', 'DATE', 'DATE', 'USER', 'USER', 'False', 'False');
 
 # users/<USER>/public
 insert ignore into nodes(identifier, depth, type, owner, view, location, creationDate)
     values('vos://datalab.noao!vospace/USER/public', 1, 3, 'USER',
     'ivo://ivoa.net/vospace/views/blob', 'file://ROOT/USER/public', now());
-insert ignore into properties(identifier, date, groupread, groupwrite)
-    values('vos://datalab.noao!vospace/USER/public', 'DATE', 'USER', 'USER');
+insert ignore into properties(identifier, date, ctime, btime, mtime, groupread, groupwrite, ispublic, publicread)
+    values('vos://datalab.noao!vospace/USER/public', 'DATE', 'DATE', 'DATE', 'DATE', 'USER', 'USER', 'True', 'True');
 
 # users/<USER>/tmp
 insert ignore into nodes(identifier, depth, type, owner, view, location, creationDate)
     values('vos://datalab.noao!vospace/USER/tmp', 1, 3, 'USER',
     'ivo://ivoa.net/vospace/views/blob', 'file://ROOT/USER/tmp', now());
-insert ignore into properties(identifier, date, groupread, groupwrite)
-    values('vos://datalab.noao!vospace/USER/tmp', 'DATE', 'USER', 'USER');
+insert ignore into properties(identifier, date, ctime, btime, mtime, groupread, groupwrite, ispublic, publicread)
+    values('vos://datalab.noao!vospace/USER/tmp', 'DATE', 'DATE', 'DATE', 'DATE', 'USER', 'USER', 'False', 'False');
 VOBASE
 echo "$u VOSpace created on $h"
