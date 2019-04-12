@@ -562,7 +562,7 @@ public class MySQLMetaStore implements MetaStore {
         if (metadata instanceof String) {
             String node = updateProperties((String) metadata);
             // Force an update to lastModificationTime
-            String query = "update nodes set lastModificationTime=cast(now() as datetime) where identifier = '" + fixId(identifier) + "'";
+            String query = "update nodes set lastModificationDate=cast(now() as datetime) where identifier = '" + fixId(identifier) + "'";
             update(query);
             /* String encode = node.replace("\"", "'");
             String query = "update nodes set node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
