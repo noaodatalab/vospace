@@ -10,7 +10,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -251,6 +253,10 @@ public class TransferJob extends JobThread {
                     if (manager.hasBeenUpdated(target)) {
                         Node node = getNode(target);
                         node = manager.setLength(node);
+                        // Change the timestamps in the properties.
+                        String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
+                        node.setProperty(Props.getURI(Props.CTIME), date);
+                        node.setProperty(Props.getURI(Props.MTIME), date);
                         store.updateData(target, node.toString());
                     }
                 } catch (SQLException e) {
@@ -501,6 +507,9 @@ public class TransferJob extends JobThread {
             if (isContainer(direction)) direction += target.substring(target.lastIndexOf("/"));
             // Change identifier
             node.setUri(direction);
+            // Change the timestamps in the properties.
+            String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
+            node.setProperty(Props.getURI(Props.CTIME), date);
             // Move bytes
             String newLocation = getLocation(direction);
             if (!moveBytes(store.getLocation(target), newLocation)) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Unable to move bytes between target and direction");
@@ -514,6 +523,8 @@ public class TransferJob extends JobThread {
                     // Update uri
                     Node childNode = manager.getNode(child, "max", 1);
                     childNode.setUri(child.replace(target, direction));
+                    // Change the timestamps in the properties.
+                    childNode.setProperty(Props.getURI(Props.CTIME), date);
                     // Get new location
                     newLocation = getLocation(childNode.getUri());
                     // Store moved node
@@ -551,6 +562,10 @@ public class TransferJob extends JobThread {
             if (isContainer(direction)) direction += target.substring(target.lastIndexOf("/"));
             // Change identifier
             node.setUri(direction);
+            // Change the timestamps in the properties.
+            String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
+            node.setProperty(Props.getURI(Props.BTIME), date);
+            node.setProperty(Props.getURI(Props.CTIME), date);
             // Copy bytes
             String newLocation = getLocation(direction);
             if (!copyBytes(store.getLocation(target), newLocation)) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "Unable to move bytes between target and direction");
@@ -569,6 +584,9 @@ public class TransferJob extends JobThread {
                     // Update uri
                     Node childNode = manager.getNode(child, "max", 1);
                     childNode.setUri(child.replace(target, direction));
+                    // Change the timestamps in the properties.
+                    childNode.setProperty(Props.getURI(Props.BTIME), date);
+                    childNode.setProperty(Props.getURI(Props.CTIME), date);
                     // Get new location
                     newLocation = getLocation(childNode.getUri());
                     // Store copy node

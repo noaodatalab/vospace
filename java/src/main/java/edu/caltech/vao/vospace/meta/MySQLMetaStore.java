@@ -16,6 +16,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.pool.ObjectPool;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.commons.dbcp.ConnectionFactory;
@@ -28,6 +29,7 @@ import edu.caltech.vao.vospace.xml.NodeFactory;
 import edu.caltech.vao.vospace.xml.LinkNode;
 import edu.caltech.vao.vospace.xml.DataNode;
 import edu.caltech.vao.vospace.NodeType;
+import edu.caltech.vao.vospace.Props;
 import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.VOSpaceManager;
 
@@ -35,8 +37,7 @@ import edu.caltech.vao.vospace.VOSpaceManager;
  * This class represents a metadata store for VOSpace based on the MySQL
  * open source database
  */
-public class MySQLMetaStore implements MetaStore{
-
+public class MySQLMetaStore implements MetaStore {
     private static final String DEFAULT_DB_URL = "localhost/vospace";
     private static final String DEFAULT_DB_UID = "dba";
     private static final String DEFAULT_DB_PWD = "dba";
@@ -391,7 +392,7 @@ public class MySQLMetaStore implements MetaStore{
         // Set the URI for the node to the identifier
         node.setUri(fixedId);
         // Get the Properties for the node, and set them in the Node object
-        String[] propNames = getPropertyColumns();
+        String[] propNames = Props.allProps();
         // First build a query of all column names to get all column values
         StringBuilder columns = new StringBuilder();
         boolean first = true;
@@ -408,8 +409,20 @@ public class MySQLMetaStore implements MetaStore{
                 String value = null;
                 for (String name: propNames) {
                     value = result.getString(name);
-                    if (value != null) node.setProperty("ivo://ivoa.net/vospace/core#" + name, value);
+                    if (value != null) node.setProperty(Props.getURI(name), value);
                 }
+            }
+        } finally {
+            closeResult(result);
+        }
+        query = "select property, value from addl_props where identifier = '" + fixedId + "'";
+        // Execute the query and set the property values in the Node.
+        try {
+            result = execute(query);
+            while (result.next()) {
+                String property = result.getString(1);
+                String value = result.getString(2);
+                if (value != null) node.setProperty(property, value);
             }
         } finally {
             closeResult(result);
@@ -508,6 +521,8 @@ public class MySQLMetaStore implements MetaStore{
             update(query);
             query = "delete from properties where identifier like '" + escaped + "/%'";
             update(query);
+            query = "delete from addl_props where identifier like '" + escaped + "/%'";
+            update(query);
             query = "delete from links where identifier like '" + escaped + "/%'";
             update(query);
             // Find all the links to the container contents
@@ -518,6 +533,8 @@ public class MySQLMetaStore implements MetaStore{
         query = "delete from nodes where identifier = '" + identifier + "'";
         update(query);
         query = "delete from properties where identifier = '" + identifier + "'";
+        update(query);
+        query = "delete from addl_props where identifier = '" + identifier + "'";
         update(query);
         query = "delete from links where identifier = '" + identifier + "'";
         update(query);
@@ -544,6 +561,9 @@ public class MySQLMetaStore implements MetaStore{
     public void updateData(String identifier, Object metadata) throws SQLException, VOSpaceException {
         if (metadata instanceof String) {
             String node = updateProperties((String) metadata);
+            // Force an update to lastModificationTime
+            String query = "update nodes set lastModificationDate=cast(now() as datetime) where identifier = '" + fixId(identifier) + "'";
+            update(query);
             /* String encode = node.replace("\"", "'");
             String query = "update nodes set node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
             update(query); */
@@ -566,6 +586,8 @@ public class MySQLMetaStore implements MetaStore{
             update(query); */
             query = "update properties set identifier = '" + fixedNewId + "' where identifier = '" + fixedId + "'";
             update(query);
+            query = "update addl_props set identifier = '" + fixedNewId + "' where identifier = '" + fixedId + "'";
+            update(query);
         }
     }
 
@@ -584,6 +606,8 @@ public class MySQLMetaStore implements MetaStore{
             String query = "update nodes set identifier = '" + fixId(newIdentifier) + "', location = '" + newLocation + "', node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
             update(query); */
             query = "update properties set identifier = '" + fixedNewId + "' where identifier = '" + fixedId + "'";
+            update(query);
+            query = "update addl_props set identifier = '" + fixedNewId + "' where identifier = '" + fixedId + "'";
             update(query);
         }
     }
@@ -783,18 +807,12 @@ public class MySQLMetaStore implements MetaStore{
     }
 
     /*
-     * Get the columns of the properties table
+     * Update the specified property
      */
-    private String[] getPropertyColumns() throws SQLException {
-        if (propertyColumns == null) {
-            String db = DB_URL.substring(DB_URL.indexOf('/') + 1);
-            String query = "select column_name from INFORMATION_SCHEMA.COLUMNS where table_name = 'properties' and table_schema = '"
-                    + db + "' and column_name != 'identifier'";
-//            System.out.println(query);
-            propertyColumns = getAsStringArray(query);
-//            System.out.println(StringUtils.join(propertyColumns,','));
-        }
-        return propertyColumns;
+    public void updateProperty(String property, int type, boolean readOnly) throws SQLException {
+        String query = "update metaproperties set type = " + type + ", readonly = "
+                + BooleanUtils.toInteger(readOnly) + " where identifier = '" + property + "'";
+        update(query);
     }
 
     /*
@@ -832,9 +850,14 @@ public class MySQLMetaStore implements MetaStore{
      */
     public String getPropertyValue(String identifier, String property) throws SQLException {
         String value = null;
-        String columnName = property.substring(property.lastIndexOf('#') + 1);
-        String query = "select " + columnName + " from properties where identifier = '" + fixId(identifier) + "'";
-        value = getAsString(query);
+        String columnName = Props.fromURI(property);
+        if (columnName != null) {
+            String query = "select " + columnName + " from properties where identifier = '" + fixId(identifier) + "'";
+            value = getAsString(query);
+        } else {
+            String query = "select value from addl_props where identifier = '" + fixId(identifier) + "'" + " and property = '" + property + "'";
+            value = getAsString(query);
+        }
         return value;
     }
 
@@ -1056,6 +1079,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Extract and store the properties from the specified node description
      * Updated to store each property into a column of the properties table
+     *      for IVOA standard properties.
      * Also, for a LinkNode, stores the link target in the links table.
      * @param nodeAsString String representation of node whose properties are to be stored
      */
@@ -1070,12 +1094,25 @@ public class MySQLMetaStore implements MetaStore{
         StringBuilder columns = new StringBuilder("identifier");
         StringBuilder values = new StringBuilder("'" + identifier + "'");
         HashMap<String, String> properties = node.getProperties();
+        // Make sure the public read properties match at all times.
+        String isPub = properties.get(Props.getURI(Props.ISPUBLIC));
+        String pubRd = properties.get(Props.getURI(Props.PUBLICREAD));
+        if (isPub != "" || pubRd != "") {
+            String nodeIsPub = Boolean.toString(Boolean.parseBoolean(isPub) || Boolean.parseBoolean(pubRd));
+            node.setProperty(Props.getURI(Props.ISPUBLIC), nodeIsPub);
+            node.setProperty(Props.getURI(Props.PUBLICREAD), nodeIsPub);
+        }
         for (Map.Entry<String, String> prop : properties.entrySet()) {
             String property = prop.getKey();
-            String shortProp = property.substring(property.lastIndexOf('#') + 1);
-            if (!shortProp.equals("identifier")) {
-                columns.append(", ").append(shortProp);
-                values.append(", ").append("'").append(prop.getValue()).append("'");
+            String shortProp = Props.fromURI(property);
+            if (shortProp != null) {
+                if (!shortProp.equals("identifier")) {
+                    columns.append(", ").append(shortProp);
+                    values.append(", ").append("'").append(prop.getValue()).append("'");
+                }
+            } else {
+                String addquery = "insert into addl_props (identifier, property, value) values ('" + identifier + "', '" + property + "', '" + prop.getValue() + "')";
+                update(addquery);
             }
         }
         String query = "insert into properties (" + columns.toString() + ") values (" + values.toString() + ")";
@@ -1097,6 +1134,7 @@ public class MySQLMetaStore implements MetaStore{
     /*
      * Extract and store the properties from the specified node description
      * Updated to store each property into a column of the properties table
+     *      for IVOA standard properties.
      * Also, for a LinkNode, stores the link target in the links table.
      * @param nodeAsString String representation of node whose properties are to be stored
      * @return string representation of node with updated properties (deleted where specified)
@@ -1112,12 +1150,31 @@ public class MySQLMetaStore implements MetaStore{
         StringBuilder updates = new StringBuilder();
         HashMap<String, String> properties = node.getProperties();
         if (!properties.isEmpty()) {
+            // Make sure the public read properties match at all times.
+            String isPub = properties.get(Props.getURI(Props.ISPUBLIC));
+            String pubRd = properties.get(Props.getURI(Props.PUBLICREAD));
+            if (isPub != "" || pubRd != "") {
+                String nodeIsPub = Boolean.toString(Boolean.parseBoolean(isPub) || Boolean.parseBoolean(pubRd));
+                node.setProperty(Props.getURI(Props.ISPUBLIC), nodeIsPub);
+                node.setProperty(Props.getURI(Props.PUBLICREAD), nodeIsPub);
+            }
             for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String property = prop.getKey();
-                String shortProp = property.substring(property.lastIndexOf('#') + 1);
-                if (!shortProp.equals("identifier")) {
-                    if (updates.length() != 0) { updates.append(", "); }
-                    updates.append(shortProp).append(" = ").append("'").append(prop.getValue()).append("'");
+                String shortProp = Props.fromURI(property);
+                if (shortProp != null) {
+                    if (!shortProp.equals("identifier")) {
+                        if (updates.length() != 0) { updates.append(", "); }
+                        updates.append(shortProp).append(" = ").append("'").append(prop.getValue()).append("'");
+                    }
+                } else {
+                    if (getPropertyValue(identifier, property) != null) {
+                        String addquery = "update addl_props set value = '" + prop.getValue() + "' where identifier = '"
+                                        + identifier + "' and property = '" + property + "'";
+                        update(addquery);
+                    } else {
+                        String addquery = "insert into addl_props (identifier, property, value) values ('" + identifier + "', '" + property + "', '" + prop.getValue() + "')";
+                        update(addquery);
+                    }
                 }
             }
         }
@@ -1129,8 +1186,14 @@ public class MySQLMetaStore implements MetaStore{
         String[] nilSet = node.get("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']/@uri");
         if (nilSet.length > 0) {
             for (String delProp : nilSet) {
-                if (updates.length() != 0) { updates.append(", "); }
-                updates.append(delProp.substring(delProp.lastIndexOf('#') + 1)).append(" = NULL");
+                String shortProp = Props.fromURI(delProp);
+                if (shortProp != null) {
+                    if (updates.length() != 0) { updates.append(", "); }
+                    updates.append(shortProp).append(" = NULL");
+                } else {
+                    String addquery = "delete from addl_props where identifier = '" + identifier + "' and property = '" + delProp + "'";
+                    update(addquery);
+                }
             }
         }
         /* for (String delProp : nilSet) {

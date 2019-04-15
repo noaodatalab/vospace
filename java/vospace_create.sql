@@ -3,6 +3,7 @@
 --
 
 DROP TABLE IF EXISTS `properties`;
+DROP TABLE IF EXISTS `addl_props`;
 DROP TABLE IF EXISTS `capabilities`;
 DROP TABLE IF EXISTS `jobs`;
 DROP TABLE IF EXISTS `listings`;
@@ -103,7 +104,7 @@ CREATE TABLE `nodes` (
   `location` varchar(4096) DEFAULT NULL,
   `creationDate` datetime DEFAULT NULL,
   `lastModificationDate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`identifier`(767)),
+  INDEX nod_id_idx (`identifier`(767)),
   INDEX nod_dep_idx (`depth`),
   INDEX nod_typ_idx (`type`),
   INDEX nod_own_idx (`owner`),
@@ -117,6 +118,17 @@ CREATE TABLE `nodes` (
 CREATE TABLE `links` (
   `identifier` varchar(4096) NOT NULL,
   `target` varchar(4096) DEFAULT NULL,
-  PRIMARY KEY (`identifier`(767)),
+  INDEX lnk_id_idx (`identifier`(767)),
   INDEX lnk_tgt_idx (`target`(767))
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+--
+-- Table structure for table `addl_props`
+--
+
+CREATE TABLE `addl_props` (
+  `identifier` varchar(4096) NOT NULL,
+  `property` varchar(128) NOT NULL,
+  `value` varchar(256) NOT NULL,
+  INDEX add_id_idx (`identifier`(767))
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
