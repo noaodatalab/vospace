@@ -85,8 +85,9 @@ public class NodeManager {
             String storeType = props.getProperty("store.type");
             store = factory.getMetaStore("store.type." + storeType);
             // Get known properties
-            for (Props.Property prop : Props.Property.values()) {
-                checkProperty(Props.get(prop));
+            Props.initialize(Thread.currentThread().getContextClassLoader().getResource("ivoa_props.properties").toURI().getRawPath());
+            for (String prop: Props.allProps()) {
+                checkProperty(Props.getURI(prop));
             }
             // Identifier regex
             VOS_PATTERN = Pattern.compile("vos://[\\w\\d][\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]{2,}(![\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+(/[\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+)*)+");

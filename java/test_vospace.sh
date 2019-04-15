@@ -26,7 +26,9 @@ EOF
 read -r -d '' DATANODE <<'EOF'
 <ns0:node xmlns:ns0="http://www.ivoa.net/xml/VOSpace/v2.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" busy="false" uri="URI" xsi:type="vos:DataNode">
-  <ns0:properties />
+  <ns0:properties>
+    <ns0:property uri="ivo://datalab.noao.edu/vospace/core#testprop">testval</ns0:property>
+  </ns0:properties>
   <ns0:accepts />
   <ns0:provides />
   <ns0:capabilities />
@@ -36,7 +38,9 @@ EOF
 read -r -d '' CONTAINER <<'EOF'
 <ns0:node xmlns:ns0="http://www.ivoa.net/xml/VOSpace/v2.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uri="URI" xsi:type="vos:ContainerNode">
-  <ns0:properties />
+  <ns0:properties>
+    <ns0:property uri="ivo://datalab.noao.edu/vospace/core#testprop">testval</ns0:property>
+  </ns0:properties>
   <ns0:accepts />
   <ns0:provides />
   <ns0:capabilities />
