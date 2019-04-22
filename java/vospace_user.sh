@@ -1,6 +1,10 @@
 #!/bin/bash
 
 # Arguments are <username>, <hostname>
+sedf=''
+for f in /bin/sed /usr/bin/sed; do if [ -e $f ]; then sedf=$f; break; fi; done
+if [ -z $sedf ]; then echo "No sed found."; exit 1; fi
+
 d=$(date +%Y-%m-%dT%H:%M:%S%z)
 if [ $# -lt 1 ]; then u=$USER; else u=$1; fi
 if [ $# -lt 2 ]; then h=$(hostname -s); else h=$2; fi
@@ -32,9 +36,6 @@ if [ $USER == 'datalab' -o $USER == 'root' ]; then
         sudo /bin/chown datalab:datalab ${rd}/${u}/tmp
     fi
 fi
-sedf=''
-for f in /bin/sed /usr/bin/sed; do if [ -e $f ]; then sedf=$f; break; fi; done
-if [ -z $sedf ]; then echo "No sed found."; exit 1; fi
 $sedf -e "s/USER/${u}/g" -e "s/DATE/${d}/g" -e "s|RNODE|${rn}|g" -e "s|RDIR|${rd}|g" <<VOBASE
 # users/<USER>
 insert ignore into nodes(identifier, depth, type, owner, view, location, creationDate)
