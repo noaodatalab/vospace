@@ -12,7 +12,10 @@ if [ -z $conffile ]; then echo "No vospace configuration found."; exit 1; fi
 echo "# $h $conffile"
 rn=$(grep space.rootnode $conffile | cut -d'=' -f2)
 rd=$(grep server.http.basedir $conffile | cut -d'=' -f2)
-/usr/bin/sed -e "s/DATE/${d}/g" -e "s|RNODE|${rn}|g" -e "s|RDIR|${rd}|g" <<VOBASE
+sedf=''
+for f in /bin/sed /usr/bin/sed; do if [ -e $f ]; then sedf=$f; break; fi; done
+if [ -z $sedf ]; then echo "No sed found."; exit 1; fi
+$sedf -e "s/DATE/${d}/g" -e "s|RNODE|${rn}|g" -e "s|RDIR|${rd}|g" <<VOBASE
 # ROOT NODE
 insert ignore into nodes(identifier, depth, type, owner, view, location, creationDate)
     values('RNODE', 0, 3, 'root', 'ivo://ivoa.net/vospace/views/blob', 'file://RDIR', now());
