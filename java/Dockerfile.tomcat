@@ -6,4 +6,5 @@ RUN apt-get update \
 
 COPY . /opt/src/vospace
 
-RUN cd /opt/src/vospace && ant clean deploy
+RUN cd /opt/src/vospace && ant clean deploy \
+    && /opt/src/vospace/vospace_user_dir.sh vosuser docker && rm -rf /opt/src/vospace

@@ -13,21 +13,20 @@ if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; f
 echo "# $h $conffile"
 rd=$(grep server.http.basedir $conffile | cut -d'=' -f2)
 
-# Make sure the directories actually exist
-if [ $USER == 'datalab' -o $USER == 'root' ]; then
-    if [ ! -e ${rd}/${u} ]; then
-        sudo /bin/mkdir -p ${rd}/${u}
-        sudo /bin/chmod 775 ${rd}/${u}
-        if [ $USER == 'datalab' ]; then sudo /bin/chown datalab:datalab ${rd}/${u}; fi
-    fi
-    if [ ! -e ${v}/${u}/public ]; then
-        sudo /bin/mkdir -p ${rd}/${u}/public
-        sudo /bin/chmod 775 ${rd}/${u}/public
-        if [ $USER == 'datalab' ]; then sudo /bin/chown datalab:datalab ${rd}/${u}/public; fi
-    fi
-    if [ ! -e ${rd}/${u}/tmp ]; then
-        sudo /bin/mkdir -p ${rd}/${u}/tmp
-        sudo /bin/chmod 770 ${rd}/${u}/tmp
-        if [ $USER == 'datalab' ]; then sudo /bin/chown datalab:datalab ${rd}/${u}/tmp; fi
-    fi
+# Create the user directories
+if [ "$h" == 'docker' -o "$USER" == 'root' ]; then dosudo=""; else dosudo="sudo"; fi
+if [ ! -e ${rd}/${u} ]; then
+    $dosudo /bin/mkdir -p ${rd}/${u}
+    $dosudo /bin/chmod 775 ${rd}/${u}
+    if [ "$USER" == 'datalab' ]; then $dosudo /bin/chown datalab:datalab ${rd}/${u}; fi
+fi
+if [ ! -e ${v}/${u}/public ]; then
+    $dosudo /bin/mkdir -p ${rd}/${u}/public
+    $dosudo /bin/chmod 775 ${rd}/${u}/public
+    if [ "$USER" == 'datalab' ]; then $dosudo /bin/chown datalab:datalab ${rd}/${u}/public; fi
+fi
+if [ ! -e ${rd}/${u}/tmp ]; then
+    $dosudo /bin/mkdir -p ${rd}/${u}/tmp
+    $dosudo /bin/chmod 770 ${rd}/${u}/tmp
+    if [ "$USER" == 'datalab' ]; then $dosudo /bin/chown datalab:datalab ${rd}/${u}/tmp; fi
 fi
