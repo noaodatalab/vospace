@@ -1,6 +1,13 @@
 FROM mariadb:5.5
 
-COPY vos_properties.txt account_create.sql vospace_create.sql /docker-entrypoint-initdb.d/
-COPY vospace_create.sh /docker-entrypoint-initdb.d/z_vospace_create.sh
+COPY vospace_account.sql vospace_create.sql /docker-entrypoint-initdb.d/
+COPY src/main/webapp/WEB-INF/classes/ivoa_props.properties \
+    vospace.properties.docker vospace_proptable.sh vospace_rootnode.sh vospace_user_sql.sh /vobuild/
 
-RUN sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/vospace_create.sql
+RUN /vobuild/vospace_proptable.sh > /docker-entrypoint-initdb.d/vospace_proptable.sql \
+    && /vobuild/vospace_rootnode.sh docker > /docker-entrypoint-initdb.d/vospace_rootnode.sql \
+    && /vobuild/vospace_user_sql.sh vosuser docker > /docker-entrypoint-initdb.d/vospace_user_sql.sql \
+    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/vospace_create.sql \
+    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/vospace_proptable.sql \
+    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/vospace_rootnode.sql \
+    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/vospace_user_sql.sql
