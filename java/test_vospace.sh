@@ -1,17 +1,27 @@
 #!/bin/bash
 
-if [ ! -e $HOME/.datalab/id_token.${USER} ]; then
-    echo "No token file $HOME/.datalab/id_token.${USER}."
-    exit
+# Arguments are <hostname> <username>
+if [ $# -lt 1 ]; then h="dldev.datalab.noao.edu"; else h=$1; fi
+if [ $# -lt 2 ]; then u=$USER; else u=$2; fi
+if [ $h != "localhost" ]; then
+    if [ ! -e $HOME/.datalab/id_token.${u} ]; then
+        echo "No token file $HOME/.datalab/id_token.${u}." 1>&2; exit
+    fi
+    token="X-Dl-Authtoken: $(cat $HOME/.datalab/id_token.${u})"
+else
+    token="X-Dl-Authtoken: vosuser.1.1.$1$salt$checksum"
 fi
-token="X-Dl-Authtoken: $(cat $HOME/.datalab/id_token.${USER})"
-ROOT="vos://datalab.noao!vospace"
+wd=$(dirname $0)
+if [ $h == "localhost" ]; then pf="docker"; else pf=${h%%.*}; fi
+for f in ./vospace.properties.${pf} ${wd}/vospace.properties.${pf} \
+        ./vospace.properties.default ${wd}/vospace.properties.default; do
+    if [ -e $f ]; then conffile=$f; break; fi
+done
+if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi
+echo "Config: $u $h $conffile"
 
-if [ $# -ge 1 ]; then host=$1
-elif [ $(hostname -s) == "dltest" ]; then host=$(hostname)
-else host='dldev.datalab.noao.edu'
-fi
-BASE="http://${host}:8080/vospace-2.0/vospace"
+ROOT=$(grep space.rootnode $conffile | cut -d'=' -f2)
+BASE="http://${h}:8080/vospace-2.0/vospace"
 
 read -r -d '' LINKNODE <<'EOF'
 <ns0:node xmlns:ns0="http://www.ivoa.net/xml/VOSpace/v2.0"
@@ -135,28 +145,28 @@ function vo_link {
 
 datenode=$(date +"Z%Y%m%d%H%M")
 
-vo_get "${USER}"
-vo_container "${USER}/${datenode}" "${USER}/${datenode}/Z" "${USER}/${datenode}/Z/Y"
-vo_data "${USER}/${datenode}/DATAX" "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/Z/Y/DATAY"
-vo_link "${USER}/${datenode}/Z" "${USER}/${datenode}/ZLINK" \
-        "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/Z/DATAZLINK" \
-        "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/Z/DATAYLINK" \
-        "${USER}/${datenode}/Z/DATAYLINK" "${USER}/${datenode}/Z/LINKLINK" \
-        "${USER}/${datenode}/Z/LINKLINK" "${USER}/${datenode}/Z/LINKLINKLINK"
-vo_container "${USER}/${datenode}" "${USER}/${datenode}/DATAX"
-vo_data "${USER}/${datenode}" "${USER}/${datenode}/DATAX"
-vo_link "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/ZLINK" \
-        "${USER}/${datenode}/DATAX" "${USER}/${datenode}/Z" \
-        "${USER}/${datenode}/Z/Y/NOEXIST" "${USER}/${datenode}/Z/Y/DATAYLINK"
-vo_data "${USER}/${datenode}/Z/Y/X/DATAX" "${USER}/${datenode}/ZLINK/Y/DATAW" "demo00/NOEXIST"
+vo_get "${u}"
+vo_container "${u}/${datenode}" "${u}/${datenode}/Z" "${u}/${datenode}/Z/Y"
+vo_data "${u}/${datenode}/DATAX" "${u}/${datenode}/Z/DATAZ" "${u}/${datenode}/Z/Y/DATAY"
+vo_link "${u}/${datenode}/Z" "${u}/${datenode}/ZLINK" \
+        "${u}/${datenode}/Z/DATAZ" "${u}/${datenode}/Z/DATAZLINK" \
+        "${u}/${datenode}/Z/Y/DATAY" "${u}/${datenode}/Z/DATAYLINK" \
+        "${u}/${datenode}/Z/DATAYLINK" "${u}/${datenode}/Z/LINKLINK" \
+        "${u}/${datenode}/Z/LINKLINK" "${u}/${datenode}/Z/LINKLINKLINK"
+vo_container "${u}/${datenode}" "${u}/${datenode}/DATAX"
+vo_data "${u}/${datenode}" "${u}/${datenode}/DATAX"
+vo_link "${u}/${datenode}/Z/DATAZ" "${u}/${datenode}/ZLINK" \
+        "${u}/${datenode}/DATAX" "${u}/${datenode}/Z" \
+        "${u}/${datenode}/Z/Y/NOEXIST" "${u}/${datenode}/Z/Y/DATAYLINK"
+vo_data "${u}/${datenode}/Z/Y/X/DATAX" "${u}/${datenode}/ZLINK/Y/DATAW" "demo00/NOEXIST"
 read -rsp $'Press any key to continue...\n' -n1 key
-vo_get "${USER}" "${USER}/${datenode}" "${USER}/${datenode}/Z" "${USER}/${datenode}/Z/Y" \
-        "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/Z/LINKLINKLINK" \
-        "${USER}/${datenode}/NOEXIST" "demo00/${datenode}"
+vo_get "${u}" "${u}/${datenode}" "${u}/${datenode}/Z" "${u}/${datenode}/Z/Y" \
+        "${u}/${datenode}/Z/Y/DATAY" "${u}/${datenode}/Z/LINKLINKLINK" \
+        "${u}/${datenode}/NOEXIST" "demo00/${datenode}"
 read -rsp $'Press any key to continue...\n' -n1 key
-vo_delete "${USER}/${datenode}/ZLINK/Y/DATAY" "${USER}/${datenode}/Z/DATAZ" \
-        "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/NOEXIST"
-vo_get "${USER}/${datenode}/Z"
-vo_delete "${USER}/${datenode}"
-vo_get "${USER}"
-vo_delete "${USER}/${datenode}/NOEXIST" "demo00/NOEXIST"
+vo_delete "${u}/${datenode}/ZLINK/Y/DATAY" "${u}/${datenode}/Z/DATAZ" \
+        "${u}/${datenode}/Z/Y/DATAY" "${u}/${datenode}/NOEXIST"
+vo_get "${u}/${datenode}/Z"
+vo_delete "${u}/${datenode}"
+vo_get "${u}"
+vo_delete "${u}/${datenode}/NOEXIST" "demo00/NOEXIST"
