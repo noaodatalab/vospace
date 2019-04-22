@@ -898,7 +898,7 @@ public class VOSpaceManager {
      */
     public void validateToken(String authToken) throws VOSpaceException {
         // Validates a security token
-        if ("none".equals(AUTH_URL)) return;
+        if (AUTH_URL == "") return;
         HttpClient client = new HttpClient();
         GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
         try {
@@ -917,7 +917,7 @@ public class VOSpaceManager {
      * @param isRead The mode of access - read/write
      */
     public void validateAccess(String authToken, String node, boolean isRead) throws VOSpaceException {
-        if ("none".equals(AUTH_URL)) return;
+        if (AUTH_URL == "") return;
         try {
             // If node does not exist, check write access to parent
             boolean exists = store.isStored(node);

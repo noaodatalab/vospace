@@ -18,7 +18,6 @@ server.transfer.url=http://vospace_tomcat:8080/vospace-2.0/vospace/transfers
 
 # External address of Datalab Authentication service
 # server.auth.url=http://dlsvcs.datalab.noao.edu/auth/
-server.auth.url=none
 
 # Root directory for HTTP data server (should be same as space.baseuri without file:// scheme identifier)
 server.http.basedir=/vospace/users
