@@ -1,0 +1,22 @@
+version: "3.7"
+services:
+    vospace_tomcat:
+        restart: always
+        build:
+            context: .
+            dockerfile: Dockerfile.tomcat
+        image: vospace_tomcat
+        ports:
+            - "8080:8080"
+        depends_on:
+            - vospace_mysql
+        container_name: vospace_tomcat
+    vospace_mysql:
+        restart: always
+        build:
+            context: .
+            dockerfile: Dockerfile.mysql
+        image: vospace_mysql
+        environment:
+            - MYSQL_ROOT_PASSWORD=Tupperware
+        container_name: vospace_mysql
