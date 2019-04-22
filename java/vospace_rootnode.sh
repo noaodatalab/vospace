@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Argument is <hostname>
+d=$(date +%Y-%m-%dT%H:%M:%S%z)
+if [ $# -lt 1 ]; then h=$(hostname -s); else h=$1; fi
+conffile=''
+for f in ./vospace.properties.${h} ${wd}/vospace.properties.${h} \
+        ./vospace.properties.default ${wd}/vospace.properties.default; do
+    if [ -e $f ]; then conffile=$f; break; fi
+done
+if [ -z $conffile ]; then echo "No vospace configuration found."; exit 1; fi
+echo "# $h $conffile"
+rn=$(grep space.rootnode $conffile | cut -d'=' -f2)
+rd=$(grep server.http.basedir $conffile | cut -d'=' -f2)
+/usr/bin/sed -e "s/DATE/${d}/g" -e "s|RNODE|${rn}|g" -e "s|RDIR|${rd}|g" <<VOBASE
+# ROOT NODE
+insert ignore into nodes(identifier, depth, type, owner, view, location, creationDate)
+    values('RNODE', 0, 3, 'root', 'ivo://ivoa.net/vospace/views/blob', 'file://RDIR', now());
+insert ignore into properties(identifier, date, ctime, btime, mtime, groupread, groupwrite, ispublic, publicread)
+    values('RNODE', 'DATE', 'DATE', 'DATE', 'DATE', 'root', 'root', 'False', 'False');
+VOBASE
