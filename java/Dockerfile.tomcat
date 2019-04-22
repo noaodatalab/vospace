@@ -5,6 +5,7 @@ RUN apt-get update \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY . /opt/src/vospace
+COPY ./vospace.properties.docker /opt/src/vospace/vospace.properties.default
 
 RUN cd /opt/src/vospace && ant clean deploy \
     && /opt/src/vospace/vospace_user_dir.sh vosuser docker && rm -rf /opt/src/vospace
