@@ -18,24 +18,6 @@ echo "# $h $conffile"
 rn=$(grep space.rootnode $conffile | cut -d'=' -f2)
 rd=$(grep server.http.basedir $conffile | cut -d'=' -f2)
 
-if [ $USER == 'datalab' -o $USER == 'root' ]; then
-    # Make sure the directories actually exist
-    if [ ! -e ${rd}/${u} ]; then
-        sudo /bin/mkdir -p ${rd}/${u}
-        sudo /bin/chmod 775 ${rd}/${u}
-        sudo /bin/chown datalab:datalab ${rd}/${u}
-    fi
-    if [ ! -e ${v}/${u}/public ]; then
-        sudo /bin/mkdir -p ${rd}/${u}/public
-        sudo /bin/chmod 775 ${rd}/${u}/public
-        sudo /bin/chown datalab:datalab ${rd}/${u}/public
-    fi
-    if [ ! -e ${rd}/${u}/tmp ]; then
-        sudo /bin/mkdir -p ${rd}/${u}/tmp
-        sudo /bin/chmod 770 ${rd}/${u}/tmp
-        sudo /bin/chown datalab:datalab ${rd}/${u}/tmp
-    fi
-fi
 $sedf -e "s/USER/${u}/g" -e "s/DATE/${d}/g" -e "s|RNODE|${rn}|g" -e "s|RDIR|${rd}|g" <<VOBASE
 # users/<USER>
 insert ignore into nodes(identifier, depth, type, owner, view, location, creationDate)
