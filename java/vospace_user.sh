@@ -4,7 +4,6 @@
 d=$(date +%Y-%m-%dT%H:%M:%S%z)
 if [ $# -lt 1 ]; then u=$USER; else u=$1; fi
 if [ $# -lt 2 ]; then h=$(hostname -s); else h=$2; fi
-if [ $# -lt 3 ]; then mk='true'; else mk=$3; fi
 conffile=''
 for f in ./vospace.properties.${h} ${wd}/vospace.properties.${h} \
         ./vospace.properties.default ${wd}/vospace.properties.default; do
@@ -15,7 +14,7 @@ echo "# $h $conffile"
 rn=$(grep space.rootnode $conffile | cut -d'=' -f2)
 rd=$(grep server.http.basedir $conffile | cut -d'=' -f2)
 
-if [ $mk == 'true' ]; then
+if [ $USER == 'datalab' -o $USER == 'root' ]; then
     # Make sure the directories actually exist
     if [ ! -e ${rd}/${u} ]; then
         sudo /bin/mkdir -p ${rd}/${u}
