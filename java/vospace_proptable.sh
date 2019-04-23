@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Outputs the SQL to create a VOSpace property table in a MySQL/MariaDB server.
+# Called from vospace_create.sh
 wd=$(dirname $0)
 propfile=''
 for pf in ./src/main/webapp/WEB-INF/classes/ivoa_props.properties ./ivoa_props.properties \

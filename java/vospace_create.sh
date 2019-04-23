@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Argument is <hostname>
+# Outputs the SQL to create a VOSpace database in a MySQL/MariaDB server.
+# Argument is <hostname>; the hostname of the VOSpace server instance.
 wd=$(dirname $0)
 createsql=''
 for f in ./vospace_create.sql ${wd}/vospace_create.sql; do

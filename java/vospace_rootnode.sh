@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Outputs the SQL to create a VOSpace root node in a MySQL/MariaDB server.
+# Called from vospace_create.sh
 # Argument is <hostname>
 sedf=''
 for f in /bin/sed /usr/bin/sed; do if [ -e $f ]; then sedf=$f; break; fi; done

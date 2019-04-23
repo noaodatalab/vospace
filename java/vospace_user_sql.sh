@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Outputs the SQL to create a VOSpace user in a VOSpace database.
 # Arguments are <username>, <hostname>
 sedf=''
 for f in /bin/sed /usr/bin/sed; do if [ -e $f ]; then sedf=$f; break; fi; done

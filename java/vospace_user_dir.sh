@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Creates the VOSpace user directories for a VOSpace server instance.
 # Arguments are <username>, <hostname>
 if [ $# -lt 1 ]; then u=$USER; else u=$1; fi
 if [ $# -lt 2 ]; then h=$(hostname -s); else h=$2; fi
