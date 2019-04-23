@@ -1,7 +1,7 @@
 #!/bin/bash
 
-propfile=''
 wd=$(dirname $0)
+propfile=''
 for pf in ./src/main/webapp/WEB-INF/classes/ivoa_props.properties ./ivoa_props.properties \
         ${wd}/src/main/webapp/WEB-INF/classes/ivoa_props.properties ${wd}/ivoa_props.properties; do
     if [ -e $pf ]; then propfile=$pf; break; fi
