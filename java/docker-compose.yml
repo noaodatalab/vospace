@@ -1,4 +1,8 @@
 version: "3.7"
+networks:
+    network1:
+        name: vospace-net
+
 services:
     vospace_tomcat:
         restart: always
@@ -11,6 +15,8 @@ services:
         depends_on:
             - vospace_mysql
         container_name: vospace_tomcat
+        networks:
+            - network1
     vospace_mysql:
         restart: always
         build:
@@ -20,3 +26,5 @@ services:
         environment:
             - MYSQL_ROOT_PASSWORD=Tupperware
         container_name: vospace_mysql
+        networks:
+            - network1
