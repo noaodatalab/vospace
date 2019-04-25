@@ -1114,8 +1114,6 @@ public class MySQLMetaStore implements MetaStore {
                             identifier + "', '" + ((LinkNode) node).getTarget() + "')";
             update(lquery);
         }
-        StringBuilder columns = new StringBuilder("identifier");
-        StringBuilder values = new StringBuilder("'" + identifier + "'");
         HashMap<String, String> properties = node.getProperties();
         // Make sure the public read properties match at all times.
         String isPub = properties.get(Props.getURI(Props.ISPUBLIC));
@@ -1125,20 +1123,25 @@ public class MySQLMetaStore implements MetaStore {
             node.setProperty(Props.getURI(Props.ISPUBLIC), nodeIsPub);
             node.setProperty(Props.getURI(Props.PUBLICREAD), nodeIsPub);
         }
+        ArrayList<String> columns = new ArrayList<String>();
+        ArrayList<String> values = new ArrayList<String>();
+        columns.add("identifier");
+        values.add(identifier);
         for (Map.Entry<String, String> prop : properties.entrySet()) {
             String property = prop.getKey();
             String shortProp = Props.fromURI(property);
             if (shortProp != null) {
                 if (!shortProp.equals("identifier")) {
-                    columns.append(", ").append(shortProp);
-                    values.append(", ").append("'").append(prop.getValue()).append("'");
+                    columns.add(shortProp);
+                    values.add(prop.getValue());
                 }
             } else {
                 String addquery = "insert into addl_props (identifier, property, value) values ('" + identifier + "', '" + property + "', '" + prop.getValue() + "')";
                 update(addquery);
             }
         }
-        String query = "insert into properties (" + columns.toString() + ") values (" + values.toString() + ")";
+        String query = "insert into properties (" + StringUtils.join(columns, ",")
+                    + ") values ('" + StringUtils.join(values, "','") + "')";
         update(query);
         /*      for (Map.Entry<String, String> prop : properties.entrySet()) {
             String query = "insert into properties (identifier, property, value) values ('" + identifier + "', '" + prop.getKey() + "', '" + prop.getValue() + "')";
@@ -1170,8 +1173,8 @@ public class MySQLMetaStore implements MetaStore {
                             "' where identifier = '" + identifier + "'";
             update(lquery);
         }
-        StringBuilder updates = new StringBuilder();
         HashMap<String, String> properties = node.getProperties();
+        ArrayList<String> updates = new ArrayList<String>();
         if (!properties.isEmpty()) {
             // Make sure the public read properties match at all times.
             String isPub = properties.get(Props.getURI(Props.ISPUBLIC));
@@ -1186,8 +1189,7 @@ public class MySQLMetaStore implements MetaStore {
                 String shortProp = Props.fromURI(property);
                 if (shortProp != null) {
                     if (!shortProp.equals("identifier")) {
-                        if (updates.length() != 0) { updates.append(", "); }
-                        updates.append(shortProp).append(" = ").append("'").append(prop.getValue()).append("'");
+                        updates.add(shortProp + " = '" + prop.getValue() + "'");
                     }
                 } else {
                     if (getPropertyValue(identifier, property) != null) {
@@ -1211,8 +1213,7 @@ public class MySQLMetaStore implements MetaStore {
             for (String delProp : nilSet) {
                 String shortProp = Props.fromURI(delProp);
                 if (shortProp != null) {
-                    if (updates.length() != 0) { updates.append(", "); }
-                    updates.append(shortProp).append(" = NULL");
+                    updates.add(shortProp + " = NULL");
                 } else {
                     String addquery = "delete from addl_props where identifier = '" + identifier + "' and property = '" + delProp + "'";
                     update(addquery);
@@ -1223,8 +1224,8 @@ public class MySQLMetaStore implements MetaStore {
             String query = "delete from properties where identifier = '" + identifier + "' and property = '" + delProp + "'";
             statement.executeUpdate(query);
         } */
-        if (updates.length() > 0) {
-            String query = "update properties set " + updates.toString() + " where identifier = '" + identifier + "'";
+        if (!updates.isEmpty()) {
+            String query = "update properties set " + StringUtils.join(updates, ", ") + " where identifier = '" + identifier + "'";
             update(query);
         }
         node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");

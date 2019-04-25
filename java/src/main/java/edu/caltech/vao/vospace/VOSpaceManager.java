@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -24,6 +25,7 @@ import java.util.regex.Matcher;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.events.XMLEvent;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.HttpStatus;
@@ -76,6 +78,7 @@ public class VOSpaceManager {
     protected String CAPABILITY_BASE;
     private String STAGING_LOCATION;
     private Pattern VOS_PATTERN;
+    private Pattern TOKEN_PATTERN;
     private String SPACE_AUTH;
     private String AUTH_URL;
     private MetaStore store;
@@ -142,7 +145,8 @@ public class VOSpaceManager {
                 checkProperty(Props.getURI(prop), Props.getAttributes(prop), Props.isReadOnly(prop));
             }
             // Identifier regex
-            VOS_PATTERN = Pattern.compile("vos://[\\w\\d][\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]{2,}(![\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+(/[\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+)*)+");
+            VOS_PATTERN = Pattern.compile("vos://\\w[\\w\\-_\\.!~\\*'\\(\\)\\+=]{2,}(![\\w\\-_\\.!~\\*'\\(\\)\\+=]+(/[\\w\\-_\\.!~\\*'\\(\\)\\+=]+)*)+");
+            TOKEN_PATTERN = Pattern.compile("\\w+\\.\\d+\\.\\d+\\..*");
             nfactory = NodeFactory.getInstance();
         } catch (VOSpaceException ve) {
             throw ve;
@@ -387,15 +391,7 @@ public class VOSpaceManager {
                         ContainerNode container = (ContainerNode) node;
                         // Get children and check length property
                         String[] childNodes = store.getChildrenNodes(identifier);
-                        int length = 0;
-                        for (String child: childNodes) {
-                            length += child.length();
-                        }
-                        StringBuilder children = new StringBuilder(length);
-                        for (String child: childNodes) {
-                            children.append(child);
-                        }
-                        container.addNode(children.toString());
+                        container.addNode(StringUtils.join(childNodes));
 //                      for (String child: store.getChildren(identifier)) {
 //                          Node cnode = nfactory.getNode(store.getNode(child));
 //                          cnode = setLength(cnode);
@@ -504,6 +500,7 @@ public class VOSpaceManager {
      */
     private boolean validId(String id) {
         Matcher m = VOS_PATTERN.matcher(id);
+        System.out.println(VOS_PATTERN.pattern() + " " + id + " " + m.matches());
         return m.matches();
     }
 
@@ -896,16 +893,28 @@ public class VOSpaceManager {
     /**
      * Validate the provided DataLab token
      */
-    public void validateToken(String authToken) throws VOSpaceException {
+    private void checkTokenFormat(String authToken) throws VOSpaceException {
         // Validates a security token
-        if (AUTH_URL == "") return;
-        HttpClient client = new HttpClient();
-        GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
-        try {
-            int statusCode = client.executeMethod(get);
-            if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
-        } catch (IOException e) {
-            throw new VOSpaceException(e);
+        Matcher m = TOKEN_PATTERN.matcher(authToken);
+        if (!m.matches()) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
+    }
+
+
+    /**
+     * Validate the provided DataLab token
+     */
+    public void validateToken(String authToken) throws VOSpaceException {
+        if (AUTH_URL == "") {
+            checkTokenFormat(authToken);
+        } else {
+            HttpClient client = new HttpClient();
+            GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
+            try {
+                int statusCode = client.executeMethod(get);
+                if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
+            } catch (IOException e) {
+                throw new VOSpaceException(e);
+            }
         }
     }
 
@@ -917,7 +926,7 @@ public class VOSpaceManager {
      * @param isRead The mode of access - read/write
      */
     public void validateAccess(String authToken, String node, boolean isRead) throws VOSpaceException {
-        if (AUTH_URL == "") return;
+        if (AUTH_URL == "") checkTokenFormat(authToken);
         try {
             // If node does not exist, check write access to parent
             boolean exists = store.isStored(node);
@@ -926,22 +935,26 @@ public class VOSpaceManager {
                 node = parent;
             }
             // Get owner and groups for requested node
+            String[] authProps = store.getPropertyValues(node, new String[]{Props.getURI(Props.ISPUBLIC),
+                    Props.getURI(Props.PUBLICREAD),Props.getURI(Props.GROUPREAD),Props.getURI(Props.GROUPWRITE)});
             String groups = "";
             if (isRead) {
                 // Check the publicRead and isPublic properties and return if true
-                boolean isPublic = Boolean.parseBoolean(store.getPropertyValue(node, Props.getURI(Props.ISPUBLIC)))
-                        || Boolean.parseBoolean(store.getPropertyValue(node, Props.getURI(Props.PUBLICREAD)));
-                if (isPublic) return;
-                groups = store.getPropertyValue(node, Props.getURI(Props.GROUPREAD));
+                if (Boolean.parseBoolean(authProps[0]) || Boolean.parseBoolean(authProps[1])) return;
+                groups = authProps[2];
             } else {
-                groups = store.getPropertyValue(node, Props.getURI(Props.GROUPWRITE));
+                groups = authProps[3];
             }
             String owner = store.getOwner(node);
-            // Validates the access request
-            HttpClient client = new HttpClient();
-            GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + authToken + "&owner=" + owner + "&groups=" + groups);
-            int statusCode = client.executeMethod(get);
-            if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied);
+            if (AUTH_URL == "") {
+                if (Arrays.asList(StringUtils.split(groups, ",")).contains(owner));
+            } else {
+                // Validates the access request
+                HttpClient client = new HttpClient();
+                GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + authToken + "&owner=" + owner + "&groups=" + groups);
+                int statusCode = client.executeMethod(get);
+                if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied);
+            }
         } catch (IOException e) {
             throw new VOSpaceException(e);
         } catch (SQLException e) {
