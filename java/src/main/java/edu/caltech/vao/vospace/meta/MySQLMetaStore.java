@@ -394,13 +394,7 @@ public class MySQLMetaStore implements MetaStore {
         // Get the Properties for the node, and set them in the Node object
         String[] propNames = Props.allProps();
         // First build a query of all column names to get all column values
-        StringBuilder columns = new StringBuilder();
-        boolean first = true;
-        for (String name: propNames) {
-            if (!first) { columns.append(", "); } else { first = false; }
-            columns.append(name);
-        }
-        String query = "select " + columns.toString() + " from properties where identifier = '" + fixedId + "'";
+        String query = "select " + StringUtils.join(propNames, ",") + " from properties where identifier = '" + fixedId + "'";
         // Execute the query and set the property values in the Node.
         ResultSet result = null;
         try {
@@ -872,7 +866,7 @@ public class MySQLMetaStore implements MetaStore {
         for (String s : properties) {
             String columnName = Props.fromURI(s);
             if (columnName != null) columns.add(columnName);
-            else addl_props.add("'" + s + "'");
+            else addl_props.add(s);
         }
         if (!columns.isEmpty()) {
             String query = "select " + StringUtils.join(columns, ",") + " from properties where identifier = '" + fixId(identifier) + "'";
@@ -881,12 +875,9 @@ public class MySQLMetaStore implements MetaStore {
         }
         if (!addl_props.isEmpty()) {
             String query = "select value from addl_props where identifier = '" + fixId(identifier)
-                        + "' and property in (" + StringUtils.join(addl_props, ",") + ")";
+                        + "' and property in ('" + StringUtils.join(addl_props, "','") + "')";
             String[] values = getAsStringArray(query);
-            for (int i = 0; i < values.length; i++) {
-                String propNameQ = addl_props.get(i);
-                valMap.put(propNameQ.substring(1, propNameQ.length()-1), values[i]);
-            }
+            for (int i = 0; i < values.length; i++) valMap.put(addl_props.get(i), values[i]);
         }
         ArrayList<String> valList = new ArrayList<String>();
         for (String s : properties) valList.add(valMap.get(s));
