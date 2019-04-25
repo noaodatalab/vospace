@@ -862,6 +862,38 @@ public class MySQLMetaStore implements MetaStore {
     }
 
     /*
+     * Get the value of a property
+     * Updated to get the property value from the column named by the property name
+     */
+    public String[] getPropertyValues(String identifier, String[] properties) throws SQLException {
+        ArrayList<String> columns = new ArrayList<String>();
+        ArrayList<String> addl_props = new ArrayList<String>();
+        HashMap<String, String> valMap = new HashMap();
+        for (String s : properties) {
+            String columnName = Props.fromURI(s);
+            if (columnName != null) columns.add(columnName);
+            else addl_props.add("'" + s + "'");
+        }
+        if (!columns.isEmpty()) {
+            String query = "select " + StringUtils.join(columns, ",") + " from properties where identifier = '" + fixId(identifier) + "'";
+            String[] values = getAsStringArray(query);
+            for (int i = 0; i < values.length; i++) valMap.put(columns.get(i), values[i]);
+        }
+        if (!addl_props.isEmpty()) {
+            String query = "select value from addl_props where identifier = '" + fixId(identifier)
+                        + "' and property in (" + StringUtils.join(addl_props, ",") + ")";
+            String[] values = getAsStringArray(query);
+            for (int i = 0; i < values.length; i++) {
+                String propNameQ = addl_props.get(i);
+                valMap.put(propNameQ.substring(1, propNameQ.length()-1), values[i]);
+            }
+        }
+        ArrayList<String> valList = new ArrayList<String>();
+        for (String s : properties) valList.add(valMap.get(s));
+        return valList.toArray(new String[0]);
+    }
+
+    /*
      * Check the status of a capability (active or not)
      */
     public int isActive(String identifier, String capability) throws SQLException {
