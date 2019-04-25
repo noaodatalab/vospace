@@ -877,7 +877,7 @@ public class MySQLMetaStore implements MetaStore {
         if (!columns.isEmpty()) {
             String query = "select " + StringUtils.join(columns, ",") + " from properties where identifier = '" + fixId(identifier) + "'";
             String[] values = getAsStringArray(query);
-            for (int i = 0; i < values.length; i++) valMap.put(columns.get(i), values[i]);
+            for (int i = 0; i < values.length; i++) valMap.put(Props.getURI(columns.get(i)), values[i]);
         }
         if (!addl_props.isEmpty()) {
             String query = "select value from addl_props where identifier = '" + fixId(identifier)
