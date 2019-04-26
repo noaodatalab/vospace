@@ -904,7 +904,8 @@ public class VOSpaceManager {
      * Validate the provided DataLab token
      */
     public void validateToken(String authToken) throws VOSpaceException {
-        if (AUTH_URL == "") {
+        if (AUTH_URL.startsWith("null://")) return;
+        if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
             checkTokenFormat(authToken);
         } else {
             HttpClient client = new HttpClient();
@@ -926,7 +927,8 @@ public class VOSpaceManager {
      * @param isRead The mode of access - read/write
      */
     public void validateAccess(String authToken, String node, boolean isRead) throws VOSpaceException {
-        if (AUTH_URL == "") checkTokenFormat(authToken);
+        if (AUTH_URL.startsWith("null://")) return;
+        if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) checkTokenFormat(authToken);
         try {
             // If node does not exist, check write access to parent
             boolean exists = store.isStored(node);
@@ -946,7 +948,7 @@ public class VOSpaceManager {
                 groups = authProps[3];
             }
             String owner = store.getOwner(node);
-            if (AUTH_URL == "") {
+            if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
                 if (Arrays.asList(StringUtils.split(groups, ",")).contains(owner));
             } else {
                 // Validates the access request
