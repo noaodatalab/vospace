@@ -239,23 +239,23 @@ public class VOSpaceManager {
                 String grpWr = Props.getURI(Props.GROUPWRITE);
                 String isPub = Props.getURI(Props.ISPUBLIC);
                 String pubRd = Props.getURI(Props.PUBLICREAD);
-                if (nodeProps.get(grpRd) == "") node.setProperty(grpRd,
-                        store.getPropertyValue(parent, grpRd));
-                if (nodeProps.get(grpWr) == "") node.setProperty(grpWr,
-                        store.getPropertyValue(parent, grpWr));
-                // A string indicating if the node is public; logical OR of the two properties
-                String nodeIsPub = Boolean.toString(Boolean.parseBoolean(nodeProps.get(isPub))
-                        || Boolean.parseBoolean(nodeProps.get(pubRd)));
-                if (nodeProps.get(isPub) == "" && nodeProps.get(pubRd) == "") {
-                    // If both are empty, set from parent
+                String grpRdVal = nodeProps.get(grpRd);
+                String grpWrVal = nodeProps.get(grpWr);
+                String isPubVal = nodeProps.get(isPub);
+                String pubRdVal = nodeProps.get(pubRd);
+                if (grpRdVal == null || grpRdVal == "") node.setProperty(grpRd, store.getPropertyValue(parent, grpRd));
+                if (grpWrVal == null || grpWrVal == "") node.setProperty(grpWr, store.getPropertyValue(parent, grpWr));
+                if ((isPubVal == null || isPubVal == "") && (pubRdVal == null || pubRdVal == "")) {
+                    // If both are empty, set from parent; logical OR of the two properties
                     String parentIsPub = Boolean.toString(Boolean.parseBoolean(store.getPropertyValue(parent, isPub))
                             || Boolean.parseBoolean(store.getPropertyValue(parent, pubRd)));
                     node.setProperty(isPub, parentIsPub);
                     node.setProperty(pubRd, parentIsPub);
                 } else {
-                    // Set them the same; both cannot be empty
+                    // Set them the same; logical OR of the two properties
+                    String nodeIsPub = Boolean.toString(Boolean.parseBoolean(isPubVal) || Boolean.parseBoolean(pubRdVal));
                     node.setProperty(isPub, nodeIsPub);
-                    node.setProperty(isPub, nodeIsPub);
+                    node.setProperty(pubRd, nodeIsPub);
                 }
                 node.setProperty(Props.getURI(Props.LENGTH), "0");
                 node.setProperty(Props.getURI(Props.MD5), "");
@@ -500,7 +500,6 @@ public class VOSpaceManager {
      */
     private boolean validId(String id) {
         Matcher m = VOS_PATTERN.matcher(id);
-        System.out.println(VOS_PATTERN.pattern() + " " + id + " " + m.matches());
         return m.matches();
     }
 
@@ -932,9 +931,9 @@ public class VOSpaceManager {
         try {
             // If node does not exist, check write access to parent
             boolean exists = store.isStored(node);
-            if (!exists) {
-                String parent = node.substring(0, node.lastIndexOf("/"));
-                node = parent;
+            while (!exists) {
+                node = node.substring(0, node.lastIndexOf("/"));
+                exists = store.isStored(node);
             }
             // Get owner and groups for requested node
             String[] authProps = store.getPropertyValues(node, new String[]{Props.getURI(Props.ISPUBLIC),
@@ -949,7 +948,7 @@ public class VOSpaceManager {
             }
             String owner = store.getOwner(node);
             if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
-                if (Arrays.asList(StringUtils.split(groups, ",")).contains(owner));
+                if (!Arrays.asList(StringUtils.split(groups, ",")).contains(owner)) throw new VOSpaceException(VOFault.PermissionDenied);
             } else {
                 // Validates the access request
                 HttpClient client = new HttpClient();

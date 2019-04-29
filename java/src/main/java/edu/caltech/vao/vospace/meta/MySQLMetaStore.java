@@ -8,6 +8,7 @@ package edu.caltech.vao.vospace.meta;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -313,7 +314,7 @@ public class MySQLMetaStore implements MetaStore {
                 update(updateOffset);
             }
         } finally {
-            result.close();
+            closeResult(result);
         }
         return allData;
     }
@@ -870,14 +871,26 @@ public class MySQLMetaStore implements MetaStore {
         }
         if (!columns.isEmpty()) {
             String query = "select " + StringUtils.join(columns, ",") + " from properties where identifier = '" + fixId(identifier) + "'";
-            String[] values = getAsStringArray(query);
-            for (int i = 0; i < values.length; i++) valMap.put(Props.getURI(columns.get(i)), values[i]);
+            ResultSet result = null;
+            try {
+                result = execute(query);
+                result.next();
+                for (int i = 0; i < columns.size(); i++) valMap.put(Props.getURI(columns.get(i)), result.getString(i+1));
+            } finally {
+                closeResult(result);
+            }
         }
         if (!addl_props.isEmpty()) {
             String query = "select value from addl_props where identifier = '" + fixId(identifier)
                         + "' and property in ('" + StringUtils.join(addl_props, "','") + "')";
-            String[] values = getAsStringArray(query);
-            for (int i = 0; i < values.length; i++) valMap.put(addl_props.get(i), values[i]);
+            ResultSet result = null;
+            try {
+                result = execute(query);
+                result.next();
+                for (int i = 0; i < addl_props.size(); i++) valMap.put(addl_props.get(i), result.getString(i+1));
+            } finally {
+                closeResult(result);
+            }
         }
         ArrayList<String> valList = new ArrayList<String>();
         for (String s : properties) valList.add(valMap.get(s));
