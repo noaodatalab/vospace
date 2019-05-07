@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -24,6 +25,7 @@ import java.util.regex.Matcher;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.events.XMLEvent;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.HttpStatus;
@@ -76,6 +78,7 @@ public class VOSpaceManager {
     protected String CAPABILITY_BASE;
     private String STAGING_LOCATION;
     private Pattern VOS_PATTERN;
+    private Pattern TOKEN_PATTERN;
     private String SPACE_AUTH;
     private String AUTH_URL;
     private MetaStore store;
@@ -142,7 +145,8 @@ public class VOSpaceManager {
                 checkProperty(Props.getURI(prop), Props.getAttributes(prop), Props.isReadOnly(prop));
             }
             // Identifier regex
-            VOS_PATTERN = Pattern.compile("vos://[\\w\\d][\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]{2,}(![\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+(/[\\w\\d\\-_\\.!~\\*'\\(\\)\\+=]+)*)+");
+            VOS_PATTERN = Pattern.compile("vos://\\w[\\w\\-_\\.!~\\*'\\(\\)\\+=]{2,}(![\\w\\-_\\.!~\\*'\\(\\)\\+=]+(/[\\w\\-_\\.!~\\*'\\(\\)\\+=]+)*)+");
+            TOKEN_PATTERN = Pattern.compile("\\w+\\.\\d+\\.\\d+\\..*");
             nfactory = NodeFactory.getInstance();
         } catch (VOSpaceException ve) {
             throw ve;
@@ -224,37 +228,36 @@ public class VOSpaceManager {
             }
             // Set properties (dates at least)
             String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
-            node.setProperty(Props.getURI(Props.CTIME), date);
+            node.setProperty(Props.CTIME_URI, date);
             if (!exists) {
-                node.setProperty(Props.getURI(Props.DATE), date);
-                node.setProperty(Props.getURI(Props.BTIME), date);
-                node.setProperty(Props.getURI(Props.MTIME), date);
+                node.setProperty(Props.DATE_URI, date);
+                node.setProperty(Props.BTIME_URI, date);
+                node.setProperty(Props.MTIME_URI, date);
                 // Inherit permissions from parent if none set
                 String parent = uri.substring(0, uri.lastIndexOf("/"));
-                String grpRd = Props.getURI(Props.GROUPREAD);
-                String grpWr = Props.getURI(Props.GROUPWRITE);
-                String isPub = Props.getURI(Props.ISPUBLIC);
-                String pubRd = Props.getURI(Props.PUBLICREAD);
-                if (nodeProps.get(grpRd) == "") node.setProperty(grpRd,
-                        store.getPropertyValue(parent, grpRd));
-                if (nodeProps.get(grpWr) == "") node.setProperty(grpWr,
-                        store.getPropertyValue(parent, grpWr));
-                // A string indicating if the node is public; logical OR of the two properties
-                String nodeIsPub = Boolean.toString(Boolean.parseBoolean(nodeProps.get(isPub))
-                        || Boolean.parseBoolean(nodeProps.get(pubRd)));
-                if (nodeProps.get(isPub) == "" && nodeProps.get(pubRd) == "") {
-                    // If both are empty, set from parent
-                    String parentIsPub = Boolean.toString(Boolean.parseBoolean(store.getPropertyValue(parent, isPub))
-                            || Boolean.parseBoolean(store.getPropertyValue(parent, pubRd)));
-                    node.setProperty(isPub, parentIsPub);
-                    node.setProperty(pubRd, parentIsPub);
+                String grpRdVal = nodeProps.get(Props.GROUPREAD_URI);
+                String grpWrVal = nodeProps.get(Props.GROUPWRITE_URI);
+                String isPubVal = nodeProps.get(Props.ISPUBLIC_URI);
+                String pubRdVal = nodeProps.get(Props.PUBLICREAD_URI);
+                if (grpRdVal == null || grpRdVal == "") node.setProperty(Props.GROUPREAD_URI,
+                        store.getPropertyValue(parent, Props.GROUPREAD_URI));
+                if (grpWrVal == null || grpWrVal == "") node.setProperty(Props.GROUPWRITE_URI,
+                        store.getPropertyValue(parent, Props.GROUPWRITE_URI));
+                if ((isPubVal == null || isPubVal == "") && (pubRdVal == null || pubRdVal == "")) {
+                    // If both are empty, set from parent; logical OR of the two properties
+                    String parentIsPub = Boolean.toString(
+                               Boolean.parseBoolean(store.getPropertyValue(parent, Props.ISPUBLIC_URI))
+                            || Boolean.parseBoolean(store.getPropertyValue(parent, Props.PUBLICREAD_URI)));
+                    node.setProperty(Props.ISPUBLIC_URI, parentIsPub);
+                    node.setProperty(Props.PUBLICREAD_URI, parentIsPub);
                 } else {
-                    // Set them the same; both cannot be empty
-                    node.setProperty(isPub, nodeIsPub);
-                    node.setProperty(isPub, nodeIsPub);
+                    // Set them the same; logical OR of the two properties
+                    String nodeIsPub = Boolean.toString(Boolean.parseBoolean(isPubVal) || Boolean.parseBoolean(pubRdVal));
+                    node.setProperty(Props.ISPUBLIC_URI, nodeIsPub);
+                    node.setProperty(Props.PUBLICREAD_URI, nodeIsPub);
                 }
-                node.setProperty(Props.getURI(Props.LENGTH), "0");
-                node.setProperty(Props.getURI(Props.MD5), "");
+                node.setProperty(Props.LENGTH_URI, "0");
+                node.setProperty(Props.MD5_URI, "");
                 // node.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(getLocation(node.getUri()))));
             }
             // Store node
@@ -387,15 +390,7 @@ public class VOSpaceManager {
                         ContainerNode container = (ContainerNode) node;
                         // Get children and check length property
                         String[] childNodes = store.getChildrenNodes(identifier);
-                        int length = 0;
-                        for (String child: childNodes) {
-                            length += child.length();
-                        }
-                        StringBuilder children = new StringBuilder(length);
-                        for (String child: childNodes) {
-                            children.append(child);
-                        }
-                        container.addNode(children.toString());
+                        container.addNode(StringUtils.join(childNodes));
 //                      for (String child: store.getChildren(identifier)) {
 //                          Node cnode = nfactory.getNode(store.getNode(child));
 //                          cnode = setLength(cnode);
@@ -418,8 +413,7 @@ public class VOSpaceManager {
      * Set the length property on the specified node
      */
     public Node setLength(Node node) throws VOSpaceException {
-        String length = Props.getURI(Props.LENGTH);
-//      String lengthUri = "/vos:node/vos:properties/vos:property[@uri = \"" + length + "\"]";
+//      String lengthUri = "/vos:node/vos:properties/vos:property[@uri = \"" + Props.LENGTH_URI + "\"]";
 //      boolean setLength = false;
 //      if (!node.has(lengthUri)) {
 //          setLength = true;
@@ -427,7 +421,7 @@ public class VOSpaceManager {
 //          setLength = true;
 //      }
 //      if (setLength) {
-        node.setProperty(length, Long.toString(backend.size(getLocation(node.getUri()))));
+        node.setProperty(Props.LENGTH_URI, Long.toString(backend.size(getLocation(node.getUri()))));
 //      }
         return node;
     }
@@ -438,8 +432,7 @@ public class VOSpaceManager {
      * Need to optimize this for large files where a stored value is better
      */
     public Node setMD5(Node node) throws VOSpaceException {
-        String md5 = Props.getURI(Props.MD5);
-        String md5Uri = "/vos:node/vos:properties/vos:property[@uri = \"" + md5 + "\"]";
+        String md5Uri = "/vos:node/vos:properties/vos:property[@uri = \"" + Props.MD5_URI + "\"]";
         boolean setmd5 = false;
         if (!node.has(md5Uri)) {
             setmd5 = true;
@@ -451,7 +444,7 @@ public class VOSpaceManager {
         }
         if (setmd5) {
             String md5val = backend.md5(getLocation(node.getUri()));
-            if (md5val != null) node.setProperty(md5, md5val);
+            if (md5val != null) node.setProperty(Props.MD5_URI, md5val);
         }
         return node;
     }
@@ -722,11 +715,11 @@ public class VOSpaceManager {
                 Transfer transfer = new Transfer(result);
                 String target = transfer.getTarget();
                 Node node = nfactory.getNode(store.getNode(target));
-                node.setProperty(Props.getURI(Props.LENGTH), size);
+                node.setProperty(Props.LENGTH_URI, size);
                 // Update the timestamps for modification
                 String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
-                node.setProperty(Props.getURI(Props.CTIME), date);
-                node.setProperty(Props.getURI(Props.MTIME), date);
+                node.setProperty(Props.CTIME_URI, date);
+                node.setProperty(Props.MTIME_URI, date);
                 store.updateData(target, node.toString());
             }
         } catch (VOSpaceException ve) {
@@ -744,7 +737,7 @@ public class VOSpaceManager {
     public void registerNode(Node node, String user, String location) throws VOSpaceException {
         try {
             Node newNode = create(node, user, false);
-            newNode.setProperty(Props.getURI(Props.LENGTH), Long.toString(backend.size(location)));
+            newNode.setProperty(Props.LENGTH_URI, Long.toString(backend.size(location)));
             store.updateData(newNode.getUri(), newNode.toString());
         } catch (VOSpaceException ve) {
             throw ve;
@@ -896,15 +889,29 @@ public class VOSpaceManager {
     /**
      * Validate the provided DataLab token
      */
-    public void validateToken(String authToken) throws VOSpaceException {
+    private void checkTokenFormat(String authToken) throws VOSpaceException {
         // Validates a security token
-        HttpClient client = new HttpClient();
-        GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
-        try {
-            int statusCode = client.executeMethod(get);
-            if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
-        } catch (IOException e) {
-            throw new VOSpaceException(e);
+        Matcher m = TOKEN_PATTERN.matcher(authToken);
+        if (!m.matches()) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
+    }
+
+
+    /**
+     * Validate the provided DataLab token
+     */
+    public void validateToken(String authToken) throws VOSpaceException {
+        if (AUTH_URL.startsWith("null://")) return;
+        if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
+            checkTokenFormat(authToken);
+        } else {
+            HttpClient client = new HttpClient();
+            GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
+            try {
+                int statusCode = client.executeMethod(get);
+                if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
+            } catch (IOException e) {
+                throw new VOSpaceException(e);
+            }
         }
     }
 
@@ -916,30 +923,36 @@ public class VOSpaceManager {
      * @param isRead The mode of access - read/write
      */
     public void validateAccess(String authToken, String node, boolean isRead) throws VOSpaceException {
+        if (AUTH_URL.startsWith("null://")) return;
+        if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) checkTokenFormat(authToken);
         try {
             // If node does not exist, check write access to parent
             boolean exists = store.isStored(node);
-            if (!exists) {
-                String parent = node.substring(0, node.lastIndexOf("/"));
-                node = parent;
+            while (!exists) {
+                node = node.substring(0, node.lastIndexOf("/"));
+                exists = store.isStored(node);
             }
             // Get owner and groups for requested node
+            String[] authProps = store.getPropertyValues(node, new String[]{ Props.ISPUBLIC_URI,
+                    Props.PUBLICREAD_URI, Props.GROUPREAD_URI, Props.GROUPWRITE_URI });
             String groups = "";
             if (isRead) {
                 // Check the publicRead and isPublic properties and return if true
-                boolean isPublic = Boolean.parseBoolean(store.getPropertyValue(node, Props.getURI(Props.ISPUBLIC)))
-                        || Boolean.parseBoolean(store.getPropertyValue(node, Props.getURI(Props.PUBLICREAD)));
-                if (isPublic) return;
-                groups = store.getPropertyValue(node, Props.getURI(Props.GROUPREAD));
+                if (Boolean.parseBoolean(authProps[0]) || Boolean.parseBoolean(authProps[1])) return;
+                groups = authProps[2];
             } else {
-                groups = store.getPropertyValue(node, Props.getURI(Props.GROUPWRITE));
+                groups = authProps[3];
             }
             String owner = store.getOwner(node);
-            // Validates the access request
-            HttpClient client = new HttpClient();
-            GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + authToken + "&owner=" + owner + "&groups=" + groups);
-            int statusCode = client.executeMethod(get);
-            if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied);
+            if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
+                if (!Arrays.asList(StringUtils.split(groups, ",")).contains(owner)) throw new VOSpaceException(VOFault.PermissionDenied);
+            } else {
+                // Validates the access request
+                HttpClient client = new HttpClient();
+                GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + authToken + "&owner=" + owner + "&groups=" + groups);
+                int statusCode = client.executeMethod(get);
+                if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied);
+            }
         } catch (IOException e) {
             throw new VOSpaceException(e);
         } catch (SQLException e) {
