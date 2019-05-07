@@ -1129,12 +1129,12 @@ public class MySQLMetaStore implements MetaStore {
         }
         HashMap<String, String> properties = node.getProperties();
         // Make sure the public read properties match at all times.
-        String isPub = properties.get(Props.getURI(Props.ISPUBLIC));
-        String pubRd = properties.get(Props.getURI(Props.PUBLICREAD));
+        String isPub = properties.get(Props.ISPUBLIC_URI);
+        String pubRd = properties.get(Props.PUBLICREAD_URI);
         if (isPub != "" || pubRd != "") {
             String nodeIsPub = Boolean.toString(Boolean.parseBoolean(isPub) || Boolean.parseBoolean(pubRd));
-            node.setProperty(Props.getURI(Props.ISPUBLIC), nodeIsPub);
-            node.setProperty(Props.getURI(Props.PUBLICREAD), nodeIsPub);
+            node.setProperty(Props.ISPUBLIC_URI, nodeIsPub);
+            node.setProperty(Props.PUBLICREAD_URI, nodeIsPub);
         }
         ArrayList<String> columns = new ArrayList<String>();
         ArrayList<String> values = new ArrayList<String>();
@@ -1190,12 +1190,12 @@ public class MySQLMetaStore implements MetaStore {
         ArrayList<String> updates = new ArrayList<String>();
         if (!properties.isEmpty()) {
             // Make sure the public read properties match at all times.
-            String isPub = properties.get(Props.getURI(Props.ISPUBLIC));
-            String pubRd = properties.get(Props.getURI(Props.PUBLICREAD));
+            String isPub = properties.get(Props.ISPUBLIC_URI);
+            String pubRd = properties.get(Props.PUBLICREAD_URI);
             if (isPub != "" || pubRd != "") {
                 String nodeIsPub = Boolean.toString(Boolean.parseBoolean(isPub) || Boolean.parseBoolean(pubRd));
-                node.setProperty(Props.getURI(Props.ISPUBLIC), nodeIsPub);
-                node.setProperty(Props.getURI(Props.PUBLICREAD), nodeIsPub);
+                node.setProperty(Props.ISPUBLIC_URI, nodeIsPub);
+                node.setProperty(Props.PUBLICREAD_URI, nodeIsPub);
             }
             for (Map.Entry<String, String> prop : properties.entrySet()) {
                 String property = prop.getKey();

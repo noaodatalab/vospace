@@ -228,37 +228,36 @@ public class VOSpaceManager {
             }
             // Set properties (dates at least)
             String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
-            node.setProperty(Props.getURI(Props.CTIME), date);
+            node.setProperty(Props.CTIME_URI, date);
             if (!exists) {
-                node.setProperty(Props.getURI(Props.DATE), date);
-                node.setProperty(Props.getURI(Props.BTIME), date);
-                node.setProperty(Props.getURI(Props.MTIME), date);
+                node.setProperty(Props.DATE_URI, date);
+                node.setProperty(Props.BTIME_URI, date);
+                node.setProperty(Props.MTIME_URI, date);
                 // Inherit permissions from parent if none set
                 String parent = uri.substring(0, uri.lastIndexOf("/"));
-                String grpRd = Props.getURI(Props.GROUPREAD);
-                String grpWr = Props.getURI(Props.GROUPWRITE);
-                String isPub = Props.getURI(Props.ISPUBLIC);
-                String pubRd = Props.getURI(Props.PUBLICREAD);
-                String grpRdVal = nodeProps.get(grpRd);
-                String grpWrVal = nodeProps.get(grpWr);
-                String isPubVal = nodeProps.get(isPub);
-                String pubRdVal = nodeProps.get(pubRd);
-                if (grpRdVal == null || grpRdVal == "") node.setProperty(grpRd, store.getPropertyValue(parent, grpRd));
-                if (grpWrVal == null || grpWrVal == "") node.setProperty(grpWr, store.getPropertyValue(parent, grpWr));
+                String grpRdVal = nodeProps.get(Props.GROUPREAD_URI);
+                String grpWrVal = nodeProps.get(Props.GROUPWRITE_URI);
+                String isPubVal = nodeProps.get(Props.ISPUBLIC_URI);
+                String pubRdVal = nodeProps.get(Props.PUBLICREAD_URI);
+                if (grpRdVal == null || grpRdVal == "") node.setProperty(Props.GROUPREAD_URI,
+                        store.getPropertyValue(parent, Props.GROUPREAD_URI));
+                if (grpWrVal == null || grpWrVal == "") node.setProperty(Props.GROUPWRITE_URI,
+                        store.getPropertyValue(parent, Props.GROUPWRITE_URI));
                 if ((isPubVal == null || isPubVal == "") && (pubRdVal == null || pubRdVal == "")) {
                     // If both are empty, set from parent; logical OR of the two properties
-                    String parentIsPub = Boolean.toString(Boolean.parseBoolean(store.getPropertyValue(parent, isPub))
-                            || Boolean.parseBoolean(store.getPropertyValue(parent, pubRd)));
-                    node.setProperty(isPub, parentIsPub);
-                    node.setProperty(pubRd, parentIsPub);
+                    String parentIsPub = Boolean.toString(
+                               Boolean.parseBoolean(store.getPropertyValue(parent, Props.ISPUBLIC_URI))
+                            || Boolean.parseBoolean(store.getPropertyValue(parent, Props.PUBLICREAD_URI)));
+                    node.setProperty(Props.ISPUBLIC_URI, parentIsPub);
+                    node.setProperty(Props.PUBLICREAD_URI, parentIsPub);
                 } else {
                     // Set them the same; logical OR of the two properties
                     String nodeIsPub = Boolean.toString(Boolean.parseBoolean(isPubVal) || Boolean.parseBoolean(pubRdVal));
-                    node.setProperty(isPub, nodeIsPub);
-                    node.setProperty(pubRd, nodeIsPub);
+                    node.setProperty(Props.ISPUBLIC_URI, nodeIsPub);
+                    node.setProperty(Props.PUBLICREAD_URI, nodeIsPub);
                 }
-                node.setProperty(Props.getURI(Props.LENGTH), "0");
-                node.setProperty(Props.getURI(Props.MD5), "");
+                node.setProperty(Props.LENGTH_URI, "0");
+                node.setProperty(Props.MD5_URI, "");
                 // node.setProperty(Props.get(Props.Property.LENGTH), Long.toString(backend.size(getLocation(node.getUri()))));
             }
             // Store node
@@ -414,8 +413,7 @@ public class VOSpaceManager {
      * Set the length property on the specified node
      */
     public Node setLength(Node node) throws VOSpaceException {
-        String length = Props.getURI(Props.LENGTH);
-//      String lengthUri = "/vos:node/vos:properties/vos:property[@uri = \"" + length + "\"]";
+//      String lengthUri = "/vos:node/vos:properties/vos:property[@uri = \"" + Props.LENGTH_URI + "\"]";
 //      boolean setLength = false;
 //      if (!node.has(lengthUri)) {
 //          setLength = true;
@@ -423,7 +421,7 @@ public class VOSpaceManager {
 //          setLength = true;
 //      }
 //      if (setLength) {
-        node.setProperty(length, Long.toString(backend.size(getLocation(node.getUri()))));
+        node.setProperty(Props.LENGTH_URI, Long.toString(backend.size(getLocation(node.getUri()))));
 //      }
         return node;
     }
@@ -434,8 +432,7 @@ public class VOSpaceManager {
      * Need to optimize this for large files where a stored value is better
      */
     public Node setMD5(Node node) throws VOSpaceException {
-        String md5 = Props.getURI(Props.MD5);
-        String md5Uri = "/vos:node/vos:properties/vos:property[@uri = \"" + md5 + "\"]";
+        String md5Uri = "/vos:node/vos:properties/vos:property[@uri = \"" + Props.MD5_URI + "\"]";
         boolean setmd5 = false;
         if (!node.has(md5Uri)) {
             setmd5 = true;
@@ -447,7 +444,7 @@ public class VOSpaceManager {
         }
         if (setmd5) {
             String md5val = backend.md5(getLocation(node.getUri()));
-            if (md5val != null) node.setProperty(md5, md5val);
+            if (md5val != null) node.setProperty(Props.MD5_URI, md5val);
         }
         return node;
     }
@@ -718,11 +715,11 @@ public class VOSpaceManager {
                 Transfer transfer = new Transfer(result);
                 String target = transfer.getTarget();
                 Node node = nfactory.getNode(store.getNode(target));
-                node.setProperty(Props.getURI(Props.LENGTH), size);
+                node.setProperty(Props.LENGTH_URI, size);
                 // Update the timestamps for modification
                 String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
-                node.setProperty(Props.getURI(Props.CTIME), date);
-                node.setProperty(Props.getURI(Props.MTIME), date);
+                node.setProperty(Props.CTIME_URI, date);
+                node.setProperty(Props.MTIME_URI, date);
                 store.updateData(target, node.toString());
             }
         } catch (VOSpaceException ve) {
@@ -740,7 +737,7 @@ public class VOSpaceManager {
     public void registerNode(Node node, String user, String location) throws VOSpaceException {
         try {
             Node newNode = create(node, user, false);
-            newNode.setProperty(Props.getURI(Props.LENGTH), Long.toString(backend.size(location)));
+            newNode.setProperty(Props.LENGTH_URI, Long.toString(backend.size(location)));
             store.updateData(newNode.getUri(), newNode.toString());
         } catch (VOSpaceException ve) {
             throw ve;
@@ -936,8 +933,8 @@ public class VOSpaceManager {
                 exists = store.isStored(node);
             }
             // Get owner and groups for requested node
-            String[] authProps = store.getPropertyValues(node, new String[]{Props.getURI(Props.ISPUBLIC),
-                    Props.getURI(Props.PUBLICREAD),Props.getURI(Props.GROUPREAD),Props.getURI(Props.GROUPWRITE)});
+            String[] authProps = store.getPropertyValues(node, new String[]{ Props.ISPUBLIC_URI,
+                    Props.PUBLICREAD_URI, Props.GROUPREAD_URI, Props.GROUPWRITE_URI });
             String groups = "";
             if (isRead) {
                 // Check the publicRead and isPublic properties and return if true

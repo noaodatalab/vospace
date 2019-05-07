@@ -9,16 +9,16 @@ import org.apache.commons.lang.BooleanUtils;
 
 public class Props {
     // Some commonly used Properties
-    public static String GROUPREAD = "groupread";
-    public static String GROUPWRITE = "groupwrite";
-    public static String PUBLICREAD = "publicread";
-    public static String ISPUBLIC = "ispublic";     // Legacy publicread; kept same as ispublic whenever possible
-    public static String LENGTH = "length";
-    public static String MD5 = "MD5";
-    public static String DATE = "date";
-    public static String BTIME = "btime";   // creation time
-    public static String CTIME = "ctime";   // metadata mod time
-    public static String MTIME = "mtime";   // data mod time
+    public static String GROUPREAD_URI;
+    public static String GROUPWRITE_URI;
+    public static String PUBLICREAD_URI;
+    public static String ISPUBLIC_URI;     // Legacy publicread; kept same as ispublic whenever possibl
+    public static String LENGTH_URI;
+    public static String MD5_URI;
+    public static String DATE_URI;
+    public static String BTIME_URI;   // creation time
+    public static String CTIME_URI;   // metadata mod time
+    public static String MTIME_URI;   // data mod time
 
     public static void initialize(String propFile) throws VOSpaceException {
         try {
@@ -37,6 +37,16 @@ public class Props {
         } catch (Exception e) {
             throw new VOSpaceException(e);
         }
+        GROUPREAD_URI = getURI("groupread");
+        GROUPWRITE_URI = getURI("groupwrite");
+        PUBLICREAD_URI = getURI("publicread");
+        ISPUBLIC_URI = getURI("ispublic");
+        LENGTH_URI = getURI("length");
+        MD5_URI = getURI("MD5");
+        DATE_URI = getURI("date");
+        BTIME_URI = getURI("btime");
+        CTIME_URI = getURI("ctime");
+        MTIME_URI = getURI("mtime");
     }
 
     private static HashMap<String, String> propertyURIs = new HashMap();
