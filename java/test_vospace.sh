@@ -208,7 +208,7 @@ read -rsp $'Press any key to continue...\n' -n1 key
 vo_gets "${u}" "${u}/${datenode}" "${u}/${datenode}/Z" "${u}/${datenode}/Z/Y" \
         "${u}/${datenode}/Z/Y/DATAY" "${u}/${datenode}/Z/LINKLINKLINK"
 vo_get "${u}/${datenode}/NOEXIST" 404
-vo_get "demo00/${datenode}"n 403
+vo_get "demo00/${datenode}" 403
 read -rsp $'Press any key to continue...\n' -n1 key
 vo_delete "${u}/${datenode}/ZLINK/Y/DATAY" 400
 vo_deletes "${u}/${datenode}/Z/DATAZ"  "${u}/${datenode}/Z/Y/DATAY"
