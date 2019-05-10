@@ -16,4 +16,4 @@ services:
             context: ./java
             target: mysql
         environment:
-            - MYSQL_ROOT_PASSWORD=Tupperware
+            - MYSQL_RANDOM_ROOT_PASSWORD=yes
