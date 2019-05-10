@@ -170,12 +170,12 @@ function vo_link {
     local vstat=${vout%%[[:space:]]*}
     if [ $vstat -eq 201 ]; then
         local created=$(echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${2}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
-        if [ "$1" != "$created" ]; then echo "OK CREATED LINK $1 $created"
-        else echo "OK CREATED LINK $created"; fi
+        if [ "$2" != "$created" ]; then echo "OK CREATED LINK $2 $created -> $1"
+        else echo "OK CREATED LINK $created -> $1"; fi
     elif [ "$vstat" -eq "$exstat" ]; then
-        echo "OK ERROR CREATING LINK $1 $vout"
+        echo "OK ERROR CREATING LINK $2 $vout"
     else
-        echo "FAIL CREATING LINK $1 $vout"
+        echo "FAIL CREATING LINK $2 $vout"
     fi
 }
 
