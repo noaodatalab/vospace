@@ -11,8 +11,8 @@ d=$(date +%Y-%m-%dT%H:%M:%S%z)
 if [ $# -lt 1 ]; then h=$(hostname -s); else h=$1; fi
 wd=$(dirname $0)
 conffile=''
-for f in ./vospace.properties.${h} ${wd}/vospace.properties.${h} \
-        ./vospace.properties.default ${wd}/vospace.properties.default; do
+for f in ./properties.${h} ../config/properties.${h} ${wd}/properties.${h} ${wd}/../config/properties.${h} \
+        ./properties.default ./config/properties.default ${wd}/properties.default ${wd}/../config/properties.default; do
     if [ -e $f ]; then conffile=$f; break; fi
 done
 if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi

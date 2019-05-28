@@ -13,8 +13,8 @@ else
 fi
 wd=$(dirname $0)
 if [ $h == "localhost" ]; then pf="docker"; else pf=${h%%.*}; fi
-for f in ./vospace.properties.${pf} ${wd}/vospace.properties.${pf} \
-        ./vospace.properties.default ${wd}/vospace.properties.default; do
+for f in ./config/properties.${pf} ${wd}/config/properties.${pf} \
+        ./config/properties.default ${wd}/config/properties.default; do
     if [ -e $f ]; then conffile=$f; break; fi
 done
 if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi

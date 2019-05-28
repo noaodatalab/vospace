@@ -59,10 +59,10 @@
         <exec executable="hostname" outputproperty="computer.hostname">
 		    <arg line="-s"/>
 	    </exec>
-	    <available file="vospace.properties.${computer.hostname}" property="javaprop.filename" value="vospace.properties.${computer.hostname}"/>
-	    <property name="javaprop.filename" value="vospace.properties.default"/>
+	    <available file="config/properties.${computer.hostname}" property="javaprop.filename" value="properties.${computer.hostname}"/>
+	    <property name="javaprop.filename" value="properties.default"/>
         <echo message="Copying ${javaprop.filename}"/>
-        <copy file="${javaprop.filename}" tofile="${webapp}/WEB-INF/classes/vospace.properties" overwrite="true"/>
+        <copy file="config/${javaprop.filename}" tofile="${webapp}/WEB-INF/classes/vospace.properties" overwrite="true"/>
 
 		<!-- Create the war file -->
 		<war destfile="${final.war}" webxml="${webapp}/WEB-INF/web.xml">

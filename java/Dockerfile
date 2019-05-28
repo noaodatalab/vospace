@@ -1,14 +1,13 @@
 # MariaDB (MySQL); initializes the database for a single "vosuser" user.
 FROM mariadb:5.5 as mysql
 
-COPY vospace_account.sql /docker-entrypoint-initdb.d/
-COPY src/main/webapp/WEB-INF/classes/ivoa_props.properties vospace_create.sh vospace_create.sql \
-    vospace.properties.docker vospace_proptable.sh vospace_rootnode.sh vospace_user_sql.sh /vobuild/
+COPY dbcreate/account.sql /docker-entrypoint-initdb.d/
+COPY src/main/webapp/WEB-INF/classes/ivoa_props.properties config/properties.docker dbcreate/* /vobuild/
 
-RUN /vobuild/vospace_create.sh docker > /docker-entrypoint-initdb.d/vospace_create.sql \
-    && /vobuild/vospace_user_sql.sh vosuser docker > /docker-entrypoint-initdb.d/vospace_user_sql.sql \
-    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/vospace_create.sql \
-    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/vospace_user_sql.sql \
+RUN /vobuild/create.sh docker > /docker-entrypoint-initdb.d/create.sql \
+    && /vobuild/user_sql.sh vosuser docker > /docker-entrypoint-initdb.d/user_sql.sql \
+    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/create.sql \
+    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/user_sql.sql \
     && rm -rf /vobuild
 
 # OpenJDK: Build the VOSpace .war file
@@ -19,7 +18,7 @@ RUN apt-get update \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY . /opt/src/vospace
-COPY ./vospace.properties.docker /opt/src/vospace/vospace.properties.default
+COPY config/properties.docker /opt/src/vospace/config/properties.default
 
 RUN cd /opt/src/vospace && ant clean dist
 
@@ -27,6 +26,6 @@ RUN cd /opt/src/vospace && ant clean dist
 FROM tomcat:8 as tomcat
 
 COPY --from=openjdk /opt/src/vospace/vospace-2.0.war /usr/local/tomcat/webapps/
-COPY ./vospace_user_dir.sh ./vospace.properties.docker /opt/bin/
+COPY dbcreate/user_dir.sh config/properties.docker /opt/bin/
 
-RUN /opt/bin/vospace_user_dir.sh vosuser docker
+RUN /opt/bin/user_dir.sh vosuser docker
