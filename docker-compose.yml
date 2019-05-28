@@ -6,6 +6,8 @@ services:
         build:
             context: ./java
             target: tomcat
+            args:
+                - USER
         ports:
             - "8080:8080"
         depends_on:
@@ -15,5 +17,7 @@ services:
         build:
             context: ./java
             target: mysql
+            args:
+                - USER
         environment:
             - MYSQL_RANDOM_ROOT_PASSWORD=yes

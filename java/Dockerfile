@@ -3,9 +3,9 @@ FROM mariadb:5.5 as mysql
 
 COPY dbcreate/account.sql /docker-entrypoint-initdb.d/
 COPY src/main/webapp/WEB-INF/classes/ivoa_props.properties config/properties.docker dbcreate/* /vobuild/
-
+ARG USER
 RUN /vobuild/create.sh docker > /docker-entrypoint-initdb.d/create.sql \
-    && /vobuild/user_sql.sh vosuser docker > /docker-entrypoint-initdb.d/user_sql.sql \
+    && /vobuild/user_sql.sh $USER docker > /docker-entrypoint-initdb.d/user_sql.sql \
     && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/create.sql \
     && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/user_sql.sql \
     && rm -rf /vobuild
@@ -28,4 +28,5 @@ FROM tomcat:8 as tomcat
 COPY --from=openjdk /opt/src/vospace/vospace-2.0.war /usr/local/tomcat/webapps/
 COPY dbcreate/user_dir.sh config/properties.docker /opt/bin/
 
-RUN /opt/bin/user_dir.sh vosuser docker
+ARG USER
+RUN /opt/bin/user_dir.sh $USER docker

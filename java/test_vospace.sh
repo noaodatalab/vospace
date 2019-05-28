@@ -9,7 +9,7 @@ if [ $h != "localhost" ]; then
     fi
     token="X-Dl-Authtoken: $(cat $HOME/.datalab/id_token.${u})"
 else
-    token="X-Dl-Authtoken: vosuser.1.1.$1$salt$checksum"
+    token="X-Dl-Authtoken: $u.1.1.\$1\$salt\$checksum"
 fi
 wd=$(dirname $0)
 if [ $h == "localhost" ]; then pf="docker"; else pf=${h%%.*}; fi
@@ -18,7 +18,7 @@ for f in ./config/properties.${pf} ${wd}/config/properties.${pf} \
     if [ -e $f ]; then conffile=$f; break; fi
 done
 if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi
-echo "Config: $u $h $conffile"
+echo "Config: $u $h $conffile $token"
 
 ROOT=$(grep space.rootnode $conffile | cut -d'=' -f2)
 BASE="http://${h}:8080/vospace-2.0/vospace"
