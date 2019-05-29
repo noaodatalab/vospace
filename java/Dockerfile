@@ -19,14 +19,13 @@ RUN apt-get update \
 
 COPY . /opt/src/vospace
 COPY config/properties.docker /opt/src/vospace/config/properties.default
-
 RUN cd /opt/src/vospace && ant clean dist
 
 # Tomcat: Install the VOSpace .war file and create a user directory for "vosuser".
 FROM tomcat:8 as tomcat
 
-COPY --from=openjdk /opt/src/vospace/vospace-2.0.war /usr/local/tomcat/webapps/
-COPY dbcreate/user_dir.sh config/properties.docker /opt/bin/
-
 ARG USER
+COPY dbcreate/user_dir.sh config/properties.docker /opt/bin/
 RUN /opt/bin/user_dir.sh $USER docker
+
+COPY --from=openjdk /opt/src/vospace/vospace-2.0.war /usr/local/tomcat/webapps/
