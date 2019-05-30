@@ -1070,11 +1070,33 @@ public class MySQLMetaStore implements MetaStore {
      * Execute a query on the store
      */
     private ResultSet execute(String query) throws SQLException {
-//        System.err.println(query);
+        // System.err.println(query);
+        Connection connection = null;
+        Statement statement = null;
         ResultSet result = null;
-        Statement statement = getConnection().createStatement();
-        boolean success = statement.execute(query);
-        if (success) result = statement.getResultSet();
+        int retries = 5;
+        while (retries > 0) {
+            try {
+                connection = getConnection();
+                statement = connection.createStatement();
+                boolean success = statement.execute(query);
+                if (success) result = statement.getResultSet();
+                retries = 0;
+            } catch (SQLException e) {
+                String sqlState = e.getSQLState();
+                if (retries > 0 && ("08S01".equals(sqlState) || "40001".equals(sqlState))) {
+                    // System.out.println(sqlState + " " + e.toString());
+                    retries--;
+                } else {
+                    throw e;
+                }
+            } finally {
+                if (result == null) {
+                    try { if (statement != null) statement.close(); } catch (SQLException e) {}
+                    try { if (connection != null) connection.close(); } catch (SQLException e) {}
+                }
+            }
+        }
         return result;
     }
 
@@ -1082,17 +1104,29 @@ public class MySQLMetaStore implements MetaStore {
      * Insert/update query on the store
      */
     private void update(String query) throws SQLException {
-//        System.err.println(query);
+        // System.err.println(query);
         Connection connection = null;
         Statement statement = null;
-        try {
-            connection = getConnection();
-            statement = connection.createStatement();
-            statement.executeUpdate(query);
-        } finally {
-            statement.close();
-            connection.close();
-//          System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
+        int retries = 5;
+        while (retries > 0) {
+            try {
+                connection = getConnection();
+                statement = connection.createStatement();
+                statement.executeUpdate(query);
+                retries = 0;
+            } catch (SQLException e) {
+                String sqlState = e.getSQLState();
+                if (retries > 0 && ("08S01".equals(sqlState) || "40001".equals(sqlState))) {
+                    // System.out.println(sqlState + " " + e.toString());
+                    retries--;
+                } else {
+                    throw e;
+                }
+            } finally {
+                try { if (statement != null) statement.close(); } catch (SQLException e) {}
+                try { if (connection != null) connection.close(); } catch (SQLException e) {}
+//              System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
+            }
         }
     }
 
