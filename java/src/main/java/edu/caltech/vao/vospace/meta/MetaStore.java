@@ -234,6 +234,11 @@ public interface MetaStore {
     public String getPropertyValue(String identifier, String property) throws SQLException;
 
     /*
+     * Get the value of several properties at once; useful if they are built-in properties
+     */
+    public String[] getPropertyValues(String identifier, String[] properties) throws SQLException;
+
+    /*
      * Get the direct children of the specified container node
      */
     public String[] getChildren(String identifier) throws SQLException;
