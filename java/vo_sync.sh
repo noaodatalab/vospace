@@ -46,15 +46,16 @@ for f in $(find $rd -mindepth 1 -not -path "$rd/_*" -a -not -name '.deleted'); d
     if [ "$(echo $f | cut -d'/' -f$(($rcnt + 1)))" == 'public' ]; then pub='True'; else pub='False'; fi
     mt=$(date -d "$(stat -c '%y' $f)" +%Y-%m-%dT%H:%M:%S%z) #modification
     bt=$(date -d "$(stat -c '%z' $f)" +%Y-%m-%dT%H:%M:%S%z) #meta change
+    dp=$(( $(echo $f | tr '/' ' ' | wc -w) - $rcnt + 1 ))
 
     if [ -L $f ]; then typ=2; targ=$(readlink -f $f | sed -e "s|${rd}|${rn}|g")
     elif [ -d $f ]; then typ=3; targ=""
     else typ=1; targ=""; fi
 
-    $sedf -e "s/USER/${u}/g" -e "s/BDATE/${bt}/g" -e "s/MDATE/${mt}/g" -e "s/DATE/${d}/g" -e "s|TYPE|${typ}|g" \
-            -e "s|IDENT|${fn}|g" -e "s|FSPEC|${fd}|g" -e "s|PUBLIC|${pub}|g" <<VOBASE
+    $sedf -e "s/USER/${u}/g" -e "s/BDATE/${bt}/g" -e "s/MDATE/${mt}/g" -e "s/DATE/${d}/g" -e "s/TYPE/${typ}/g" \
+            -e "s/DEPTH/${dp}/g" -e "s|IDENT|${fn}|g" -e "s|FSPEC|${fd}|g" -e "s/PUBLIC/${pub}/g" <<VOBASE
 insert ignore into nodes(identifier, depth, type, owner, view, location, creationDate)
-    values('IDENT', 0, TYPE, 'USER', 'ivo://ivoa.net/vospace/views/blob', 'FSPEC', now());
+    values('IDENT', DEPTH, TYPE, 'USER', 'ivo://ivoa.net/vospace/views/blob', 'FSPEC', now());
 insert ignore into properties(identifier, date, ctime, btime, mtime, groupread, groupwrite, ispublic, publicread)
     values('IDENT', 'BDATE', 'DATE', 'BDATE', 'MDATE', 'USER', 'USER', 'PUBLIC', 'PUBLIC');
 VOBASE
