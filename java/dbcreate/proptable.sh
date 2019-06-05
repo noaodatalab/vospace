@@ -4,8 +4,8 @@
 # Called from vospace_create.sh
 wd=$(dirname $0)
 propfile=''
-for pf in ./src/main/webapp/WEB-INF/classes/ivoa_props.properties ./ivoa_props.properties \
-        ${wd}/src/main/webapp/WEB-INF/classes/ivoa_props.properties ${wd}/ivoa_props.properties; do
+for pf in ../src/main/webapp/WEB-INF/classes/ivoa_props.properties ./ivoa_props.properties \
+        ${wd}/../src/main/webapp/WEB-INF/classes/ivoa_props.properties ${wd}/ivoa_props.properties; do
     if [ -e $pf ]; then propfile=$pf; break; fi
 done
 if [ -z $propfile ]; then echo "No ivoa_props.properties found." 1>&2; exit 1; fi
