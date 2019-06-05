@@ -15,30 +15,30 @@ for f in ./vospace.properties.${h} ${wd}/vospace.properties.${h} \
     if [ -e $f ]; then conffile=$f; break; fi
 done
 if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi
-echo "# $h $conffile"
 rn=$(grep space.rootnode $conffile | cut -d'=' -f2)
 rd=$(grep server.http.basedir $conffile | cut -d'=' -f2)
+echo "# $h $conffile $rd"
 
 rcnt=$(( $(echo $rd | tr '/' ' ' | wc -w) + 2 ))
 lastu=""
 
-do_clean=0
+do_clean=1
 # Clean up the VOSpace; remove .deleted files and links that don't link back to the VOSpace
-for f in $(find $rd -depth -name '.deleted'); do
+for f in $(find $rd/ -depth -name '.deleted'); do
     df=$(dirname $f)
     nf=$(find $df -mindepth 1 -maxdepth 1 | wc -l)
-    if [ $do_clean -eq 0 ]; then echo "# rm $f"; else echo "# $(rm -v $f)"; fi
+    if [ $do_clean -eq 0 ]; then echo "# rm $f" 1>&2; else echo "# $(rm -v $f)" 1>&2; fi
     if [ $nf -eq 1 ]; then
-       if [ $do_clean -eq 0 ]; then echo "# rmdir $df"; else echo "# $(rmdir -v $df)"; fi
+       if [ $do_clean -eq 0 ]; then echo "# rmdir $df" 1>&2; else echo "# $(rmdir -v $df)" 1>&2; fi
     fi
 done
-for f in $(find $rd -mindepth 1 -type l); do
+for f in $(find $rd/ -mindepth 1 -type l); do
     if [ $(readlink -f $f | cut -d'/' -f-5) != "$rd" ]; then
-        if [ $do_clean -eq 0 ]; then echo "# rm $f"; else echo "# $(rm -v $f)"; fi
+        if [ $do_clean -eq 0 ]; then echo "# rm $f" 1>&2; else echo "# $(rm -v $f)" 1>&2; fi
     fi
 done
 
-for f in $(find $rd -mindepth 1 -not -path "$rd/_*" -a -not -name '.deleted'); do
+for f in $(find $rd/ -mindepth 1 -not -path "$rd/_*" -a -not -name '.deleted'); do
     fd="file://${f}"
     fn=$(echo $f | sed -e "s|${rd}|${rn}|g")
     u=$(echo $f | cut -d'/' -f$rcnt)
