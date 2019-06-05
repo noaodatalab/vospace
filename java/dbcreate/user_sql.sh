@@ -12,7 +12,7 @@ if [ $# -lt 2 ]; then h=$(hostname -s); else h=$2; fi
 conffile=''
 wd=$(dirname $0)
 for f in ./properties.${h} ../config/properties.${h} ${wd}/properties.${h} ${wd}/../config/properties.${h} \
-        ./properties.default ./config/properties.default ${wd}/properties.default ${wd}/../config/properties.default; do
+        ./properties.default ../config/properties.default ${wd}/properties.default ${wd}/../config/properties.default; do
     if [ -e $f ]; then conffile=$f; break; fi
 done
 if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi
