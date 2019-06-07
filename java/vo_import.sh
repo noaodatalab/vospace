@@ -22,7 +22,7 @@ echo "# $h $conffile $rd"
 rcnt=$(( $(echo $rd | tr '/' ' ' | wc -w) + 2 ))
 lastu=""
 
-do_clean=1
+do_clean=0
 # Clean up the VOSpace; remove .deleted files and links that don't link back to the VOSpace
 for f in $(find $rd/ -depth -name '.deleted'); do
     df=$(dirname $f)
