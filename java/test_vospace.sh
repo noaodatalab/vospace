@@ -3,14 +3,7 @@
 # Arguments are <hostname> <username>
 if [ $# -lt 1 ]; then h="dldev.datalab.noao.edu"; else h=$1; fi
 if [ $# -lt 2 ]; then u=$USER; else u=$2; fi
-if [ $h != "localhost" ]; then
-    if [ ! -e $HOME/.datalab/id_token.${u} ]; then
-        echo "No token file $HOME/.datalab/id_token.${u}." 1>&2; exit
-    fi
-    token="X-Dl-Authtoken: $(cat $HOME/.datalab/id_token.${u})"
-else
-    token="X-Dl-Authtoken: $u.1.1.\$1\$salt\$checksum"
-fi
+
 wd=$(dirname $0)
 if [ $h == "localhost" ]; then pf="docker"; else pf=${h%%.*}; fi
 for f in ./config/properties.${pf} ${wd}/config/properties.${pf} \
@@ -18,10 +11,20 @@ for f in ./config/properties.${pf} ${wd}/config/properties.${pf} \
     if [ -e $f ]; then conffile=$f; break; fi
 done
 if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi
-echo "Config: $u $h $conffile $token"
 
-ROOT=$(grep space.rootnode $conffile | cut -d'=' -f2)
+ROOT=$(grep -E "^space.rootnode" $conffile | cut -d'=' -f2)
 BASE="http://${h}:8080/vospace-2.0/vospace"
+AUTH=$(grep -E "^server.auth.url" $conffile | cut -d'=' -f2)
+
+if [ ${AUTH:0:7} = "http://" ]; then
+    if [ ! -e $HOME/.datalab/id_token.${u} ]; then
+        echo "No token file $HOME/.datalab/id_token.${u}." 1>&2; exit
+    fi
+    token="X-Dl-Authtoken: $(cat $HOME/.datalab/id_token.${u})"
+else
+    token="X-Dl-Authtoken: $u.1.1.\$1\$salt\$checksum"
+fi
+echo "Config: $u $h $conffile $token"
 
 read -r -d '' LINKNODE <<'EOF'
 <ns0:node xmlns:ns0="http://www.ivoa.net/xml/VOSpace/v2.0"
@@ -187,6 +190,7 @@ function vo_links {
 datenode=$(date +"Z%Y%m%d%H%M")
 
 vo_get "${u}" 200 1
+vo_get "NOEXIST/NOEXIST" 404
 vo_containers "${u}/${datenode}" "${u}/${datenode}/Z" "${u}/${datenode}/Z/Y"
 vo_datas "${u}/${datenode}/DATAX" "${u}/${datenode}/Z/DATAZ" "${u}/${datenode}/Z/Y/DATAY"
 vo_links "${u}/${datenode}/Z" "${u}/${datenode}/ZLINK" \

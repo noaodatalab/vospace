@@ -932,6 +932,7 @@ public class VOSpaceManager {
                 node = node.substring(0, node.lastIndexOf("/"));
                 exists = store.isStored(node);
             }
+            if (ROOT_NODE.equals(node)) throw new VOSpaceException(VOFault.NodeNotFound);
             // Get owner and groups for requested node
             String[] authProps = store.getPropertyValues(node, new String[]{ Props.ISPUBLIC_URI,
                     Props.PUBLICREAD_URI, Props.GROUPREAD_URI, Props.GROUPWRITE_URI });
