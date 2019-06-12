@@ -14,7 +14,7 @@ RUN /vobuild/create.sh docker > /docker-entrypoint-initdb.d/create.sql \
 FROM openjdk:8-stretch as openjdk
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ant openjdk-8-jdk="$JAVA_DEBIAN_VERSION" \
+    && apt-get install -y --no-install-recommends --no-install-suggests ant \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY . /opt/src/vospace
