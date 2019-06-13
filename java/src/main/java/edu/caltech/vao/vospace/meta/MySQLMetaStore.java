@@ -574,7 +574,8 @@ public class MySQLMetaStore implements MetaStore {
             String node = updateProperties((String) metadata);
             String fixedId = fixId(identifier);
             String fixedNewId = fixId(newIdentifier);
-            String query = "update nodes set identifier = '" + fixedNewId + "' where identifier = '" + fixedId + "'";
+            String query = "update nodes set lastModificationDate=cast(now() as datetime), identifier = '" + fixedNewId
+                        + "', depth = " + getIdDepth(fixedNewId) + " where identifier = '" + fixedId + "'";
             update(query);
             /* String encode = node.replace("\"", "'");
             String query = "update nodes set identifier = '" + newIdentifier + "', node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
@@ -595,7 +596,8 @@ public class MySQLMetaStore implements MetaStore {
             String node = updateProperties((String) metadata);
             String fixedId = fixId(identifier);
             String fixedNewId = fixId(newIdentifier);
-            String query = "update nodes set identifier = '" + fixedNewId + "', location = '" + newLocation + "' where identifier = '" + fixedId + "'";
+            String query = "update nodes set lastModificationDate=cast(now() as datetime), identifier = '" + fixedNewId
+                        + ", depth = " + getIdDepth(fixedNewId) + "', location = '" + newLocation + "' where identifier = '" + fixedId + "'";
             update(query);
             /* String encode = node.replace("\"", "'");
             String query = "update nodes set identifier = '" + fixId(newIdentifier) + "', location = '" + newLocation + "', node = \"" + encode + "\" where identifier = '" + fixId(identifier) + "'";
