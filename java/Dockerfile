@@ -7,8 +7,7 @@ ARG USER
 RUN /vobuild/create.sh docker > /docker-entrypoint-initdb.d/create.sql \
     && /vobuild/user_sql.sh $USER docker > /docker-entrypoint-initdb.d/user_sql.sql \
     && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/create.sql \
-    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/user_sql.sql \
-    && rm -rf /vobuild
+    && sed -i '1iUSE vospace;' /docker-entrypoint-initdb.d/user_sql.sql
 
 # OpenJDK: Build the VOSpace .war file
 FROM openjdk:8-stretch as openjdk
