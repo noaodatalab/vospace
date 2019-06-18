@@ -1,17 +1,30 @@
 #!/bin/bash
 
-if [ ! -e $HOME/.datalab/id_token.${USER} ]; then
-    echo "No token file $HOME/.datalab/id_token.${USER}."
-    exit
-fi
-token="X-Dl-Authtoken: $(cat $HOME/.datalab/id_token.${USER})"
-ROOT="vos://datalab.noao!vospace"
+# Arguments are <hostname> <username>
+if [ $# -lt 1 ]; then h="dldev.datalab.noao.edu"; else h=$1; fi
+if [ $# -lt 2 ]; then u=$USER; else u=$2; fi
 
-if [ $# -ge 1 ]; then host=$1
-elif [ $(hostname -s) == "dltest" ]; then host=$(hostname)
-else host='dldev.datalab.noao.edu'
+wd=$(dirname $0)
+if [ $h == "localhost" ]; then pf="docker"; else pf=${h%%.*}; fi
+for f in ./config/properties.${pf} ${wd}/config/properties.${pf} \
+        ./config/properties.default ${wd}/config/properties.default; do
+    if [ -e $f ]; then conffile=$f; break; fi
+done
+if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi
+
+ROOT=$(grep -E "^space.rootnode" $conffile | cut -d'=' -f2)
+BASE="http://${h}:8080/vospace-2.0/vospace"
+AUTH=$(grep -E "^server.auth.url" $conffile | cut -d'=' -f2)
+
+if [ ${AUTH:0:7} = "http://" ]; then
+    if [ ! -e $HOME/.datalab/id_token.${u} ]; then
+        echo "No token file $HOME/.datalab/id_token.${u}." 1>&2; exit
+    fi
+    token="X-Dl-Authtoken: $(cat $HOME/.datalab/id_token.${u})"
+else
+    token="X-Dl-Authtoken: $u.1.1.\$1\$salt\$checksum"
 fi
-BASE="http://${host}:8080/vospace-2.0/vospace"
+echo "Config: $u $h $conffile $token"
 
 read -r -d '' LINKNODE <<'EOF'
 <ns0:node xmlns:ns0="http://www.ivoa.net/xml/VOSpace/v2.0"
@@ -55,108 +68,157 @@ function vo_curl {
         if [ "${2}" == "PUT" ]; then curl_args+=("-H" "Content-type: text/xml" "-d" "@-"); fi
     fi
     curl -siH "${token}" -w'\n' "${curl_args[@]}" "${BASE}/${1}" \
-            | sed -Ee '1s/^.*([[:digit:]]{3}).*$/\1/' -e '2,/^[[:space:]]*$/d'
+            | sed -Ee '1s/^.*([[:digit:]]{3}).*$/\1/' -e '2,/^[[:space:]]*$/d' | tr '\n' ' '
 }
 
 function vo_get {
-    while [ $# -ne 0 ]; do
-        echo "--- GET ${1} ---"
-        local vout=$(vo_curl "nodes/$1")
-        local vstat="${vout%%[[:space:]]*}"
-        if [ $vstat -eq 200 ]; then
-            local vtype=$(echo "$vout" | tr ' ' '\n' | grep ":type" | head -1 | cut -d'"' -f2)
-            echo "$vtype"
-            if [ "$vtype" == "vos:ContainerNode" ]; then
-                echo "$vout" | tr ' ' '\n' | grep "\"${ROOT}/${1}/" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g"
-            else
-                echo "$vout" | tr ' ' '\n' | grep "\"${ROOT}/${1}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g"
-            fi
-            if [ "$vtype" == "vos:LinkNode" ]; then
-                echo "$vout" | tr ' ' '\n' | grep "<target>" | cut -d'<' -f2 | sed -e "s|${ROOT}/||g" -e "s|>| |g"
-            fi
-        else
-            echo $vout
+    local exstat=201
+    local echoit=0
+    if [ $# -gt 1 ]; then exstat=$2; fi
+    if [ $# -gt 2 ]; then echoit=$3; fi
+    local vout=$(vo_curl "nodes/$1")
+    local vstat="${vout%%[[:space:]]*}"
+    if [ $vstat -eq 200 ]; then
+        local vtype=$(echo "$vout" | tr ' ' '\n' | grep ":type" | head -1 | cut -d'"' -f2)
+        local node=$(echo "$vout" | tr ' ' '\n' | grep "\"${ROOT}/${1}\"" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
+        local resp=""
+        if [ "$node" != "$1" ]; then node="$1 $node"; fi
+        if [ "$vtype" == "vos:ContainerNode" ]; then
+            local children=$(echo "$vout" | tr ' ' '\n' | grep "\"${ROOT}/${1}/" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
+            local nchild=$(echo "$children" | wc -l | tr -d '[:space:]')
+            resp="$nchild children"
+            if [ $echoit -ne 0 ]; then echo "$children"; fi
+        elif [ "$vtype" == "vos:LinkNode" ]; then
+            local tgt=$(echo "$vout" | tr ' ' '\n' | grep "<target>" | cut -d'<' -f2 | sed -e "s|${ROOT}/||g" -e "s|>| |g")
+            resp="$tgt $resp"
         fi
-        shift
-    done
+        echo "OK GETTING $node $vtype $resp"
+    elif [ "$vstat" -eq "$exstat" ]; then
+        echo "OK ERROR GETTING $1 $vout"
+    else
+        echo "FAIL GETTING $1 $vout"
+    fi
+}
+
+# Multiple gets with implied success
+function vo_gets {
+    while [ $# -ne 0 ]; do vo_get $1; shift; done
 }
 
 function vo_delete {
-    while [ $# -ne 0 ]; do
-        echo "--- DELETE $1 ---"
-        local vout=$(vo_curl "nodes/$1" "DELETE")
-        echo $vout
-        shift
-    done
+    local exstat=204
+    if [ $# -gt 1 ]; then exstat=$2; fi
+    local vout=$(vo_curl "nodes/$1" "DELETE")
+    local vstat=${vout%%[[:space:]]*}
+    if [ $vstat -eq 204 ]; then
+        echo "OK DELETED $1"
+    elif [ $vstat -eq $exstat ]; then
+        echo "OK ERROR DELETING $1 $vout"
+    else
+        echo "FAIL DELETING $1 $vout"
+    fi
+}
+
+# Multiple deletes with implied success
+function vo_deletes {
+    while [ $# -ne 0 ]; do vo_delete $1; shift; done
 }
 
 function vo_container {
-    echo "--- CREATE CONTAINER ---"
-    while [ $# -ne 0 ]; do
-        local vout=$(echo "$CONTAINER" | sed -e "s|URI|${ROOT}/${1}|g" | vo_curl "nodes/$1" "PUT")
-        local vstat=${vout%%[[:space:]]*}
-        if [ $vstat -eq 201 ]; then
-            echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${1}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g"
-        else
-            echo $vout
-        fi
-        shift
-    done
+    local exstat=201
+    if [ $# -gt 1 ]; then exstat=$2; fi
+    local vout=$(echo "$CONTAINER" | sed -e "s|URI|${ROOT}/${1}|g" | vo_curl "nodes/$1" "PUT")
+    local vstat=${vout%%[[:space:]]*}
+    if [ "$vstat" -eq 201 ]; then
+        local created=$(echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${1}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
+        if [ "$1" != "$created" ]; then echo "OK CREATED CONTAINER $1 $created"
+        else echo "OK CREATED CONTAINER $created"; fi
+    elif [ "$vstat" -eq "$exstat" ]; then
+        echo "OK ERROR CREATING CONTAINER $1 $vout"
+    else
+        echo "FAIL CREATING CONTAINER $1 $vout"
+    fi
+}
+
+# Multiple creates with implied success
+function vo_containers {
+    while [ $# -ne 0 ]; do vo_container $1; shift; done
 }
 
 function vo_data {
-    echo "--- CREATE DATA ---"
-    while [ $# -ne 0 ]; do
-        local vout=$(echo "$DATANODE" | sed -e "s|URI|${ROOT}/${1}|g" | vo_curl "nodes/$1" "PUT")
-        local vstat=${vout%%[[:space:]]*}
-        if [ $vstat -eq 201 ]; then
-            echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${1}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g"
-        else
-            echo $vout
-        fi
-        shift
-    done
+    local exstat=201
+    if [ $# -gt 1 ]; then exstat=$2; fi
+    local vout=$(echo "$DATANODE" | sed -e "s|URI|${ROOT}/${1}|g" | vo_curl "nodes/$1" "PUT")
+    local vstat=${vout%%[[:space:]]*}
+    if [ $vstat -eq 201 ]; then
+        local created=$(echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${1}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
+        if [ "$1" != "$created" ]; then echo "OK CREATED DATA $1 $created"
+        else echo "OK CREATED DATA $created"; fi
+    elif [ "$vstat" -eq "$exstat" ]; then
+        echo "OK ERROR CREATING DATA $1 $vout"
+    else
+        echo "FAIL CREATING DATA $1 $vout"
+    fi
+}
+
+# Multiple creates with implied success
+function vo_datas {
+    while [ $# -ne 0 ]; do vo_data $1; shift; done
 }
 
 function vo_link {
-    echo "--- CREATE LINK ---"
-    while [ $# -gt 1 ]; do
-        local vout=$(echo "$LINKNODE" | sed -e "s|URI|${ROOT}/${2}|g" -e "s|TARGET|${ROOT}/${1}|g" | vo_curl "nodes/$2" "PUT")
-        local vstat=${vout%%[[:space:]]*}
-        if [ $vstat -eq 201 ]; then
-            echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${2}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g"
-        else
-            echo $vout
-        fi
-        shift
-        shift
-    done
+    local exstat=201
+    if [ $# -gt 2 ]; then exstat=$3; fi
+    local vout=$(echo "$LINKNODE" | sed -e "s|URI|${ROOT}/${2}|g" -e "s|TARGET|${ROOT}/${1}|g" | vo_curl "nodes/$2" "PUT")
+    local vstat=${vout%%[[:space:]]*}
+    if [ $vstat -eq 201 ]; then
+        local created=$(echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${2}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
+        if [ "$2" != "$created" ]; then echo "OK CREATED LINK $2 $created -> $1"
+        else echo "OK CREATED LINK $created -> $1"; fi
+    elif [ "$vstat" -eq "$exstat" ]; then
+        echo "OK ERROR CREATING LINK $2 $vout"
+    else
+        echo "FAIL CREATING LINK $2 $vout"
+    fi
+}
+
+# Multiple creates with implied success
+function vo_links {
+    while [ $# -gt 1 ]; do vo_link $1 $2; shift; shift; done
 }
 
 datenode=$(date +"Z%Y%m%d%H%M")
 
-vo_get "${USER}"
-vo_container "${USER}/${datenode}" "${USER}/${datenode}/Z" "${USER}/${datenode}/Z/Y"
-vo_data "${USER}/${datenode}/DATAX" "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/Z/Y/DATAY"
-vo_link "${USER}/${datenode}/Z" "${USER}/${datenode}/ZLINK" \
-        "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/Z/DATAZLINK" \
-        "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/Z/DATAYLINK" \
-        "${USER}/${datenode}/Z/DATAYLINK" "${USER}/${datenode}/Z/LINKLINK" \
-        "${USER}/${datenode}/Z/LINKLINK" "${USER}/${datenode}/Z/LINKLINKLINK"
-vo_container "${USER}/${datenode}" "${USER}/${datenode}/DATAX"
-vo_data "${USER}/${datenode}" "${USER}/${datenode}/DATAX"
-vo_link "${USER}/${datenode}/Z/DATAZ" "${USER}/${datenode}/ZLINK" \
-        "${USER}/${datenode}/DATAX" "${USER}/${datenode}/Z" \
-        "${USER}/${datenode}/Z/Y/NOEXIST" "${USER}/${datenode}/Z/Y/DATAYLINK"
-vo_data "${USER}/${datenode}/Z/Y/X/DATAX" "${USER}/${datenode}/ZLINK/Y/DATAW" "demo00/NOEXIST"
+vo_get "${u}" 200 1
+vo_get "NOEXIST/NOEXIST" 404
+vo_containers "${u}/${datenode}" "${u}/${datenode}/Z" "${u}/${datenode}/Z/Y"
+vo_datas "${u}/${datenode}/DATAX" "${u}/${datenode}/Z/DATAZ" "${u}/${datenode}/Z/Y/DATAY"
+vo_links "${u}/${datenode}/Z" "${u}/${datenode}/ZLINK" \
+        "${u}/${datenode}/Z/DATAZ" "${u}/${datenode}/Z/DATAZLINK" \
+        "${u}/${datenode}/Z/Y/DATAY" "${u}/${datenode}/Z/DATAYLINK" \
+        "${u}/${datenode}/Z/DATAYLINK" "${u}/${datenode}/Z/LINKLINK" \
+        "${u}/${datenode}/Z/LINKLINK" "${u}/${datenode}/Z/LINKLINKLINK"
+vo_container "${u}/${datenode}" 409
+vo_container "${u}/${datenode}/DATAX" 409
+vo_data "${u}/${datenode}" 409
+vo_data "${u}/${datenode}/DATAX" 409
+vo_link "${u}/${datenode}/Z/DATAZ" "${u}/${datenode}/ZLINK" 409
+vo_link "${u}/${datenode}/DATAX" "${u}/${datenode}/Z" 409
+vo_link "${u}/${datenode}/Z/Y/NOEXIST" "${u}/${datenode}/Z/Y/DATAYLINK" 404
+vo_data "${u}/${datenode}/Z/Y/X/DATAX" 404
+vo_data "${u}/${datenode}/ZLINK/Y/DATAW" 400
+vo_data "demo00/NOEXIST" 403
 read -rsp $'Press any key to continue...\n' -n1 key
-vo_get "${USER}" "${USER}/${datenode}" "${USER}/${datenode}/Z" "${USER}/${datenode}/Z/Y" \
-        "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/Z/LINKLINKLINK" \
-        "${USER}/${datenode}/NOEXIST" "demo00/${datenode}"
+vo_gets "${u}" "${u}/${datenode}" "${u}/${datenode}/Z" "${u}/${datenode}/Z/Y" \
+        "${u}/${datenode}/Z/Y/DATAY" "${u}/${datenode}/Z/LINKLINKLINK"
+vo_get "${u}/${datenode}/NOEXIST" 404
+vo_get "demo00/${datenode}" 403
 read -rsp $'Press any key to continue...\n' -n1 key
-vo_delete "${USER}/${datenode}/ZLINK/Y/DATAY" "${USER}/${datenode}/Z/DATAZ" \
-        "${USER}/${datenode}/Z/Y/DATAY" "${USER}/${datenode}/NOEXIST"
-vo_get "${USER}/${datenode}/Z"
-vo_delete "${USER}/${datenode}"
-vo_get "${USER}"
-vo_delete "${USER}/${datenode}/NOEXIST" "demo00/NOEXIST"
+vo_delete "${u}/${datenode}/ZLINK/Y/DATAY" 400
+vo_deletes "${u}/${datenode}/Z/DATAZ"  "${u}/${datenode}/Z/Y/DATAY"
+vo_delete "${u}/${datenode}/NOEXIST" 404
+vo_get "${u}/${datenode}/Z"
+vo_delete "${u}/${datenode}"
+vo_get "${u}"
+vo_delete "${u}/${datenode}/NOEXIST" 404
+vo_delete "demo00/NOEXIST" 403
