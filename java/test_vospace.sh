@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This only tests the endpoints in NodeResource.java; GET, PUT, and DELETE.
+# It doesn't test transfers; that is left to testing in the StorageManager.
+
 # Arguments are <hostname> <username>
 if [ $# -lt 1 ]; then h="dldev.datalab.noao.edu"; else h=$1; fi
 if [ $# -lt 2 ]; then u=$USER; else u=$2; fi
