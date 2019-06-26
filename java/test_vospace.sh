@@ -1,13 +1,16 @@
 #!/bin/bash
 
+# This only tests the endpoints in NodeResource.java; GET, PUT, and DELETE.
+# It doesn't test transfers; that is left to testing in the StorageManager.
+
 # Arguments are <hostname> <username>
 if [ $# -lt 1 ]; then h="dldev.datalab.noao.edu"; else h=$1; fi
 if [ $# -lt 2 ]; then u=$USER; else u=$2; fi
 
 wd=$(dirname $0)
 if [ $h == "localhost" ]; then pf="docker"; else pf=${h%%.*}; fi
-for f in ./config/properties.${pf} ${wd}/config/properties.${pf} \
-        ./config/properties.default ${wd}/config/properties.default; do
+for f in ./vospace.properties.${pf} ${wd}/vospace.properties.${pf} \
+        ./vospace.properties.default ${wd}/vospace.properties.default; do
     if [ -e $f ]; then conffile=$f; break; fi
 done
 if [ -z $conffile ]; then echo "No vospace configuration found." 1>&2; exit 1; fi
@@ -92,11 +95,11 @@ function vo_get {
             local tgt=$(echo "$vout" | tr ' ' '\n' | grep "<target>" | cut -d'<' -f2 | sed -e "s|${ROOT}/||g" -e "s|>| |g")
             resp="$tgt $resp"
         fi
-        echo "OK GETTING $node $vtype $resp"
+        echo "OK GET $node $vtype $resp"
     elif [ "$vstat" -eq "$exstat" ]; then
-        echo "OK ERROR GETTING $1 $vout"
+        echo "OK ERROR $vstat GET $1 $vout"
     else
-        echo "FAIL GETTING $1 $vout"
+        echo "FAIL $vstat GET $1 $vout"
     fi
 }
 
@@ -111,11 +114,11 @@ function vo_delete {
     local vout=$(vo_curl "nodes/$1" "DELETE")
     local vstat=${vout%%[[:space:]]*}
     if [ $vstat -eq 204 ]; then
-        echo "OK DELETED $1"
+        echo "OK DELETE $1"
     elif [ $vstat -eq $exstat ]; then
-        echo "OK ERROR DELETING $1 $vout"
+        echo "OK ERROR $vstat DELETE $1 $vout"
     else
-        echo "FAIL DELETING $1 $vout"
+        echo "FAIL $vstat DELETE $1 $vout"
     fi
 }
 
@@ -131,12 +134,12 @@ function vo_container {
     local vstat=${vout%%[[:space:]]*}
     if [ "$vstat" -eq 201 ]; then
         local created=$(echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${1}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
-        if [ "$1" != "$created" ]; then echo "OK CREATED CONTAINER $1 $created"
-        else echo "OK CREATED CONTAINER $created"; fi
+        if [ "$1" != "$created" ]; then echo "OK CREATE CONTAINER $1 $created"
+        else echo "OK CREATE CONTAINER $created"; fi
     elif [ "$vstat" -eq "$exstat" ]; then
-        echo "OK ERROR CREATING CONTAINER $1 $vout"
+        echo "OK ERROR $vstat CREATE CONTAINER $1 $vout"
     else
-        echo "FAIL CREATING CONTAINER $1 $vout"
+        echo "FAIL $vstat CREATE CONTAINER $1 $vout"
     fi
 }
 
@@ -152,12 +155,12 @@ function vo_data {
     local vstat=${vout%%[[:space:]]*}
     if [ $vstat -eq 201 ]; then
         local created=$(echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${1}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
-        if [ "$1" != "$created" ]; then echo "OK CREATED DATA $1 $created"
-        else echo "OK CREATED DATA $created"; fi
+        if [ "$1" != "$created" ]; then echo "OK CREATE DATA $1 $created"
+        else echo "OK CREATE DATA $created"; fi
     elif [ "$vstat" -eq "$exstat" ]; then
-        echo "OK ERROR CREATING DATA $1 $vout"
+        echo "OK ERROR $vstat CREATE DATA $1 $vout"
     else
-        echo "FAIL CREATING DATA $1 $vout"
+        echo "FAIL $vstat CREATE DATA $1 $vout"
     fi
 }
 
@@ -173,12 +176,12 @@ function vo_link {
     local vstat=${vout%%[[:space:]]*}
     if [ $vstat -eq 201 ]; then
         local created=$(echo "$vout" | tr ' ' '\n' | grep "${ROOT}/${2}" | cut -d'"' -f2 | sed -e "s|${ROOT}/||g")
-        if [ "$2" != "$created" ]; then echo "OK CREATED LINK $2 $created -> $1"
-        else echo "OK CREATED LINK $created -> $1"; fi
+        if [ "$2" != "$created" ]; then echo "OK LINK $2 $created -> $1"
+        else echo "OK LINK $created -> $1"; fi
     elif [ "$vstat" -eq "$exstat" ]; then
-        echo "OK ERROR CREATING LINK $2 $vout"
+        echo "OK ERROR $vstat LINK $2 $vout"
     else
-        echo "FAIL CREATING LINK $2 $vout"
+        echo "FAIL $vstat LINK $2 $vout"
     fi
 }
 
