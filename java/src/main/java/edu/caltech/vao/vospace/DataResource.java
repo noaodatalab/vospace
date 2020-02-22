@@ -52,7 +52,8 @@ public class DataResource extends VOSpaceResource {
         try {
             location = manager.resolveLocation(fileid, true);
             // Invalidating after an hour
-            if (manager.hasExpired(fileid)) manager.invalidateLocation(fileid);
+            //if (manager.hasExpired(fileid)) 
+                manager.invalidateLocation(fileid);
             //      System.err.println(fileid + " " + location);
             //      return new File(new URI(location));
             InputStream in = backend.getBytes(location);

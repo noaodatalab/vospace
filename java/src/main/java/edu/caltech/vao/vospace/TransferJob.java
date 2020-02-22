@@ -237,7 +237,7 @@ public class TransferJob extends JobThread {
                 String jobId = getJobId();
                 while (!isInterrupted() && !status) {
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(100000);
                         if (direction.equals("pushToVoSpace")) {
                             status = store.isCompleted(jobId);
                         } else if (direction.equals("pullFromVoSpace")) {
@@ -453,7 +453,8 @@ public class TransferJob extends JobThread {
     private boolean checkLocation(String location, long start) throws VOSpaceException {
         // Is the hour up?
         boolean changed = false;
-        if (System.currentTimeMillis() - start < 3600000) {
+        //if (System.currentTimeMillis() - start < 3600000) {
+        if (System.currentTimeMillis() - start < 3000) {
             // Any activity with the past five seconds?
             //long lastModified = location.lastModified();
             long lastModified = backend.lastModified(location);
@@ -473,7 +474,8 @@ public class TransferJob extends JobThread {
         // Is the hour up?
         boolean changed = false;
         long diff = System.currentTimeMillis() - start;
-        if (diff > 3600000) changed = true;
+        //if (diff > 3600000) changed = true;
+        if (diff > 3000) changed = true;
         if ((diff%5000) < 1000) {
             try {
                 if (store.isCompleted(getJobId())) changed = true;
@@ -803,10 +805,13 @@ public class TransferJob extends JobThread {
             for (Protocol protocol : transfer.getProtocol()) {
                 ProtocolHandler handler = manager.PROTOCOLS.get(protocol.getURI());
                 if (handler.invoke(protocol, getLocation(node.getUri()), backend)) {
+                    store.completeTransfer(protocol.getEndpoint());
                     success = true;
                     break;
                 }
             }
+        } catch (SQLException e) {
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (IOException e) {
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
