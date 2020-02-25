@@ -685,7 +685,7 @@ public class VOSpaceManager {
             long created = store.getCreated(identifier);
             System.err.println(identifier + " " + Long.toString(created) + " " + (System.currentTimeMillis() - created));
             //if (System.currentTimeMillis() - created > 3600000) expired = true;
-            if (System.currentTimeMillis() - created > 3000) expired = true;
+            if (System.currentTimeMillis() - created > 2000) expired = true;
             return expired;
         } catch (Exception e) {
             throw new VOSpaceException(e);

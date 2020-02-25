@@ -237,7 +237,7 @@ public class TransferJob extends JobThread {
                 String jobId = getJobId();
                 while (!isInterrupted() && !status) {
                     try {
-                        Thread.sleep(100000);
+                        Thread.sleep(1000);
                         if (direction.equals("pushToVoSpace")) {
                             status = store.isCompleted(jobId);
                         } else if (direction.equals("pullFromVoSpace")) {
@@ -454,7 +454,7 @@ public class TransferJob extends JobThread {
         // Is the hour up?
         boolean changed = false;
         //if (System.currentTimeMillis() - start < 3600000) {
-        if (System.currentTimeMillis() - start < 3000) {
+        if (System.currentTimeMillis() - start < 2000) {
             // Any activity with the past five seconds?
             //long lastModified = location.lastModified();
             long lastModified = backend.lastModified(location);
@@ -475,7 +475,7 @@ public class TransferJob extends JobThread {
         boolean changed = false;
         long diff = System.currentTimeMillis() - start;
         //if (diff > 3600000) changed = true;
-        if (diff > 3000) changed = true;
+        if (diff > 2000) changed = true;
         if ((diff%5000) < 1000) {
             try {
                 if (store.isCompleted(getJobId())) changed = true;

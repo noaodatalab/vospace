@@ -181,7 +181,7 @@ public class TransferResource extends VOSpaceResource {
 	    UWSJob job = jobs.getJob(id);
 	    MetaStore store = MetaStoreFactory.getInstance().getMetaStore();
 	    while (job.getPhase() == ExecutionPhase.EXECUTING && details == null) {
-		Thread.sleep(10);
+		Thread.sleep(100);
 		details = store.getResult(id);
 	    }
 	    if (details == null) details = "<vos:transfer xmlns:vos=\"http://www.ivoa.net/xml/VOSpace/v2.0\"></vos:transfer>";
