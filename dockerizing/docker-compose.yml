@@ -1,0 +1,69 @@
+version: '2'
+services:
+
+  tomcat:
+    # The .env file sets default values for environment vars reference in this file
+    # such as TOMCAT_IMAGE_NAME
+    # This can be overriden in the command line passing the argument --env-file
+    # #E.g. --env-file ./my.env
+    #
+    # env_file on the other hand sets environment variables in the container itself!
+    # such as JPDA_ADDRESS, JPDA_TRANSPORT, JPDA_SUSPEND, etc. This will be used by
+    # the catalina.sh script itself.
+    #env_file:
+    #  - ./tomcat.env
+    # alternatively to the env_file we can set the environment variables in this
+    # file as below:
+    environment:
+      - JPDA_ADDRESS="${TOMCAT_JPDA_HOST_PORT}"
+      - JPDA_TRANSPORT="dt_socket"
+        # if you want to supend execution of tomcat before anything is loaded
+        #- JPDA_SUSPEND="y"
+    build:
+      context: .
+      dockerfile: Dockerfile-tomcat
+    image: ${TOMCAT_IMAGE_NAME}:${TOMCAT_IMAGE_VERSION}
+    container_name: ${TOMCAT_CONTAINER_NAME}
+    volumes:
+        # make available webapp development tree in tomcat 
+        #- /Users/igor.suarez-sola/workbench/NOIRLab/DataLab/vospace/java/src/main:/usr/local/tomcat/webapps
+      - ../java/src/main/webapp:/usr/local/tomcat/webapps/vospace
+        # mount the development build classes in the already mounted (above) webapp directory structure.
+        # Now the build classes are available to tomcat
+      - ../java/build/classes/edu:/usr/local/tomcat/webapps/vospace/WEB-INF/classes/edu
+        # The below mount approach needs setting the shared.loaded property in tomcat catalina.properties file
+        # See Dockerfile for not info
+        #- /Users/igor.suarez-sola/workbench/NOIRLab/DataLab/vospace/java/build:/usr/local/tomcat/dev_build
+      # this works if I copy and explode the war file in the webapps local directory
+      #- ./webapps:/usr/local/tomcat/webapps
+    expose:
+      # - 8000
+      - ${TOMCAT_JPDA_CONT_PORT}
+      #- 8080
+      - ${TOMCAT_HTTP_CONT_PORT}
+    ports:
+      - ${TOMCAT_HTTP_HOST_PORT}:8080
+      #- "8080:8080"
+      - ${TOMCAT_JPDA_HOST_PORT}:8000
+      #- "8000:8000"
+
+    # we could also override the Dockerfile CMD instruction here
+    command: catalina.sh jpda run
+
+  mysql:
+    build:
+      dockerfile: ./Dockerfile.mysql
+      context: .
+    image: ${MYSQL_IMAGE_NAME}:${ALPINE_VERSION}
+    container_name: ${MYSQL_CONTAINER_NAME}
+    #env_file: ./mysql.env
+
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+    volumes:
+      - ./db_data:/app
+    ports:
+      - "${MYSQL_HOST_ADDRESS}:${MYSQL_CONT_ADDRESS}"

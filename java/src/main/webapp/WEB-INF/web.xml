@@ -4,6 +4,10 @@
 <web-app>
   <display-name>VOSpace 2.0 Application</display-name>
   <servlet>
+    <servlet-name>Dummy</servlet-name>
+    <servlet-class>edu.astrodatalab.testing.DummyTest</servlet-class>
+  </servlet>
+  <servlet>
     <servlet-name>VOSpaceApp</servlet-name>	
     <servlet-class>org.apache.wink.server.internal.servlet.RestServlet</servlet-class>
     <init-param>
@@ -14,5 +18,9 @@
   <servlet-mapping>
     <servlet-name>VOSpaceApp</servlet-name>
     <url-pattern>/vospace/*</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>Dummy</servlet-name>
+    <url-pattern>/test/*</url-pattern>
   </servlet-mapping>
 </web-app>

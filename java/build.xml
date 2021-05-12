@@ -50,9 +50,31 @@
 		</path>
 
 		<!-- Compile the java code -->
-		<javac srcdir="${main}/java" destdir="${build.classes}" target="1.6" source="1.6">
+      <!--<javac srcdir="${main}/java" destdir="${build.classes}" target="1.6" source="1.6">-->
+		<javac srcdir="${main}/java" destdir="${build.classes}" target="1.8" source="1.8">
 			<classpath refid="sdk.classpath" />
 		</javac>
+	</target>
+
+	<target name="tom" depends="init" description="compiles and reloads tomcat">
+		<!-- Set classpath for SDK lib -->
+		<path id="sdk.classpath">
+			<fileset dir="${sdk.lib}" includes="**/*.jar" />
+		</path>
+
+		<!-- Compile the java code -->
+		<!--<javac srcdir="${main}/java" destdir="${build.classes}" target="1.6" source="1.6">-->
+		<javac srcdir="${main}/java" destdir="${build.classes}" target="1.8" source="1.8" debug="on">
+			<classpath refid="sdk.classpath" />
+		</javac>
+		<exec executable="curl">
+			<arg value="--user"/>
+			<arg value="admin:admin"/>
+			<arg value="http://localhost:8080/manager/text/reload?path=/vospace"/>
+		</exec>
+		<!-- We can also touch the web.xml for that app and tomcat will reload it.
+		There are a few seconds delay though, hence the curl option -->
+		<!--<touch file="${webapp}/WEB-INF/web.xml"/>-->
 	</target>
 
 
