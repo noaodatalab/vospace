@@ -24,6 +24,8 @@ import org.apache.commons.dbcp.ConnectionFactory;
 import org.apache.commons.dbcp.PoolingDriver;
 import org.apache.commons.dbcp.PoolableConnectionFactory;
 import org.apache.commons.dbcp.DriverManagerConnectionFactory;
+import org.apache.log4j.Logger;
+import org.apache.log4j.Level;
 
 import edu.caltech.vao.vospace.xml.Node;
 import edu.caltech.vao.vospace.xml.NodeFactory;
@@ -42,6 +44,7 @@ public class MySQLMetaStore implements MetaStore {
     private static final String DEFAULT_DB_URL = "localhost/vospace";
     private static final String DEFAULT_DB_UID = "dba";
     private static final String DEFAULT_DB_PWD = "dba";
+    private static Logger logger = Logger.getLogger(MySQLMetaStore.class.getName());
     public static final int MIN_DETAIL = 1;
     public static final int PROPERTY_DETAIL = 2;
     public static final int MAX_DETAIL = 3;
@@ -1079,11 +1082,34 @@ public class MySQLMetaStore implements MetaStore {
         int retries = 5;
         while (retries > 0) {
             try {
+                long t0 = System.currentTimeMillis();
                 connection = getConnection();
                 statement = connection.createStatement();
                 boolean success = statement.execute(query);
                 if (success) result = statement.getResultSet();
                 retries = 0;
+                long dt = System.currentTimeMillis() - t0;
+                if (logger.isDebugEnabled() || dt >= 500) {
+                    String logMsg = query + "t:[" +dt + "ms ] r:[" + retries + "]";
+                    if (dt >= 500) {
+                        logger.warn(logMsg);
+                    } else {
+                        logger.debug(logMsg);
+                    }
+
+                    if (dt >= 500 || logger.getLevel() == Level.TRACE) {
+                        StackTraceElement[] e = Thread.currentThread().getStackTrace();
+                        StringBuffer trace = new StringBuffer();
+                        for (int i = 0; i < e.length && i < 8; i++) {
+                            trace.append(e[i].toString() + "\n");
+                        }
+                        if (dt >= 500) {
+                            logger.warn(trace);
+                        } else {
+                            logger.debug(trace);
+                        }
+                    }
+                }
             } catch (SQLException e) {
                 String sqlState = e.getSQLState();
                 if (retries > 0 && ("08S01".equals(sqlState) || "40001".equals(sqlState))) {
@@ -1112,10 +1138,34 @@ public class MySQLMetaStore implements MetaStore {
         int retries = 5;
         while (retries > 0) {
             try {
+                long t0 = System.currentTimeMillis();
                 connection = getConnection();
                 statement = connection.createStatement();
                 statement.executeUpdate(query);
                 retries = 0;
+                long dt = System.currentTimeMillis() - t0;
+                if (logger.isDebugEnabled() || dt >= 500) {
+                    String logMsg = query + " t:[" + dt + "ms ] r:[" + retries + "]";
+
+                    if (dt >= 500) {
+                        logger.warn(logMsg);
+                    } else {
+                        logger.debug(logMsg);
+                    }
+
+                    if (dt >= 500 || logger.getLevel() == Level.TRACE) {
+                        StackTraceElement[] e = Thread.currentThread().getStackTrace();
+                        StringBuffer trace = new StringBuffer();
+                        for (int i = 0; i < e.length && i < 8; i++) {
+                            trace.append(e[i].toString() + "\n");
+                        }
+                        if (dt >= 500) {
+                            logger.warn(trace);
+                        } else {
+                            logger.debug(trace);
+                        }
+                    }
+                }
             } catch (SQLException e) {
                 String sqlState = e.getSQLState();
                 if (retries > 0 && ("08S01".equals(sqlState) || "40001".equals(sqlState))) {
