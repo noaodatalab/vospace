@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.BooleanUtils;
@@ -467,10 +468,7 @@ public class MySQLMetaStore implements MetaStore {
     /*
      * Get the direct children nodes of the specified container node
      */
-    public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
-        /* String query = "select node from nodes where identifier like '" + fixId(identifier) + "/%' and identifier not like '" + fixId(identifier) + "/%/%'";
-        String[] children = getAsStringArray(query);
-        return children; */
+    public String[] getChildrenNodesOriginal(String identifier) throws SQLException, VOSpaceException {
         String query = "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
         ResultSet result = null;
@@ -488,6 +486,67 @@ public class MySQLMetaStore implements MetaStore {
         return children.toArray(new String[0]);
     }
 
+    /*
+     * Get the direct children nodes of the specified container node using a subquery that joins 
+     * the nodes and property tables with an outer join on the addl_props table.
+     */
+    public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
+        String nodesQuery= "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
+                + " and identifier like '" + escapeId(identifier) + "/%'";
+
+        String addlQuery = "select a.property, a.value, a.identifier from addl_props as a";
+        String[] propNames = Props.allProps();
+        String queryProp = String.format("select t.identifier, t.type," +
+                StringUtils.join(Arrays.stream(propNames).map(s->"p." +s).
+                        collect(Collectors.toList()), ",") +
+                ", addl.property, addl.value from properties as p, (%s) as t " +
+                " LEFT JOIN (%s, (%s) as t where a.identifier = t.identifier) as addl " +
+                " on addl.identifier = t.identifier " +
+                " where p.identifier = t.identifier", nodesQuery, addlQuery, nodesQuery);
+
+        ResultSet result = null;
+        ArrayList<String> children = new ArrayList<String>();
+        try {
+
+            long t0 = System.currentTimeMillis();
+            result = execute(queryProp);
+            long dt = System.currentTimeMillis() - t0;
+            logger.debug(String.format("SubQry Only SQL [%s] [%d]ms", queryProp, dt));
+
+            long t1 = System.currentTimeMillis();
+
+            ///******
+            while (result.next()) {
+                String childId = result.getString(1);
+                int childType = result.getInt(2);
+                String fixedChildId = fixId(childId);
+                Node node = NodeFactory.getInstance().getNodeByType(NodeType.getUriById(childType));
+                node.setUri(fixedChildId);
+                String value = null;
+                for (String name: propNames) {
+                    value = result.getString("p." + name);
+                    if (value != null) node.setProperty(Props.getURI(name), value);
+                }
+
+                String property = result.getString("addl.property");
+                value = result.getString("addl.value");
+                if (value != null) node.setProperty(property, value);
+
+                if (node instanceof LinkNode) ((LinkNode) node).setTarget(getTarget(fixedChildId));
+                // Set the Views and Capabilities; unfortunately requires the VOSpaceManager
+                if (node instanceof DataNode) VOSpaceManager.getInstance().addViewsAndCapabilities((DataNode) node);
+
+                children.add(node.toString());
+            }
+            ///******
+            long dt1 = System.currentTimeMillis() - t1;
+            logger.debug(String.format("SubQry Only create child nodes [%d]ms", dt1));
+        } finally {
+            closeResult(result);
+        }
+        children.toArray(new String[0]);
+        return children.toArray(new String[0]);
+    }
 
     /*
      * Get all the children of the specified container node
