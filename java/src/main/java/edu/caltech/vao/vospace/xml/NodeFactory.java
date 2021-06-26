@@ -126,4 +126,13 @@ public class NodeFactory {
 	return getNode(datanode);
     }
 
+    /**
+     * Get a node XML String representation of a specific type for the service
+     * @return an XML String with the type set to the specific Node type
+     */
+    public String getNodeTemplateXML(String type) throws VOSpaceException {
+        String nodeXMLTmpl = "<node xmlns=\"http://www.ivoa.net/xml/VOSpace/v2.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"" + type + "\" uri=\"%s\" busy=\"false\">%s<properties>%s</properties>%s</node>";
+        return nodeXMLTmpl;
+    }
+
 }

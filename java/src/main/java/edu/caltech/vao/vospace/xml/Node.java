@@ -12,7 +12,7 @@ public class Node {
 
     /**
      * Construct a Node from the byte array
-     * @param req The byte array containing the Node
+     * @param bytes The byte array containing the Node
      */
     public Node(byte[] bytes) throws VOSpaceException {
         // Remove any XML processing instructions
@@ -127,6 +127,15 @@ public class Node {
         node.remove("/vos:node/vos:capabilities");
     }
 
+    public static String addCapabilitiesXMLStr(String prefix, String value) throws VOSpaceException {
+        if (value != null) {
+            return prefix == null ?
+                    "<capability uri=\"" + value + "\"/>"
+                    : "<" + prefix + ":capability uri=\"" + value + "\"/>";
+        } else {
+            return "";
+        }
+    }
     /**
      * Add a <capability> with the specified value to the <capabilities> element creating the latter
      * if it does not exist.

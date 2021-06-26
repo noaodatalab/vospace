@@ -42,6 +42,20 @@ public class DataNode extends Node {
 	remove("/vos:node/@busy");
     }
 
+    /**
+     * Build and return a <view> XMl String with the specified value to be added to
+     * an <accepts> or <provides> element.
+     * @param prefix The namespace value of the <view> element
+     * @param value The value of the <view> element
+     */
+    public static String buildViewXMLStr(String prefix, String value) throws VOSpaceException {
+        if (value != null) {
+            return prefix == null ?
+                    "<view uri=\"" + value + "\"/>"
+                    : "<" + prefix + ":view uri=\"" + value + "\"/>";
+        }
+        return "";
+    }
 
     /**
      * Add a <view> with the specified value to the <accepts> element creating the latter

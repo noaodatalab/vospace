@@ -9,6 +9,7 @@ package edu.caltech.vao.vospace.meta;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -465,6 +466,19 @@ public class MySQLMetaStore implements MetaStore {
     }
 
 
+    /**
+     * Return a NodeType based on node type id
+     */
+    public static NodeType getNodeType(int id) {
+        for (NodeType t: NodeType.values()) {
+            if (t.ordinal() == id) {
+                return t;
+            }
+        }
+        return null;
+    }
+
+
     /*
      * Get the direct children nodes of the specified container node
      */
@@ -486,11 +500,12 @@ public class MySQLMetaStore implements MetaStore {
         return children.toArray(new String[0]);
     }
 
+
     /*
-     * Get the direct children nodes of the specified container node using a subquery that joins 
+     * Get the direct children nodes of the specified container node using a subquery that joins
      * the nodes and property tables with an outer join on the addl_props table.
      */
-    public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
+    public String[] getChildrenNodesSubquery(String identifier) throws SQLException, VOSpaceException {
         String nodesQuery= "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
 
@@ -547,6 +562,94 @@ public class MySQLMetaStore implements MetaStore {
         children.toArray(new String[0]);
         return children.toArray(new String[0]);
     }
+
+    /*
+     * Get the children nodes of the specified container node using a subquery that joins
+     * the nodes and property tables with an outer join on the addl_props table.
+     * Also generate the XML using plain string templates.
+     */
+    //public String[] getChildrenNodesSubqueryXMLTemplate(String identifier) throws SQLException, VOSpaceException {
+    public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
+        String nodesQuery= "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
+                + " and identifier like '" + escapeId(identifier) + "/%'";
+
+        String addlQuery = "select a.property, a.value, a.identifier from addl_props as a";
+        String[] propNames = Props.allProps();
+        String queryProp = String.format("select t.identifier, t.type," +
+                StringUtils.join(Arrays.stream(propNames).map(s->"p." +s).
+                        collect(Collectors.toList()), ",") +
+                ", addl.property, addl.value from properties as p, (%s) as t " +
+                " LEFT JOIN (%s, (%s) as t where a.identifier = t.identifier) as addl " +
+                " on addl.identifier = t.identifier " +
+                " where p.identifier = t.identifier", nodesQuery, addlQuery, nodesQuery);
+
+        //format:
+        // type,    node_uri  , busy,       groupread,
+        // btime,   publicread, length,     ctime,
+        // ispublic,mtime,      groupwrite, date
+        ResultSet result = null;
+
+        List<NodeType> viewsAndCaps = Arrays.asList(
+                NodeType.DATA_NODE,
+                NodeType.CONTAINER_NODE,
+                NodeType.STRUCTURED_DATA_NODE,
+                NodeType.UNSTRUCTURED_DATA_NODE);
+
+        logger.debug(queryProp);
+        ArrayList<String> children = new ArrayList<String>();
+        try {
+            result = execute(queryProp);
+            String[] formatArgs = new String[4];
+            while (result.next()) {
+                String childId = result.getString(1);
+                int childTypeId = result.getInt(2);
+                String fixedChildId = fixId(childId);
+                formatArgs[0] = fixedChildId;
+                String nodeXMLTmpl = NodeFactory.getInstance().getNodeTemplateXML(NodeType.getUriById(childTypeId));
+                String value = null;
+
+                //Note: StringBuilder is faster than StringBuffer as it
+                // is NOT thread safe.
+                StringBuilder propsXML = new StringBuilder();
+                for (String name: propNames) {
+                    value = result.getString("p." + name);
+                    if (value != null) {
+                        propsXML.append(Props.getPropertyXML(name,value));
+                    }
+                }
+                formatArgs[2] = propsXML.toString();
+
+                //additional properties
+                String property = result.getString("addl.property");
+                value = result.getString("addl.value");
+                if (property !=null && value != null) {
+                    propsXML.append(Props.getPropertyXML(property, value));
+                }
+
+                NodeType childType = getNodeType(childTypeId);
+                if (NodeType.LINK_NODE == getNodeType(childTypeId)) {
+                    String target = getTarget(fixedChildId);
+                    formatArgs[1] = "<target>" + target +"</target>";
+                } else {
+                    formatArgs[1] = "";
+                }
+
+                if ( viewsAndCaps.contains(childType)) {
+                    formatArgs[3] = VOSpaceManager.getInstance().addViewsAndCapabilitiesXMLStr(childType);
+                } else {
+                    formatArgs[3] = "<accepts/><provides/><capabilities/>";
+                }
+
+                String xml = String.format(nodeXMLTmpl, formatArgs);
+                children.add(xml);
+            }
+        } finally {
+            closeResult(result);
+        }
+
+        return children.toArray(new String[0]);
+    }
+
 
     /*
      * Get all the children of the specified container node

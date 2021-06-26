@@ -31,6 +31,7 @@ public class Props {
                     boolean[] attrs = new boolean[4];
                     for (int i=0; i < 4; i++) { attrs[i] = Boolean.parseBoolean(s_attrs[i]); }
                     propertyURIs.put(k, "ivo://ivoa.net/vospace/core#" + k);
+                    propertyXMLTmpls.put(k, String.format("<property uri=\"%s\">%%s</property>", "ivo://ivoa.net/vospace/core#" + k));
                     propertyAttrs.put(k, attrs);
                 }
             }
@@ -50,6 +51,7 @@ public class Props {
     }
 
     private static HashMap<String, String> propertyURIs = new HashMap();
+    private static HashMap<String, String> propertyXMLTmpls = new HashMap();
     private static HashMap<String, boolean[]> propertyAttrs = new HashMap();
 
     private Props() {}
@@ -71,6 +73,10 @@ public class Props {
             if (getURI(k).equals(uri.trim())) return k;
         }
         return null;
+    }
+
+    public static String getPropertyXML(String propName, String value) {
+        return String.format(propertyXMLTmpls.get(propName), value);
     }
 
     public static int getAttributes(String propName) {

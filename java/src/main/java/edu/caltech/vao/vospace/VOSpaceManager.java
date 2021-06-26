@@ -1,24 +1,12 @@
 
 package edu.caltech.vao.vospace;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.PrintWriter;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
@@ -298,6 +286,83 @@ public class VOSpaceManager {
             throw new VOSpaceException(e, uri);
         }
         return node;
+    }
+
+    public String addViewsAndCapabilitiesXMLStr(NodeType type) throws VOSpaceException {
+        String prefix = null;
+        List<String> accepts = new ArrayList<>();
+        List<String> provides = new ArrayList<>();
+        List<String> capabilities = new ArrayList<>();
+        // Set <accepts> for UnstructuredDataNode
+        if (type == NodeType.UNSTRUCTURED_DATA_NODE) {
+            accepts.add(DataNode.buildViewXMLStr( prefix, Views.get(Views.View.ANY)));
+        }
+        // Set <accepts> for StructuredDataNode
+        if (type == NodeType.STRUCTURED_DATA_NODE) {
+            for (Views.View view: SPACE_ACCEPTS_IMAGE) {
+                accepts.add(DataNode.buildViewXMLStr(prefix, Views.get(view)));
+            }
+            for (Views.View view: SPACE_ACCEPTS_TABLE) {
+                accepts.add(DataNode.buildViewXMLStr(prefix, Views.get(view)));
+            }
+            for (Views.View view: SPACE_ACCEPTS_OTHER) {
+                accepts.add(DataNode.buildViewXMLStr(prefix, Views.get(view)));
+            }
+            for (Views.View view: SPACE_PROVIDES_IMAGE) {
+                provides.add(DataNode.buildViewXMLStr(prefix, Views.get(view)));
+            }
+            for (Views.View view: SPACE_PROVIDES_TABLE) {
+                provides.add(DataNode.buildViewXMLStr(prefix, Views.get(view)));
+            }
+            for (Views.View view: SPACE_PROVIDES_OTHER) {
+                provides.add(DataNode.buildViewXMLStr(prefix, Views.get(view)));
+            }
+        }
+        // Set <accepts> for ContainerNode
+        if (type == NodeType.CONTAINER_NODE) {
+            for (Views.View view: SPACE_ACCEPTS_ARCHIVE) {
+                accepts.add(DataNode.buildViewXMLStr(prefix, Views.get(view)));
+            }
+            for (Views.View view: SPACE_PROVIDES_ARCHIVE) {
+                provides.add(DataNode.buildViewXMLStr(prefix, Views.get(view)));
+            }
+        }
+        // Set capabilities
+        if (CAPABILITIES.size() > 0) {
+            for (String capUri: CAPABILITIES.keySet()) {
+                Capability cap = (Capability) CAPABILITIES.get(capUri);
+                if (cap.getApplicability().contains(type)) {
+                    capabilities.add(
+                            DataNode.addCapabilitiesXMLStr(prefix, capUri));
+                }
+            }
+        }
+        StringBuffer sb = new StringBuffer();
+       /*
+        if (accepts.size() == 0) {
+            sb.append("<accepts/>");
+        } else {
+            sb.append("<accepts>");
+            sb.append(accepts.toString());
+            sb.append("</accepts>");
+        }
+        */
+        addXMLToStringBuffer(sb, "accepts", accepts);
+        addXMLToStringBuffer(sb, "provides", provides);
+        addXMLToStringBuffer(sb, "capabilities", capabilities);
+
+        return sb.toString();
+    }
+
+    private void addXMLToStringBuffer(StringBuffer sb, String parent, List<String> subelems) {
+        if (subelems.size() == 0) {
+            sb.append("<" + parent +"/>");
+        } else {
+            sb.append("<" + parent + ">");
+            sb.append(String.join("", subelems));
+            sb.append("</" + parent + ">");
+        }
+
     }
 
     public NodeType addViewsAndCapabilities(DataNode datanode) throws VOSpaceException {
