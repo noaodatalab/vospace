@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import java.io.ByteArrayOutputStream;
 
+import ca.nrc.cadc.vos.VOSURI;
 import edu.caltech.vao.vospace.VOSpaceException;
 
 /**
@@ -135,4 +136,28 @@ public class NodeFactory {
         return nodeXMLTmpl;
     }
 
+
+    /**
+     * Get a node of a specific type for the service
+     * @return a Node of the default type
+     */
+    public ca.nrc.cadc.vos.Node getJDOM2NodeByType(int type, VOSURI uri) throws VOSpaceException {
+        ca.nrc.cadc.vos.Node node;
+        switch (type) {
+            case 0:
+            case 1: node = new ca.nrc.cadc.vos.DataNode(uri);
+                break;
+            case 2: node = new ca.nrc.cadc.vos.LinkNode(uri, null);
+                break;
+            case 3: node = new ca.nrc.cadc.vos.ContainerNode(uri);
+                break;
+            case 4: node = new ca.nrc.cadc.vos.UnstructuredDataNode(uri);
+                break;
+            case 5: node = new ca.nrc.cadc.vos.StructuredDataNode(uri);
+                break;
+            default: node = new ca.nrc.cadc.vos.DataNode(uri);
+                break;
+        }
+        return node;
+    }
 }

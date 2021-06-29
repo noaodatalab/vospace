@@ -6,6 +6,10 @@
 
 package edu.caltech.vao.vospace.meta;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,6 +22,9 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import ca.nrc.cadc.vos.NodeProperty;
+import ca.nrc.cadc.vos.NodeWriter;
+import ca.nrc.cadc.vos.VOSURI;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.pool.ObjectPool;
@@ -568,8 +575,7 @@ public class MySQLMetaStore implements MetaStore {
      * the nodes and property tables with an outer join on the addl_props table.
      * Also generate the XML using plain string templates.
      */
-    //public String[] getChildrenNodesSubqueryXMLTemplate(String identifier) throws SQLException, VOSpaceException {
-    public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
+    public String[] getChildrenNodesSubqueryXMLTemplate(String identifier) throws SQLException, VOSpaceException {
         String nodesQuery= "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
 
@@ -650,6 +656,113 @@ public class MySQLMetaStore implements MetaStore {
         return children.toArray(new String[0]);
     }
 
+
+    /*
+     * Get the children nodes of the specified container node using a subquery that joins
+     * the nodes and property tables with an outer join on the addl_props table.
+     * Also, it generates the XML using JDOM2 elements
+     */
+    //public String[] getChildrenNodesJDOM2(String identifier) throws SQLException, VOSpaceException {
+    public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
+        String nodesQuery= "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
+                + " and identifier like '" + escapeId(identifier) + "/%'";
+
+        String addlQuery = "select a.property, a.value, a.identifier from addl_props as a";
+        String[] propNames = Props.allProps();
+        String queryProp = String.format("select t.identifier, t.type," +
+                StringUtils.join(Arrays.stream(propNames).map(s->"p." +s).
+                        collect(Collectors.toList()), ",") +
+                ", addl.property, addl.value from properties as p, (%s) as t " +
+                " LEFT JOIN (%s, (%s) as t where a.identifier = t.identifier) as addl " +
+                " on addl.identifier = t.identifier " +
+                " where p.identifier = t.identifier", nodesQuery, addlQuery, nodesQuery);
+
+        //format:
+        // type,    node_uri  , busy,       groupread,
+        // btime,   publicread, length,     ctime,
+        // ispublic,mtime,      groupwrite, date
+        ResultSet result = null;
+
+        List<NodeType> viewsAndCaps = Arrays.asList(
+                NodeType.DATA_NODE,
+                NodeType.CONTAINER_NODE,
+                NodeType.STRUCTURED_DATA_NODE,
+                NodeType.UNSTRUCTURED_DATA_NODE);
+
+        logger.debug(queryProp);
+        ArrayList<ca.nrc.cadc.vos.Node> nodeArray = new ArrayList<ca.nrc.cadc.vos.Node>();
+        ArrayList<String> nodeXMLArray = new ArrayList<String>();
+        try {
+            result = execute(queryProp);
+            String[] formatArgs = new String[4];
+            while (result.next()) {
+                String childId = result.getString(1);
+                int childTypeId = result.getInt(2);
+                String fixedChildId = fixId(childId);
+                formatArgs[0] = fixedChildId;
+                ca.nrc.cadc.vos.Node nodeJDOM2 = NodeFactory.getInstance().getJDOM2NodeByType(childTypeId, new VOSURI(childId));
+                String value = null;
+
+                List<NodeProperty> properties = new ArrayList<>();
+                for (String propertyName: propNames) {
+                    value = result.getString("p." + propertyName);
+                    //delete below line
+                    if (value != null) {
+                        NodeProperty np = new NodeProperty("ivo://ivoa.net/vospace/core#" + propertyName, value);
+                        properties.add(np);
+                    }
+                }
+
+
+                //additional properties
+                String propertyName = result.getString("addl.property");
+                value = result.getString("addl.value");
+                if (propertyName !=null && value != null) {
+                    properties.add(new NodeProperty("ivo://ivoa.net/vospace/core#"+propertyName, value));
+                }
+                nodeJDOM2.setProperties(properties);
+
+                NodeType childType = getNodeType(childTypeId);
+                if (NodeType.LINK_NODE == getNodeType(childTypeId)) {
+                    String target = getTarget(fixedChildId);
+                    ((ca.nrc.cadc.vos.LinkNode) nodeJDOM2).setTarget(new URI(target));
+                }
+
+                // Set the Views and Capabilities; unfortunately requires the VOSpaceManager
+                if ( viewsAndCaps.contains(childType)) {
+                    VOSpaceManager.getInstance().addViewsAndCapabilitiesJDOM2(nodeJDOM2, childType);
+                }
+
+                nodeArray.add(nodeJDOM2);
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            String msg = e.getLocalizedMessage();
+            System.out.println(msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+            String msg = e.getLocalizedMessage();
+            System.out.println(msg);
+        } finally {
+            closeResult(result);
+        }
+
+        NodeWriter instance = new NodeWriter();
+        try {
+            for( ca.nrc.cadc.vos.Node elem : nodeArray) {
+                StringWriter sw = new StringWriter();
+                instance.write(elem, sw, true);
+                nodeXMLArray.add(sw.toString());
+                sw.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return nodeXMLArray.toArray(new String[0]);
+    }
 
     /*
      * Get all the children of the specified container node

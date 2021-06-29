@@ -4,6 +4,8 @@ package edu.caltech.vao.vospace;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -414,6 +416,65 @@ public class VOSpaceManager {
             }
         }
         return type;
+    }
+
+    public void addViewsAndCapabilitiesJDOM2(ca.nrc.cadc.vos.Node node, NodeType type) throws VOSpaceException {
+        List<URI> accepts = new ArrayList<URI>();
+        List<URI> provides = new ArrayList<URI>();
+        List<URI> capabilities = new ArrayList<URI>();
+        try {
+            // Set <accepts> for UnstructuredDataNode
+            if (node instanceof ca.nrc.cadc.vos.UnstructuredDataNode) {
+                accepts.add(new URI(Views.get(Views.View.ANY)));
+            }
+            // Set <accepts> for StructuredDataNode
+            if (node instanceof ca.nrc.cadc.vos.StructuredDataNode) {
+                for (Views.View view : SPACE_ACCEPTS_IMAGE) {
+                    accepts.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_ACCEPTS_TABLE) {
+                    accepts.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_ACCEPTS_OTHER) {
+                    accepts.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_PROVIDES_IMAGE) {
+                    provides.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_PROVIDES_TABLE) {
+                    provides.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_PROVIDES_OTHER) {
+                    provides.add(new URI(Views.get(view)));
+                }
+            }
+            // Set <accepts> for ContainerNode
+            if (node instanceof ca.nrc.cadc.vos.ContainerNode) {
+                for (Views.View view : SPACE_ACCEPTS_ARCHIVE) {
+                    accepts.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_PROVIDES_ARCHIVE) {
+                    provides.add(new URI(Views.get(view)));
+                }
+            }
+            // Set capabilities
+            if (CAPABILITIES.size() > 0) {
+                for (String capUri : CAPABILITIES.keySet()) {
+                    Capability cap = (Capability) CAPABILITIES.get(capUri);
+                    if (cap.getApplicability().contains(type)) {
+                        capabilities.add(new URI(capUri));
+                    }
+                }
+            }
+
+            node.setProvides(accepts);
+            node.setProvides(provides);
+            node.setCapabilities(capabilities);
+
+        } catch (URISyntaxException e) {
+            //e.printStackTrace();
+            throw new VOSpaceException(e);
+        }
     }
 
     /**
