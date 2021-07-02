@@ -489,7 +489,7 @@ public class MySQLMetaStore implements MetaStore {
     /*
      * Get the direct children nodes of the specified container node
      */
-    public String[] getChildrenNodesOriginal(String identifier) throws SQLException, VOSpaceException {
+    public String[] getChildrenNodesoriginal(String identifier) throws SQLException, VOSpaceException {
         String query = "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
         ResultSet result = null;
@@ -512,7 +512,7 @@ public class MySQLMetaStore implements MetaStore {
      * Get the direct children nodes of the specified container node using a subquery that joins
      * the nodes and property tables with an outer join on the addl_props table.
      */
-    public String[] getChildrenNodesSubquery(String identifier) throws SQLException, VOSpaceException {
+    public String[] getChildrenNodessubqueryonly(String identifier) throws SQLException, VOSpaceException {
         String nodesQuery= "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
 
@@ -575,7 +575,7 @@ public class MySQLMetaStore implements MetaStore {
      * the nodes and property tables with an outer join on the addl_props table.
      * Also generate the XML using plain string templates.
      */
-    public String[] getChildrenNodesSubqueryXMLTemplate(String identifier) throws SQLException, VOSpaceException {
+    public String[] getChildrenNodessubqueryxmltemplate(String identifier) throws SQLException, VOSpaceException {
         String nodesQuery= "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
 
@@ -662,8 +662,12 @@ public class MySQLMetaStore implements MetaStore {
      * the nodes and property tables with an outer join on the addl_props table.
      * Also, it generates the XML using JDOM2 elements
      */
-    //public String[] getChildrenNodesJDOM2(String identifier) throws SQLException, VOSpaceException {
     public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
+        return this.getChildrenNodessubqueryjdom2(identifier);
+    }
+
+    public String[] getChildrenNodessubqueryjdom2(String identifier) throws SQLException, VOSpaceException {
+    //public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
         String nodesQuery= "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
 

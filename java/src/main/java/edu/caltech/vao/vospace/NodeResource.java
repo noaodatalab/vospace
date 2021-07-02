@@ -4,6 +4,7 @@ package edu.caltech.vao.vospace;
 import java.io.InputStream;
 import java.io.PrintWriter;
 
+import java.lang.reflect.Method;
 import java.net.URI;
 
 import javax.ws.rs.GET;
@@ -31,6 +32,7 @@ import javax.xml.bind.JAXBElement;
 import com.ximpleware.*;
 import com.ximpleware.xpath.*;
 
+import edu.caltech.vao.vospace.meta.MySQLMetaStore;
 import edu.caltech.vao.vospace.xml.*;
 import edu.caltech.vao.vospace.VOSpaceException.VOFault;
 
@@ -69,6 +71,24 @@ public class NodeResource extends VOSpaceResource {
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, true);
         Node node = manager.getNode(id, detail, limit);
+        return node;
+    }
+
+    /**
+     * This method retrieves the specified node.
+     *
+     * @param nodeid The VOSpace identifier for the node to return.
+     * @return the specified node {nodeid:[^/]+?}
+     */
+    //@Path("{getChildrenNodesName: .*}/{nodeid: .*}")
+    @Path("/{nodeid: .*}/{getChildrenNodesName}")
+    @GET
+    @Produces(MediaType.APPLICATION_XML)
+    public Node getNode(@PathParam("getChildrenNodesName") String childrenNodesName, @PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+        String id = getId(nodeid);
+        manager.validateAccess(authToken, id, true);
+        Node node = manager.getNode(id, detail, limit, childrenNodesName);
+        //Node node = manager.getNode(id, detail, limit);
         return node;
     }
 

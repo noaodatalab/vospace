@@ -4,6 +4,7 @@ package edu.caltech.vao.vospace;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
@@ -477,6 +478,10 @@ public class VOSpaceManager {
         }
     }
 
+    public Node getNode(String identifier, String detail, int limit) throws VOSpaceException {
+        return getNode(identifier, detail, limit, "getChildrenNodes");
+    }
+
     /**
      * Retrieve the specified node
      * @param identifier The identifier of the node to retrieve
@@ -484,7 +489,7 @@ public class VOSpaceManager {
      * @param limit The maximum number of results in the response
      * @return the retrieved node
      */
-    public Node getNode(String identifier, String detail, int limit) throws VOSpaceException {
+        public Node getNode(String identifier, String detail, int limit,  String getChildrenNodesMethodName) throws VOSpaceException {
         Node node = null;
         // Is identifier syntactically valid?
         if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
@@ -515,7 +520,24 @@ public class VOSpaceManager {
                     if (node instanceof ContainerNode) {
                         ContainerNode container = (ContainerNode) node;
                         // Get children and check length property
-                        String[] childNodes = store.getChildrenNodes(identifier);
+                        String[] childNodes = null;
+                        try {
+                            //Method [] allMethods = ((MySQLMetaStore) store).getClass().getMethods();
+                            //for (Method m: allMethods) {
+                            //    System.err.println("MySQLMetaStore methods:[" + m.getName() + "]");
+                            //}
+
+                            Class[] mParams = new Class[1];
+                            mParams[0] = String.class;
+
+                            Method getChildrenNodesMethod = store.getClass().getMethod(getChildrenNodesMethodName, mParams);
+                            childNodes = (String []) getChildrenNodesMethod.invoke(store, identifier);
+                        } catch (Exception e) {
+                            System.err.println(e.getMessage());
+                            System.out.println(e.getMessage());
+                        }
+
+//                        String[] childNodes = store.getChildrenNodes(identifier);
                         container.addNode(StringUtils.join(childNodes));
 //                      for (String child: store.getChildren(identifier)) {
 //                          Node cnode = nfactory.getNode(store.getNode(child));
