@@ -8,6 +8,10 @@
     <servlet-class>edu.astrodatalab.testing.DummyTest</servlet-class>
   </servlet>
   <servlet>
+    <servlet-name>DataServlet</servlet-name>
+    <servlet-class>edu.noirlab.datalab.vos.DataServlet</servlet-class>
+  </servlet>
+  <servlet>
     <servlet-name>VOSpaceApp</servlet-name>	
     <servlet-class>org.apache.wink.server.internal.servlet.RestServlet</servlet-class>
     <init-param>
@@ -15,6 +19,11 @@
       <param-value>/WEB-INF/application</param-value> 
     </init-param>
   </servlet>
+
+  <servlet-mapping>
+    <servlet-name>DataServlet</servlet-name>
+    <url-pattern>/vospace/data2/*</url-pattern>
+  </servlet-mapping>
   <servlet-mapping>
     <servlet-name>VOSpaceApp</servlet-name>
     <url-pattern>/vospace/*</url-pattern>

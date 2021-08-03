@@ -181,11 +181,17 @@ public class TransferJob extends JobThread {
             }
             //      System.err.println(document);
             transfer = new Transfer(document);
+            String transferXMl = transfer.toString();
+            System.out.println(transferXMl);
             validateTransfer();
+            transferXMl = transfer.toString();
+            System.out.println(transferXMl);
         } catch (VOSpaceException e) {
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
 
+        String transferXMl = transfer.toString();
+        System.out.println(transferXMl);
         // Determine operation
         try {
             target = transfer.getTarget();
@@ -420,6 +426,8 @@ public class TransferJob extends JobThread {
     private void pullFromVoSpace() throws UWSException {
         try {
             // Request details
+            String transferXMl = transfer.toString();
+            System.out.println(transferXMl);
             String target = transfer.getTarget();
             // Negotiate protocol details
             completeProtocols(target, ProtocolHandler.SERVER);
