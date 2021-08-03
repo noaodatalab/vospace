@@ -16,6 +16,7 @@ import java.util.regex.Matcher;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.events.XMLEvent;
 
+import ca.nrc.cadc.vos.VOSURI;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
@@ -489,7 +490,7 @@ public class VOSpaceManager {
      * @param limit The maximum number of results in the response
      * @return the retrieved node
      */
-        public Node getNode(String identifier, String detail, int limit,  String getChildrenNodesMethodName) throws VOSpaceException {
+     public Node getNode(String identifier, String detail, int limit,  String getChildrenNodesMethodName) throws VOSpaceException {
         Node node = null;
         // Is identifier syntactically valid?
         if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
@@ -556,6 +557,46 @@ public class VOSpaceManager {
         return node;
     }
 
+    public edu.noirlab.datalab.vos.Node getNode2(String identifier, String detail, int limit,  String getChildrenNodesMethodName) throws VOSpaceException {
+        // Is identifier syntactically valid?
+        if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
+        ca.nrc.cadc.vos.Node node = null;
+        // Retrieve original node
+        try {
+            ca.nrc.cadc.vos.Node[] result = store.getData2(new String[] {identifier}, null, limit);
+            if (result.length == 0) {
+                // Check for a LinkNode in the path.
+                String linkedURI = resolveLinks(identifier);
+                if (linkedURI != null) throw new VOSpaceException(VOFault.LinkFoundFault, "", linkedURI);
+                else throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
+            }
+            for (ca.nrc.cadc.vos.Node _node: result) {
+                    if (_node instanceof ca.nrc.cadc.vos.ContainerNode) {
+                        ca.nrc.cadc.vos.ContainerNode container = (ca.nrc.cadc.vos.ContainerNode) _node;
+                        // Get children and check length property
+                        //String[] childNodes = null;
+                        ca.nrc.cadc.vos.Node[] childNodes = null;
+                        try {
+                            childNodes = ((MySQLMetaStore) store).getChildrenNodessubqueryjdom2NodeList(identifier);
+                        } catch (Exception e) {
+                            System.err.println(e.getMessage());
+                            System.out.println(e.getMessage());
+                        }
+
+                        container.setNodes(Arrays.asList(childNodes));
+                    }
+                    node = _node;
+            }
+        } catch (SQLException e) {
+            throw new VOSpaceException(e);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+        edu.noirlab.datalab.vos.Node retNode = new edu.noirlab.datalab.vos.Node(node);
+
+        //String blah = retNode.toString();
+        return retNode;
+    }
 
     /**
      * Set the length property on the specified node

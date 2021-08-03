@@ -29,6 +29,8 @@ import javax.servlet.http.HttpSession;
 
 import javax.xml.bind.JAXBElement;
 
+import ca.nrc.cadc.vos.NodeParsingException;
+import ca.nrc.cadc.vos.NodeReader;
 import com.ximpleware.*;
 import com.ximpleware.xpath.*;
 
@@ -68,6 +70,7 @@ public class NodeResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+        System.out.println("In getNode");
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, true);
         Node node = manager.getNode(id, detail, limit);
@@ -85,10 +88,22 @@ public class NodeResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public Node getNode(@PathParam("getChildrenNodesName") String childrenNodesName, @PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+        System.out.println("In getNode1");
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, true);
         Node node = manager.getNode(id, detail, limit, childrenNodesName);
         //Node node = manager.getNode(id, detail, limit);
+        return node;
+    }
+
+    @Path("/{nodeid: .*}/2/{getChildrenNodesName}")
+    @GET
+    @Produces(MediaType.APPLICATION_XML)
+    public edu.noirlab.datalab.vos.Node getNode2(@PathParam("getChildrenNodesName") String childrenNodesName, @PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+        System.out.println("In getNode2");
+        String id = getId(nodeid);
+        manager.validateAccess(authToken, id, true);
+        edu.noirlab.datalab.vos.Node node = manager.getNode2(id, detail, limit, childrenNodesName);
         return node;
     }
 

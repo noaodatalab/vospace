@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 
 import ca.nrc.cadc.vos.VOSURI;
 import edu.caltech.vao.vospace.VOSpaceException;
+import edu.caltech.vao.vospace.meta.MetaStore;
 
 /**
  * A factory for creating nodes
@@ -88,6 +89,11 @@ public class NodeFactory {
     public Node getNode(String req) throws VOSpaceException {
 	byte[] bytes = req.getBytes();
 	return getNode(bytes);
+    }
+
+    public Node getNode2(String req) throws VOSpaceException {
+        byte[] bytes = req.getBytes();
+        return getNode(bytes);
     }
 
     private Node getNode(byte[] bytes) throws VOSpaceException {
