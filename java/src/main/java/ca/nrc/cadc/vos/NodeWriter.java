@@ -116,8 +116,8 @@ public class NodeWriter implements XmlProcessor
     
     public NodeWriter(String vospaceNamespace)
     {
-        //this.vosNamespace = Namespace.getNamespace("vos", vospaceNamespace);
-        this.vosNamespace = Namespace.getNamespace(null, vospaceNamespace);
+        this.vosNamespace = Namespace.getNamespace("vos", vospaceNamespace);
+        //this.vosNamespace = Namespace.getNamespace(null, vospaceNamespace);
         this.voaNamespace = Namespace.getNamespace("voa", vospaceNamespace);
     }
 

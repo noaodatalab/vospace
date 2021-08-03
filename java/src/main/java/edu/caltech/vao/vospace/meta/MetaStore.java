@@ -6,7 +6,10 @@
 
 package edu.caltech.vao.vospace.meta;
 
+import edu.caltech.vao.vospace.NodeType;
 import org.apache.commons.pool.ObjectPool;
+
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import edu.caltech.vao.vospace.VOSpaceException;
 
@@ -69,6 +72,8 @@ public interface MetaStore {
      * of detail
      */
     public String[] getData(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException;
+
+    public ca.nrc.cadc.vos.Node[] getData2(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException, URISyntaxException;
 
     /*
      * Get the target of a link node
@@ -311,4 +316,17 @@ public interface MetaStore {
      * Get the last modification time of the node
      */
     public long getLastModTime(String identifier) throws SQLException;
+
+    /**
+     * Return a NodeType based on node type id
+     */
+    public static NodeType getNodeType(int id) {
+        for (NodeType t: NodeType.values()) {
+            if (t.ordinal() == id) {
+                return t;
+            }
+        }
+        return null;
+    }
+
 }
