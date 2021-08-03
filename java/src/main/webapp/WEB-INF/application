@@ -9,4 +9,5 @@ edu.caltech.vao.vospace.TransferResource
 edu.caltech.vao.vospace.ViewsResource
 edu.caltech.vao.vospace.VOSpaceExceptionMapper
 edu.caltech.vao.vospace.NodeMessageBodyWriter
+edu.noirlab.datalab.vos.NodeMessageBodyWriter
 edu.caltech.vao.vospace.NodeMessageBodyReader
