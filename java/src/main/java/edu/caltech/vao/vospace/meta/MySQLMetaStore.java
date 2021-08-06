@@ -773,7 +773,8 @@ public class MySQLMetaStore implements MetaStore {
      */
     public String[] getAllChildren(String identifier) throws SQLException {
         ArrayList<String> children = new ArrayList<String>();
-        String query = "select identifier from nodes where identifier like '" + escapeId(identifier) + "/%'";
+        String query = "select identifier from nodes where depth = " + (getIdDepth(identifier) + 1) +
+                " and identifier like '" + escapeId(identifier) + "/%'";
         for (String child : getAsStringArray(query)) {
             if (!child.equals(fixId(identifier))) {
                 children.add(child);
@@ -792,9 +793,11 @@ public class MySQLMetaStore implements MetaStore {
     public String[] removeData(String identifier, boolean container) throws SQLException {
         String query = "";
         ArrayList<String> removedLinks = new ArrayList<String>();
-        if (container) {
+        if (container)
+        {
             String escaped = escapeId(identifier);
-            query = "delete from nodes where identifier like '" + escaped + "/%'";
+            query = "delete from nodes where depth = " + (getIdDepth(identifier) + 1) +
+                    " and identifier like '" + escaped + "/%'";
             update(query);
             query = "delete from properties where identifier like '" + escaped + "/%'";
             update(query);
