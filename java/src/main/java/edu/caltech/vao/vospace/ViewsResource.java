@@ -2,6 +2,7 @@
 package edu.caltech.vao.vospace;
 
 import java.util.ArrayList;
+import org.apache.log4j.Logger;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -13,7 +14,9 @@ import edu.caltech.vao.vospace.xml.*;
 @Path("views")
 public class ViewsResource extends VOSpaceResource {
 
-    public ViewsResource() throws VOSpaceException {
+	private static Logger log = Logger.getLogger(ViewsResource.class);
+
+	public ViewsResource() throws VOSpaceException {
         super();
     }
 
@@ -25,6 +28,7 @@ public class ViewsResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public String getViews() throws VOSpaceException {
+	log.info("getViews");
 	StringBuffer sbuf = new StringBuffer("<views xmlns=\"http://www.ivoa.net/xml/VOSpace/v2.0\"><accepts>");
 	addViews(sbuf, manager.SPACE_ACCEPTS_IMAGE);
 	addViews(sbuf, manager.SPACE_ACCEPTS_TABLE);

@@ -33,9 +33,12 @@ import com.ximpleware.xpath.*;
 
 import edu.caltech.vao.vospace.xml.*;
 import edu.caltech.vao.vospace.VOSpaceException.VOFault;
+import org.apache.log4j.Logger;
 
 @Path("nodes")
 public class NodeResource extends VOSpaceResource {
+
+    private static Logger log = Logger.getLogger(NodeResource.class);
 
     //    private final String ROOTNODE = "vos://nvo.caltech!vospace";
     private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
@@ -52,6 +55,7 @@ public class NodeResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
+        log.info("getRootNode[nodeId:" + manager.ROOT_NODE + ", detail=" + detail + ", limit=" + limit + "]");
         Node node = manager.getNode(manager.ROOT_NODE, detail, limit);
         return node;
     }
@@ -66,6 +70,7 @@ public class NodeResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+        log.info("getNode[nodeId:" + nodeid + ", detail=" + detail + ", limit=" + limit + "]");
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, true);
         Node node = manager.getNode(id, detail, limit);
@@ -83,6 +88,7 @@ public class NodeResource extends VOSpaceResource {
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces(MediaType.APPLICATION_XML)
     public Node updateNode(@PathParam("nodeid") String nodeid, Node node, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+        log.info("updateNode[nodeId:" + nodeid + "]");
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, false);
         if (!node.getUri().equals(id)) throw new VOSpaceException(VOFault.InvalidURI);
@@ -107,6 +113,7 @@ public class NodeResource extends VOSpaceResource {
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces(MediaType.APPLICATION_XML)
     public Response putNode(@PathParam("nodeid") String nodeid, Node node, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+        log.info("putNode[nodeId:" + nodeid + "]");
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, false);
         if (!node.getUri().equals(id)) throw new VOSpaceException(VOFault.InvalidURI);
@@ -129,6 +136,7 @@ public class NodeResource extends VOSpaceResource {
     @Path("{nodeid: .*}")
     @DELETE
     public void deleteNode(@PathParam("nodeid") String nodeid, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+        log.info("deleteNode[nodeId:" + nodeid + "]");
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, false);
         manager.delete(id);

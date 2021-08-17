@@ -2,6 +2,7 @@
 package edu.caltech.vao.vospace;
 
 import java.util.ArrayList;
+import org.apache.log4j.Logger;
 
 import java.sql.SQLException;
 import java.sql.ResultSet;
@@ -17,7 +18,9 @@ import edu.caltech.vao.vospace.xml.*;
 @Path("properties")
 public class PropertiesResource extends VOSpaceResource {
 
-    public PropertiesResource() throws VOSpaceException {
+	private static Logger log = Logger.getLogger(PropertiesResource.class);
+
+	public PropertiesResource() throws VOSpaceException {
         super();
     }
 
@@ -29,6 +32,7 @@ public class PropertiesResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public String getProperties() throws VOSpaceException {
+    log.info("getProperties");
 	try {
 	    MetaStore store = manager.getMetaStore();
 	    StringBuffer sbuf = new StringBuffer("<properties xmlns=\"http://www.ivoa.net/xml/VOSpace/v2.0\"><accepts>");

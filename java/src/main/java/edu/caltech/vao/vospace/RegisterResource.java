@@ -15,6 +15,7 @@ import java.net.URI;
 
 import java.security.MessageDigest;
 import java.security.DigestInputStream;
+import org.apache.log4j.Logger;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
@@ -33,6 +34,8 @@ import edu.caltech.vao.vospace.xml.*;
 @Path("register")
 public class RegisterResource extends VOSpaceResource {
 
+    private static Logger log = Logger.getLogger(RegisterResource.class);
+
     private StorageManager backend;
 
     public RegisterResource() throws VOSpaceException {
@@ -49,6 +52,7 @@ public class RegisterResource extends VOSpaceResource {
     @Path("{nodeid: .*}")
     @PUT
     public Response putNode(@PathParam("nodeid") String nodeid, Node node, @QueryParam("location") String location, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+    log.info("putNode[nodeid:" + nodeid + "]");
 	try {
 	    manager.validateToken(authToken);
 	    String user = authToken.split("\\.")[0];

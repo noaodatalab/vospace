@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import java.net.URI;
+import org.apache.log4j.Logger;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
@@ -20,6 +21,8 @@ import edu.caltech.vao.vospace.meta.MetaStoreFactory;
 
 @Path("results")
 public class ResultsResource extends VOSpaceResource {
+
+    private static Logger log = Logger.getLogger(ResultsResource.class);
 
     public ResultsResource() throws VOSpaceException {
 	super();
@@ -35,6 +38,7 @@ public class ResultsResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public String getDetails(@PathParam("jobid") String jobid, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+    log.info("getDetails[jobID=" + jobid + "]");
 	manager.validateToken(authToken);
 	try {
 	    MetaStore store = MetaStoreFactory.getInstance().getMetaStore();

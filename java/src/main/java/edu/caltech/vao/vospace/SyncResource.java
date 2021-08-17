@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.Scanner;
+import org.apache.log4j.Logger;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -45,7 +46,9 @@ import uws.service.file.LocalUWSFileManager;
 @Path("sync")
 public class SyncResource extends VOSpaceResource {
 
-    private UWSService uws = null;
+	private static Logger log = Logger.getLogger(SyncResource.class);
+
+	private UWSService uws = null;
 
     public SyncResource() throws VOSpaceException {
 	super();
@@ -108,6 +111,9 @@ public class SyncResource extends VOSpaceResource {
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void getTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+
+	log.info("getTransfer[jobID=" + id + "]");
+
 	try {
 	    manager.validateToken(authToken);
 	} catch (VOSpaceException e) {
@@ -147,6 +153,10 @@ public class SyncResource extends VOSpaceResource {
 	runReq.setParameters(params);
 	executeRequest(runReq, resp);
 	*/
+
+	log.info("postTransfer1");
+
+
 	try {
 	    manager.validateToken(authToken);
 	} catch (VOSpaceException e) {
@@ -161,6 +171,7 @@ public class SyncResource extends VOSpaceResource {
 	    dispatch.forward(newReq, runResp);
 	    String location = runResp.getHeader("Location");
 	    String jobId = location.substring(location.lastIndexOf("/") + 1);
+		log.info("postTransfer1[jobID=" + jobId + "]");
 	    //	    resp.sendRedirect("http://localhost:8080/vospace-2.0/vospace/transfers/" + jobId + "/results/transferDetails");
 	    //	    resp.sendRedirect("http://dldev1.tuc.noao.edu:8080/vospace-2.0/vospace/transfers/" + jobId + "/results/transferDetails");
 	    resp.sendRedirect(manager.BASE_URL + "transfers/" + jobId + "/results/transferDetails");
@@ -180,6 +191,7 @@ public class SyncResource extends VOSpaceResource {
     @POST
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+	log.info("postTransfer2[jobID=" + id + "]");
 	try {
 	    manager.validateToken(authToken);
 	} catch (VOSpaceException e) {
