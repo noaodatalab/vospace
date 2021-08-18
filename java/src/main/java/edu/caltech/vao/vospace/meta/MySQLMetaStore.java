@@ -194,6 +194,25 @@ public class MySQLMetaStore implements MetaStore {
     }
 
     /*
+     * Get the owner from the identifier ID string
+     * @param identifier The Id of the node
+     * @return the owner of the node
+     */
+    protected String getOwnerFromId(String identifier) throws VOSpaceException {
+        int rootNodeLength = VOSpaceManager.getInstance().getRootNodeLength();
+        String idPath = identifier.substring(rootNodeLength);
+        String[] idTokens = idPath.split("\\/");
+        if (idTokens.length > 0) {
+            String owner = idTokens[1];
+            return owner;
+        } else {
+            throw new VOSpaceException(VOSpaceException.VOFault.InvalidURI,
+                    "Can not find owner in identifier after removing root node." +
+                            "[" + idPath + "]");
+        }
+    }
+
+    /*
      * Check whether the specified property is known to the service
      * @param identifier The ID of the property
      * @return whether the property is known
@@ -447,9 +466,12 @@ public class MySQLMetaStore implements MetaStore {
     /*
      * Get the direct children of the specified container node
      */
-    public String[] getChildren(String identifier) throws SQLException {
-        String query = "select identifier from nodes where depth = " + (getIdDepth(identifier) + 1)
+    public String[] getChildren(String identifier) throws SQLException, VOSpaceException {
+        String query = "select identifier from nodes where " +
+                " owner = '" + getOwnerFromId(identifier) + "'" +
+                " and depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
+
         return getAsStringArray(query);
         /*
         ArrayList<String> children = new ArrayList<String>();
@@ -471,8 +493,11 @@ public class MySQLMetaStore implements MetaStore {
         /* String query = "select node from nodes where identifier like '" + fixId(identifier) + "/%' and identifier not like '" + fixId(identifier) + "/%/%'";
         String[] children = getAsStringArray(query);
         return children; */
-        String query = "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
+        String query = "select identifier, type from nodes where " +
+                " owner = '" + getOwnerFromId(identifier) + "'" +
+                " and depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
+
         ResultSet result = null;
         ArrayList<String> children = new ArrayList<String>();
         try {
@@ -492,9 +517,13 @@ public class MySQLMetaStore implements MetaStore {
     /*
      * Get all the children of the specified container node
      */
-    public String[] getAllChildren(String identifier) throws SQLException {
+    public String[] getAllChildren(String identifier) throws SQLException, VOSpaceException {
         ArrayList<String> children = new ArrayList<String>();
-        String query = "select identifier from nodes where identifier like '" + escapeId(identifier) + "/%'";
+        // Note: Don't filter by depth in the where clause as 
+        // we want all nodes and not only the immediate ones.
+        String query = "select identifier from nodes where " +
+                " owner = '" + getOwnerFromId(identifier) + "'" +
+                " and identifier like '" + escapeId(identifier) + "/%'";
         for (String child : getAsStringArray(query)) {
             if (!child.equals(fixId(identifier))) {
                 children.add(child);
@@ -510,12 +539,16 @@ public class MySQLMetaStore implements MetaStore {
      * Returns a list of links which pointed to the deleted identifier and were
      * also removed in the process of removing the identifier.
      */
-    public String[] removeData(String identifier, boolean container) throws SQLException {
+    public String[] removeData(String identifier, boolean container) throws SQLException, VOSpaceException {
         String query = "";
         ArrayList<String> removedLinks = new ArrayList<String>();
         if (container) {
             String escaped = escapeId(identifier);
-            query = "delete from nodes where identifier like '" + escaped + "/%'";
+            // Note: Don't filter by depth in the where clause as 
+            // we want all nodes and not only the immediate ones.
+            query = "delete from nodes where " +
+                    " owner = '" + getOwnerFromId(identifier) + "'" +
+                    " and identifier like '" + escaped + "/%'";
             update(query);
             query = "delete from properties where identifier like '" + escaped + "/%'";
             update(query);

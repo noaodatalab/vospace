@@ -78,7 +78,7 @@ public interface MetaStore {
     /*
      * Remove the metadata for the specified identifier
      */
-    public String[] removeData(String identifier, boolean container) throws SQLException;
+    public String[] removeData(String identifier, boolean container) throws SQLException, VOSpaceException;
 
     /*
      * Update the metadata for the specified identifier
@@ -241,7 +241,7 @@ public interface MetaStore {
     /*
      * Get the direct children of the specified container node
      */
-    public String[] getChildren(String identifier) throws SQLException;
+    public String[] getChildren(String identifier) throws SQLException, VOSpaceException;
 
     /*
      * Get the direct children nodes of the specified container node
@@ -253,7 +253,7 @@ public interface MetaStore {
     /*
      * Get all the children of the specified container node
      */
-    public String[] getAllChildren(String identifier) throws SQLException;
+    public String[] getAllChildren(String identifier) throws SQLException, VOSpaceException;
 
     /*
      * Store a result associated with a Job

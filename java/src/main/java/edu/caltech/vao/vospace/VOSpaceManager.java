@@ -1,14 +1,9 @@
 
 package edu.caltech.vao.vospace;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.PrintWriter;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -53,6 +48,7 @@ public class VOSpaceManager {
     private final static boolean STATUS_FREE = false;
     protected String BASE_URL = "http://localhost:8080/vospace";
     protected String ROOT_NODE = "vos://";
+    protected int ROOT_NODE_LENGTH = 6;   //precalculate the length of the ROOT NODE string
     protected final static int PROPERTIES_SPACE_ACCEPTS = 1;
     protected final static int PROPERTIES_SPACE_PROVIDES = 2;
     protected final static int PROPERTIES_SPACE_CONTAINS = 4;
@@ -111,6 +107,8 @@ public class VOSpaceManager {
             props.load(new FileInputStream(propFile));
             // Set space properties
             ROOT_NODE = props.containsKey("space.rootnode") ? props.getProperty("space.rootnode") : ROOT;
+            //precalculate the length of the ROOT NODE string
+            ROOT_NODE_LENGTH = ROOT_NODE.length();
             BASEURI = props.containsKey("space.baseuri") ? props.getProperty("space.baseuri") : BASE;
             STAGING_LOCATION = props.containsKey("space.staging_area") ? props.getProperty("space.staging_area") : BASE;
             structure = Boolean.parseBoolean(props.getProperty("space.supports.structure"));
@@ -960,6 +958,14 @@ public class VOSpaceManager {
         } catch (SQLException e) {
             throw new VOSpaceException(e);
         }
+    }
+
+    /**
+     * returns this VOSpace ROOT Node string length.
+     * @return int
+     */
+    public int getRootNodeLength() {
+        return ROOT_NODE_LENGTH;
     }
 
 }
