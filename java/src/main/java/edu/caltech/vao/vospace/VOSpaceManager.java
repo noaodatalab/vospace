@@ -398,7 +398,10 @@ public class VOSpaceManager {
                 }
                 // Set properties
                 node = setLength(node);
-                if (!(node instanceof ContainerNode) && !(node instanceof LinkNode)) node = setMD5(node);
+                // We are ignoring setting the MD5 attribute for now as
+                // it is not used by the storeClient and represents an
+                // important performance hit for bigger files.
+                // if (!(node instanceof ContainerNode) && !(node instanceof LinkNode)) node = setMD5(node);
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
