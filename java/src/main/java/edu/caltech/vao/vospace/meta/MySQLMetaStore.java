@@ -6,16 +6,24 @@
 
 package edu.caltech.vao.vospace.meta;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import ca.nrc.cadc.vos.NodeProperty;
+import ca.nrc.cadc.vos.VOSURI;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.pool.ObjectPool;
@@ -397,6 +405,61 @@ public class MySQLMetaStore implements MetaStore {
         return nodes.toArray(new String[0]);
     }
 
+    /**
+    *  getDataJDOM2 is the JDOM2 version of the above getData, with the caveat
+     *  that returns a list of object Nodes as opposed to XML strings.
+     *  We found that doing the Object to XML serialization at the very end
+     *  is more efficient.
+    */
+    public ca.nrc.cadc.vos.Node[] getDataJDOM2(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException {
+        String query = null, whereQuery = null;
+        int count = 0, offset = 0;
+        // Get count
+        for (int i = 0; i < identifiers.length; i++) {
+            if (i == 0) whereQuery = "where";
+            if (identifiers[i].contains("*")) {
+                whereQuery += " identifier like '" + escapeId(identifiers[i]).replace("*", "%") + "'";
+            } else {
+                whereQuery += " identifier = '" + fixId(identifiers[i]) + "'";
+            }
+            if (i != identifiers.length - 1) whereQuery += " or ";
+        }
+        if (token != null) {
+            String tokenQuery = "select offset, count, updateDate, whereQuery from listings where token = '" + token + "'";
+            ResultSet tokenResult = null;
+            try {
+                tokenResult = execute(tokenQuery);
+                if (tokenResult.next()) {
+                    offset = tokenResult.getInt(1);
+                    count = tokenResult.getInt(2);
+                    whereQuery = tokenResult.getString(4);
+                } else {
+                    throw new SQLException("Invalid token");
+                }
+            } finally {
+                closeResult(tokenResult);
+            }
+        }
+        // Construct listing query
+        query = "select identifier, type from nodes ";
+        query += whereQuery + " order by type ";
+        if (limit > 0) query += " limit " + limit;
+        if (offset > 0) query += " offset " + offset;
+        ResultSet result = null;
+        ArrayList<ca.nrc.cadc.vos.Node> nodes = new ArrayList<ca.nrc.cadc.vos.Node>();
+        try {
+            result = execute(query);
+            while (result.next()) {
+                String nodeId = result.getString(1);
+                int nodeType = result.getInt(2);
+                nodes.add(createNodeJDOM2(nodeId, nodeType));
+            }
+        } finally {
+            closeResult(result);
+        }
+        return nodes.toArray(new ca.nrc.cadc.vos.Node[0]);
+    }
+
     /*
      * Get the target of a link node
      */
@@ -452,6 +515,71 @@ public class MySQLMetaStore implements MetaStore {
     }
 
     /*
+     * Create the specified node object by combining the other data stored in the database
+     * This node object can later be serialized to XML in one swap.
+     */
+    private ca.nrc.cadc.vos.Node createNodeJDOM2(String identifier, int type) throws SQLException, VOSpaceException {
+        // Create a new Node object of the proper type
+        String fixedId = fixId(identifier);
+        //Node node = NodeFactory.getInstance().getNodeByType(NodeType.getUriById(type));
+        ca.nrc.cadc.vos.Node node = null;
+        try {
+            node = NodeFactory.getInstance().getJDOM2NodeByType(type, new VOSURI(fixedId));
+            // Get the Properties for the node, and set them in the Node object
+            String[] propNames = Props.allProps();
+            // First build a query of all column names to get all column values
+            String query = "select " + StringUtils.join(propNames, ",") + " from properties where identifier = '" + fixedId + "'";
+            // Execute the query and set the property values in the Node.
+            ResultSet result = null;
+            List<NodeProperty> properties = new ArrayList<>();
+            try {
+                result = execute(query);
+                if (result.next()) {
+                    String value = null;
+                    for (String name : propNames) {
+                        value = result.getString(name);
+                        if (value != null) {
+                            NodeProperty np = new NodeProperty("ivo://ivoa.net/vospace/core#" + name, value);
+                            properties.add(np);
+                        }
+                    }
+                }
+            } finally {
+                closeResult(result);
+            }
+            query = "select property, value from addl_props where identifier = '" + fixedId + "'";
+            // Execute the query and set the property values in the Node.
+            try {
+                result = execute(query);
+                while (result.next()) {
+                    String property = result.getString(1);
+                    String value = result.getString(2);
+                    if (value != null) {
+                        NodeProperty np = new NodeProperty("ivo://ivoa.net/vospace/core#" + property, value);
+                        properties.add(np);
+                    }
+                }
+            } finally {
+                closeResult(result);
+            }
+            node.setProperties(properties);
+            if (node instanceof ca.nrc.cadc.vos.LinkNode) {
+                ((ca.nrc.cadc.vos.LinkNode) node).setTarget(new URI(getTarget(fixedId)));
+            }
+            // Set the Views and Capabilities; unfortunately requires the VOSpaceManager
+            NodeType nodeType = MetaStore.getNodeType(type);
+            if (viewsAndCaps.contains(nodeType)) {
+                VOSpaceManager.getInstance().addViewsAndCapabilitiesJDOM2(node, nodeType);
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            throw new VOSpaceException(VOSpaceException.VOFault.InvalidURI, e.getLocalizedMessage());
+        }
+        // Return the Node
+        return node;
+    }
+
+    /*
      * Get the specified node
      */
     public String getNode(String identifier) throws SQLException, VOSpaceException {
@@ -490,29 +618,121 @@ public class MySQLMetaStore implements MetaStore {
      * Get the direct children nodes of the specified container node
      */
     public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
-        /* String query = "select node from nodes where identifier like '" + fixId(identifier) + "/%' and identifier not like '" + fixId(identifier) + "/%/%'";
-        String[] children = getAsStringArray(query);
-        return children; */
-        String query = "select identifier, type from nodes where " +
-                " owner = '" + getOwnerFromId(identifier) + "'" +
-                " and depth = " + (getIdDepth(identifier) + 1)
-                + " and identifier like '" + escapeId(identifier) + "/%'";
 
-        ResultSet result = null;
-        ArrayList<String> children = new ArrayList<String>();
+        ca.nrc.cadc.vos.Node[] nodeArray = getChildrenNodesJDOM2(identifier);
+        edu.noirlab.datalab.vos.VTDXMLNodeWriter instance = new edu.noirlab.datalab.vos.VTDXMLNodeWriter();
+        ArrayList<String> nodeXMLArray = new ArrayList<String>();
         try {
-            result = execute(query);
+            for (ca.nrc.cadc.vos.Node elem : nodeArray) {
+                StringWriter sw = new StringWriter();
+                instance.write(elem, sw, true);
+                nodeXMLArray.add(sw.toString());
+                sw.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println(e.getLocalizedMessage());
+            throw new VOSpaceException(e);
+        }
+
+        return nodeXMLArray.toArray(new String[0]);
+    }
+
+    List<NodeType> viewsAndCaps = Arrays.asList(
+            NodeType.DATA_NODE,
+            NodeType.CONTAINER_NODE,
+            NodeType.STRUCTURED_DATA_NODE,
+            NodeType.UNSTRUCTURED_DATA_NODE);
+
+    /*
+     * Get the direct children nodes of the specified container node.
+     * This is the alternative version to the original getChildrenNodes.
+     * This new version, however, uses ca.nrd.cadc.vos.Node classes to
+     * represent the Node object and it uses a subquery to join the Nodes,
+     * properties and addl_properties table in one single SQL query.
+     */
+    public ca.nrc.cadc.vos.Node[] getChildrenNodesJDOM2(String identifier) throws SQLException, VOSpaceException {
+        String nodesQuery= "select identifier, type from nodes where " +
+                " owner = '" + getOwnerFromId(identifier) + "'" +
+                " and depth = " + (getIdDepth(identifier) + 1) +
+                " and identifier like '" + escapeId(identifier) + "/%'";
+
+        String addlQuery = "select a.property, a.value, a.identifier from addl_props as a";
+        String[] propNames = Props.allProps();
+        String queryProp = String.format("select t.identifier, t.type," +
+                StringUtils.join(Arrays.stream(propNames).map(s->"p." +s).
+                        collect(Collectors.toList()), ",") +
+                ", addl.property, addl.value from properties as p, (%s) as t " +
+                " LEFT JOIN (%s, (%s) as t where a.identifier = t.identifier) as addl " +
+                " on addl.identifier = t.identifier " +
+                " where p.identifier = t.identifier", nodesQuery, addlQuery, nodesQuery);
+
+        //format:
+        // type,    node_uri  , busy,       groupread,
+        // btime,   publicread, length,     ctime,
+        // ispublic,mtime,      groupwrite, date
+        ResultSet result = null;
+
+        ArrayList<ca.nrc.cadc.vos.Node> nodeArray = new ArrayList<ca.nrc.cadc.vos.Node>();
+        try {
+            result = execute(queryProp);
+            String[] formatArgs = new String[4];
             while (result.next()) {
                 String childId = result.getString(1);
-                int childType = result.getInt(2);
-                children.add(createNode(childId, childType));
+                int childTypeId = result.getInt(2);
+                String fixedChildId = fixId(childId);
+                formatArgs[0] = fixedChildId;
+                ca.nrc.cadc.vos.Node nodeJDOM2 = NodeFactory.getInstance().getJDOM2NodeByType(childTypeId, new VOSURI(childId));
+                String value = null;
+
+                List<NodeProperty> properties = new ArrayList<>();
+                for (String propertyName: propNames) {
+                    value = result.getString("p." + propertyName);
+                    //delete below line
+                    if (value != null) {
+                        NodeProperty np = new NodeProperty("ivo://ivoa.net/vospace/core#" + propertyName, value);
+                        properties.add(np);
+                    }
+                }
+
+                //additional properties
+                String propertyName = result.getString("addl.property");
+                value = result.getString("addl.value");
+                if (propertyName !=null && value != null) {
+                    properties.add(new NodeProperty("ivo://ivoa.net/vospace/core#"+propertyName, value));
+                }
+                nodeJDOM2.setProperties(properties);
+
+                NodeType childType = MetaStore.getNodeType(childTypeId);
+                if (NodeType.LINK_NODE == MetaStore.getNodeType(childTypeId)) {
+                    String target = getTarget(fixedChildId);
+                    ((ca.nrc.cadc.vos.LinkNode) nodeJDOM2).setTarget(new URI(target));
+                }
+
+                // Set the Views and Capabilities; unfortunately requires the VOSpaceManager
+                if ( viewsAndCaps.contains(childType)) {
+                    VOSpaceManager.getInstance().addViewsAndCapabilitiesJDOM2(nodeJDOM2, childType);
+                }
+
+                nodeArray.add(nodeJDOM2);
             }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            String msg = e.getLocalizedMessage();
+            System.out.println(msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+            String msg = e.getLocalizedMessage();
+            System.out.println(msg);
         } finally {
             closeResult(result);
         }
-        return children.toArray(new String[0]);
-    }
 
+        return nodeArray.toArray(new ca.nrc.cadc.vos.Node[0]);
+    }
 
     /*
      * Get all the children of the specified container node
@@ -1122,6 +1342,7 @@ public class MySQLMetaStore implements MetaStore {
                 if (success) result = statement.getResultSet();
                 retries = 0;
                 long dt = System.currentTimeMillis() - t0;
+                // We want to see what queries take more than .5 seconds
                 if (logger.isDebugEnabled() || dt >= 500) {
                     String logMsg = query + "t:[" +dt + "ms ] r:[" + retries + "]";
                     if (dt >= 500) {
@@ -1177,6 +1398,7 @@ public class MySQLMetaStore implements MetaStore {
                 statement.executeUpdate(query);
                 retries = 0;
                 long dt = System.currentTimeMillis() - t0;
+                // We want to see what queries take more than .5 seconds
                 if (logger.isDebugEnabled() || dt >= 500) {
                     String logMsg = query + " t:[" + dt + "ms ] r:[" + retries + "]";
 

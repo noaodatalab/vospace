@@ -1,9 +1,6 @@
 
 package edu.caltech.vao.vospace;
 
-import java.io.InputStream;
-import java.io.PrintWriter;
-
 import java.net.URI;
 
 import javax.ws.rs.GET;
@@ -16,20 +13,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
-import javax.xml.bind.JAXBElement;
-
-import com.ximpleware.*;
-import com.ximpleware.xpath.*;
 
 import edu.caltech.vao.vospace.xml.*;
 import edu.caltech.vao.vospace.VOSpaceException.VOFault;
@@ -54,9 +39,9 @@ public class NodeResource extends VOSpaceResource {
      */
     @GET
     @Produces(MediaType.APPLICATION_XML)
-    public Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
+    public edu.noirlab.datalab.vos.Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
         log.info("getRootNode[nodeId:" + manager.ROOT_NODE + ", detail=" + detail + ", limit=" + limit + "]");
-        Node node = manager.getNode(manager.ROOT_NODE, detail, limit);
+        edu.noirlab.datalab.vos.Node node = manager.getNodeJDOM2(manager.ROOT_NODE, detail, limit);
         return node;
     }
 
@@ -69,11 +54,11 @@ public class NodeResource extends VOSpaceResource {
     @Path("{nodeid: .*}")
     @GET
     @Produces(MediaType.APPLICATION_XML)
-    public Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
+    public edu.noirlab.datalab.vos.Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
         log.info("getNode[nodeId:" + nodeid + ", detail=" + detail + ", limit=" + limit + "]");
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, true);
-        Node node = manager.getNode(id, detail, limit);
+        edu.noirlab.datalab.vos.Node node = manager.getNodeJDOM2(id, detail, limit);
         return node;
     }
 
