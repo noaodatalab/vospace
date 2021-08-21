@@ -926,7 +926,10 @@ public class MySQLMetaStore implements MetaStore {
      * Store the details of the specified trafnsfer
      */
     public void storeTransfer(String identifier, String endpoint) throws SQLException {
-        String query = "insert into transfers (jobid, endpoint, created) values ('" + fixId(identifier) + "', '" + endpoint + "', cast(now() as datetime))";
+        String query = "insert into transfers (jobid, rendpoint, created) " +
+                "values ('" + fixId(identifier) + "', " +
+                "'" + new StringBuilder(endpoint).reverse() + "', " +
+                " cast(now() as datetime))";
         update(query);
     }
 
@@ -934,7 +937,11 @@ public class MySQLMetaStore implements MetaStore {
      * Retrieve the job associated with the specified endpoint
      */
     public String getTransfer(String endpoint) throws SQLException {
-        String query = "select details from results j, transfers t where t.jobid = j.identifier and t.endpoint like '%" + escapeStr(endpoint) + "'";
+        //String query = "select details from results j, transfers t where t.jobid = j.identifier and t.endpoint like '%" + escapeStr(endpoint) + "'";
+        String query = "select details from results j, transfers t where" +
+                " t.jobid = j.identifier " +
+                "and t.rendpoint " +
+                "like '" + new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         String job = getAsString(query);
         return job;
     }
@@ -954,7 +961,9 @@ public class MySQLMetaStore implements MetaStore {
      */
     public boolean isCompletedByEndpoint(String endpoint) throws SQLException {
         boolean completed = false;
-        String query = "select completed from transfers where endpoint like '%" + escapeStr(endpoint) + "'";
+        //String query = "select completed from transfers where endpoint like '%" + escapeStr(endpoint) + "'";
+        String query = "select completed from transfers where rendpoint like '" +
+                new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         if (getAsDate(query) != null) completed = true;
         return completed;
     }
@@ -983,6 +992,8 @@ public class MySQLMetaStore implements MetaStore {
     public String resolveLocation(String endpoint) throws SQLException {
         String location = null;
 //      String query = "select n.location from nodes n, transfers t where n.identifier = t.identifier and locate('" + endpoint + "', t.endpoint) > 0 and timestampdiff(minute, t.created, now()) < 60 and completed is null";
+        // ISS - NOTE: I didn't change the endpoint to rev_endpoint in this SQL
+        // as it looks like this functionality is not used by anyone.
         String query = "select location from transfers where locate('" + endpoint + "', endpoint) > 0 and timestampdiff(minute, created, now()) < 60 and completed is null";
         location = getAsString(query);
         return location;
@@ -993,7 +1004,8 @@ public class MySQLMetaStore implements MetaStore {
      */
     public long getCreated(String endpoint) throws SQLException {
         long created = 0;
-        String query = "select created from transfers where locate('" + endpoint + "', endpoint) > 0";
+        String query = "select created from transfers where rendpoint " +
+                "like '" + new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         created = getAsTime(query);
         return created;
     }
@@ -1012,7 +1024,9 @@ public class MySQLMetaStore implements MetaStore {
      * Mark the specified transfer as complete
      */
     public void completeTransfer(String endpoint) throws SQLException {
-        String query = "update transfers set completed = cast(now() as datetime) where endpoint like '%" +  escapeStr(endpoint) + "'";
+        String query = "update transfers set completed = cast(now() as datetime) " +
+                "where rendpoint like '" +
+                new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         update(query);
     }
 
@@ -1045,7 +1059,8 @@ public class MySQLMetaStore implements MetaStore {
      */
     public String resolveTransfer(String endpoint) throws SQLException {
         String identifier = null;
-        String query = "select identifier from transfers where locate('" + endpoint + "', endpoint) > 0";
+        String query = "select identifier from transfers where rendpoint " +
+                "like '" + new StringBuilder(endpoint).reverse() + "%'";
         identifier = getAsString(query);
         return identifier;
     }
@@ -1625,7 +1640,9 @@ public class MySQLMetaStore implements MetaStore {
      */
     public boolean isTransferByEndpoint(String endpoint) throws SQLException {
         boolean transfer = false;
-        String query = "select identifier from transfers where endpoint like '%" + escapeStr(endpoint) + "'";
+        //String query = "select identifier from transfers where endpoint like '%" + escapeStr(endpoint) + "'";
+        String query = "select identifier from transfers where rendpoint like '" +
+                new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         if (getAsString(query) != null) transfer = true;
         return transfer;
     }
