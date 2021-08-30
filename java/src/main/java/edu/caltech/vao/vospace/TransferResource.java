@@ -34,6 +34,7 @@ import edu.caltech.vao.vospace.meta.MetaStore;
 import edu.caltech.vao.vospace.meta.MetaStoreFactory;
 
 import edu.caltech.vao.vospace.resource.*;
+import org.apache.log4j.Logger;
 import uws.UWSException;
 import uws.job.JobList;
 import uws.job.UWSJob;
@@ -49,6 +50,8 @@ import uws.service.file.LocalUWSFileManager;
 
 @Path("transfers")
 public class TransferResource extends VOSpaceResource {
+
+    private static Logger log = Logger.getLogger(NodeResource.class);
 
     private UWSService uws = null;
 
@@ -143,6 +146,7 @@ public class TransferResource extends VOSpaceResource {
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void getTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+    log.info("getTransfer[jobID:" + id + "]");
 	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
@@ -157,6 +161,7 @@ public class TransferResource extends VOSpaceResource {
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void getResults(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+    log.info("getResults[jobID:" + id + "]");
 	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
@@ -172,6 +177,7 @@ public class TransferResource extends VOSpaceResource {
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public String getResultsDetails(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException, IOException {
+    log.info("getResultsDetails[jobID:" + id + "]");
 	validateToken(authToken, resp);
 	String details = null;
         try {
@@ -204,6 +210,7 @@ public class TransferResource extends VOSpaceResource {
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+    log.info("postTransfer");
 	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
@@ -220,6 +227,7 @@ public class TransferResource extends VOSpaceResource {
     @Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML, MediaType.APPLICATION_FORM_URLENCODED})
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void postTransfer(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+    log.info("postTransfer[jobId:" + id + "]");
 	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
@@ -235,6 +243,7 @@ public class TransferResource extends VOSpaceResource {
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void getPhase(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+    log.info("getPhase[jobId:" + id + "]");
 	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }
@@ -250,6 +259,7 @@ public class TransferResource extends VOSpaceResource {
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public void getError(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws IOException {
+    log.info("getError[jobId:" + id + "]");
 	validateToken(authToken, resp);
 	executeRequest(req, resp);
     }

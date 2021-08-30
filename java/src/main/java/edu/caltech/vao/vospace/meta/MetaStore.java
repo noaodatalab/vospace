@@ -73,7 +73,13 @@ public interface MetaStore {
      */
     public String[] getData(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException;
 
-    public ca.nrc.cadc.vos.Node[] getData2(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException, URISyntaxException;
+    // This should provide a similar output (but not compatible with our current VTD node instantiation) to the
+    // above getData, a list of Node XMLs as a list of Strings.
+    // There is no usage to that at the moment as the getData method is called from places such as:
+    // moveNode, copyNode, etc
+    //public String[] getDataJDOM2S(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException;
+
+    public ca.nrc.cadc.vos.Node[] getDataJDOM2(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException;
 
     /*
      * Get the target of a link node
@@ -83,7 +89,7 @@ public interface MetaStore {
     /*
      * Remove the metadata for the specified identifier
      */
-    public String[] removeData(String identifier, boolean container) throws SQLException;
+    public String[] removeData(String identifier, boolean container) throws SQLException, VOSpaceException;
 
     /*
      * Update the metadata for the specified identifier
@@ -246,19 +252,21 @@ public interface MetaStore {
     /*
      * Get the direct children of the specified container node
      */
-    public String[] getChildren(String identifier) throws SQLException;
+    public String[] getChildren(String identifier) throws SQLException, VOSpaceException;
 
     /*
      * Get the direct children nodes of the specified container node
      */
     public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException;
 
+    public ca.nrc.cadc.vos.Node[] getChildrenNodesJDOM2(String identifier) throws SQLException, VOSpaceException;
+
 
 
     /*
      * Get all the children of the specified container node
      */
-    public String[] getAllChildren(String identifier) throws SQLException;
+    public String[] getAllChildren(String identifier) throws SQLException, VOSpaceException;
 
     /*
      * Store a result associated with a Job

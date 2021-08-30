@@ -17,6 +17,7 @@ services:
     environment:
       - JPDA_ADDRESS="${TOMCAT_JPDA_HOST_PORT}"
       - JPDA_TRANSPORT="dt_socket"
+      - CATALINA_OPTS=-Xmx1g -Xms1g -XX:MaxPermSize=5124m
         # if you want to supend execution of tomcat before anything is loaded
         #- JPDA_SUSPEND="y"
     build:
@@ -31,6 +32,11 @@ services:
         # mount the development build classes in the already mounted (above) webapp directory structure.
         # Now the build classes are available to tomcat
       - ../java/build/classes/edu:/usr/local/tomcat/webapps/vospace/WEB-INF/classes/edu
+        #- ../java/build/classes/ca:/usr/local/tomcat/webapps/vospace/WEB-INF/classes/ca
+      - ../java/build/classes/org:/usr/local/tomcat/webapps/vospace/WEB-INF/classes/org
+      - ../java/src/main/lib:/usr/local/tomcat/webapps/vospace/WEB-INF/lib
+      - ./vospace/net:/net
+      - ./vospace/users:/users
         # The below mount approach needs setting the shared.loaded property in tomcat catalina.properties file
         # See Dockerfile for not info
         #- /Users/igor.suarez-sola/workbench/NOIRLab/DataLab/vospace/java/build:/usr/local/tomcat/dev_build

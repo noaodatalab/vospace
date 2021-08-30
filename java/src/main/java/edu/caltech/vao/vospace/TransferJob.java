@@ -518,6 +518,7 @@ public class TransferJob extends JobThread {
             // Store update node
             store.updateData(target, direction, newLocation, node.toString());
             // Check if target is a container
+
             if (node instanceof ContainerNode) {
             // Move directory
                 // Update metadata
@@ -527,8 +528,6 @@ public class TransferJob extends JobThread {
                     childNode.setUri(child.replace(target, direction));
                     // Change the timestamps in the properties.
                     childNode.setProperty(Props.CTIME_URI, date);
-                    // Get new location
-                    newLocation = getLocation(childNode.getUri());
                     // Store moved node
                     store.updateData(child, childNode.getUri(), getLocation(childNode.getUri()), childNode.toString());
                 }
@@ -574,13 +573,8 @@ public class TransferJob extends JobThread {
             // Store new node
             store.storeData(direction, getType(node.getType()), getUser(), newLocation, node.toString());
             // Check if target is a container
+
             if (node instanceof ContainerNode) {
-                // Move directory
-                try {
-                    backend.copyBytes(store.getLocation(target), newLocation);
-                } catch (Exception e) {
-                    throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
-                }
                 // Update metadata
                 for (String child: store.getAllChildren(target)) {
                     // Update uri
@@ -589,8 +583,6 @@ public class TransferJob extends JobThread {
                     // Change the timestamps in the properties.
                     childNode.setProperty(Props.BTIME_URI, date);
                     childNode.setProperty(Props.CTIME_URI, date);
-                    // Get new location
-                    newLocation = getLocation(childNode.getUri());
                     // Store copy node
                     store.storeData(childNode.getUri(), getType(childNode.getType()), getUser(), getLocation(childNode.getUri()), childNode.toString());
                 }

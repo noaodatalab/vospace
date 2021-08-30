@@ -2,6 +2,7 @@
 package edu.caltech.vao.vospace;
 
 import edu.caltech.vao.vospace.storage.StorageManager;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,6 +30,7 @@ import javax.ws.rs.core.Response.ResponseBuilder;
 @Path("data")
 public class DataResource extends VOSpaceResource {
 
+    private static Logger log = Logger.getLogger(NodeResource.class);
 //    private final String ROOTNODE = "vos://nvo.caltech!vospace";
 //    private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
     private StorageManager backend;
@@ -48,6 +50,7 @@ public class DataResource extends VOSpaceResource {
     @GET
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response getData(@PathParam("fileid") String fileid) throws VOSpaceException {
+        log.info("getData[fileID:" + fileid + "]");
         String location = null;
         try {
             location = manager.resolveLocation(fileid, true);
@@ -98,6 +101,7 @@ public class DataResource extends VOSpaceResource {
     @PUT
 //    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
     public void putNode(@PathParam("fileid") String fileid, File file) throws VOSpaceException {
+        log.info("putNode[fileID:" + fileid + "]");
         FileInputStream in = null;
         FileOutputStream out = null;
         String location = null;

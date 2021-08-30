@@ -4,7 +4,6 @@ package edu.caltech.vao.vospace;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
@@ -16,7 +15,6 @@ import java.util.regex.Matcher;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.events.XMLEvent;
 
-import ca.nrc.cadc.vos.VOSURI;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
@@ -45,6 +43,7 @@ public class VOSpaceManager {
     private final static boolean STATUS_FREE = false;
     protected String BASE_URL = "http://localhost:8080/vospace";
     protected String ROOT_NODE = "vos://";
+    protected int ROOT_NODE_LENGTH = 6;
     protected final static int PROPERTIES_SPACE_ACCEPTS = 1;
     protected final static int PROPERTIES_SPACE_PROVIDES = 2;
     protected final static int PROPERTIES_SPACE_CONTAINS = 4;
@@ -103,6 +102,7 @@ public class VOSpaceManager {
             props.load(new FileInputStream(propFile));
             // Set space properties
             ROOT_NODE = props.containsKey("space.rootnode") ? props.getProperty("space.rootnode") : ROOT;
+            ROOT_NODE_LENGTH = ROOT_NODE.length();
             BASEURI = props.containsKey("space.baseuri") ? props.getProperty("space.baseuri") : BASE;
             STAGING_LOCATION = props.containsKey("space.staging_area") ? props.getProperty("space.staging_area") : BASE;
             structure = Boolean.parseBoolean(props.getProperty("space.supports.structure"));
@@ -479,10 +479,6 @@ public class VOSpaceManager {
         }
     }
 
-    public Node getNode(String identifier, String detail, int limit) throws VOSpaceException {
-        return getNode(identifier, detail, limit, "getChildrenNodes");
-    }
-
     /**
      * Retrieve the specified node
      * @param identifier The identifier of the node to retrieve
@@ -490,7 +486,7 @@ public class VOSpaceManager {
      * @param limit The maximum number of results in the response
      * @return the retrieved node
      */
-     public Node getNode(String identifier, String detail, int limit,  String getChildrenNodesMethodName) throws VOSpaceException {
+     public Node getNode(String identifier, String detail, int limit) throws VOSpaceException {
         Node node = null;
         // Is identifier syntactically valid?
         if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
@@ -521,24 +517,7 @@ public class VOSpaceManager {
                     if (node instanceof ContainerNode) {
                         ContainerNode container = (ContainerNode) node;
                         // Get children and check length property
-                        String[] childNodes = null;
-                        try {
-                            //Method [] allMethods = ((MySQLMetaStore) store).getClass().getMethods();
-                            //for (Method m: allMethods) {
-                            //    System.err.println("MySQLMetaStore methods:[" + m.getName() + "]");
-                            //}
-
-                            Class[] mParams = new Class[1];
-                            mParams[0] = String.class;
-
-                            Method getChildrenNodesMethod = store.getClass().getMethod(getChildrenNodesMethodName, mParams);
-                            childNodes = (String []) getChildrenNodesMethod.invoke(store, identifier);
-                        } catch (Exception e) {
-                            System.err.println(e.getMessage());
-                            System.out.println(e.getMessage());
-                        }
-
-//                        String[] childNodes = store.getChildrenNodes(identifier);
+                        String[] childNodes = store.getChildrenNodes(identifier);
                         container.addNode(StringUtils.join(childNodes));
 //                      for (String child: store.getChildren(identifier)) {
 //                          Node cnode = nfactory.getNode(store.getNode(child));
@@ -549,7 +528,9 @@ public class VOSpaceManager {
                 }
                 // Set properties
                 node = setLength(node);
-                if (!(node instanceof ContainerNode) && !(node instanceof LinkNode)) node = setMD5(node);
+                // We are ignoring setting the MD5 attribute for now. It is costly and
+                // we are not currently using it.
+                //if (!(node instanceof ContainerNode) && !(node instanceof LinkNode)) node = setMD5(node);
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
@@ -557,13 +538,13 @@ public class VOSpaceManager {
         return node;
     }
 
-    public edu.noirlab.datalab.vos.Node getNode2(String identifier, String detail, int limit,  String getChildrenNodesMethodName) throws VOSpaceException {
+    public edu.noirlab.datalab.vos.Node getNodeJDOM2(String identifier, String detail, int limit) throws VOSpaceException {
         // Is identifier syntactically valid?
         if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
         ca.nrc.cadc.vos.Node node = null;
         // Retrieve original node
         try {
-            ca.nrc.cadc.vos.Node[] result = store.getData2(new String[] {identifier}, null, limit);
+            ca.nrc.cadc.vos.Node[] result = store.getDataJDOM2(new String[] {identifier}, null, limit);
             if (result.length == 0) {
                 // Check for a LinkNode in the path.
                 String linkedURI = resolveLinks(identifier);
@@ -571,26 +552,44 @@ public class VOSpaceManager {
                 else throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
             }
             for (ca.nrc.cadc.vos.Node _node: result) {
+                // Just copying the same logic we have in the original getNode method
+                detail = (detail == null) ? "max" : detail;
+                if (!detail.equals("max")) {
+                    if (_node instanceof ca.nrc.cadc.vos.DataNode) {
+                        //DataNode datanode = (DataNode) node;
+                        //datanode.removeAccepts();
+                        _node.setAccepts(null);
+                        //datanode.removeProvides();
+                        _node.setProvides(null);
+                        //datanode.removeBusy();
+                        ((ca.nrc.cadc.vos.DataNode) _node).setBusy(null);
+                    }
+                    //node.removeCapabilities();
+                    _node.setCapabilities(null);
+                    if (detail.equals("min")) {
+                        //node.removeProperties();
+                        _node.setProperties(null);
+                    }
+                } else {
                     if (_node instanceof ca.nrc.cadc.vos.ContainerNode) {
                         ca.nrc.cadc.vos.ContainerNode container = (ca.nrc.cadc.vos.ContainerNode) _node;
                         // Get children and check length property
                         //String[] childNodes = null;
                         ca.nrc.cadc.vos.Node[] childNodes = null;
                         try {
-                            childNodes = ((MySQLMetaStore) store).getChildrenNodessubqueryjdom2NodeList(identifier);
+                            childNodes = store.getChildrenNodesJDOM2(identifier);
                         } catch (Exception e) {
                             System.err.println(e.getMessage());
-                            System.out.println(e.getMessage());
+                            throw new VOSpaceException(e);
                         }
 
                         container.setNodes(Arrays.asList(childNodes));
                     }
                     node = _node;
+                }
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
         }
         edu.noirlab.datalab.vos.Node retNode = new edu.noirlab.datalab.vos.Node(node);
 
@@ -621,11 +620,21 @@ public class VOSpaceManager {
      * Need to optimize this for large files where a stored value is better
      */
     public Node setMD5(Node node) throws VOSpaceException {
+        // ISS 08/11/2021
+        // We are basically disabling the md5 logic since it eats
+        // up time and it is not really used. However since this is
+        // done in the "middle of the game" I still want to know what
+        // data in the DB has a default md5 value vs which ones do not.
+
+        String defaultMD5="d41d8cd98f00b204e9800998ecf8427e";
         String md5Uri = "/vos:node/vos:properties/vos:property[@uri = \"" + Props.MD5_URI + "\"]";
-        boolean setmd5 = false;
+        // boolean setmd5 = false; //ISS
         if (!node.has(md5Uri)) {
-            setmd5 = true;
-        } else {
+            // setmd5 = true; //ISS
+            node.setProperty(Props.MD5_URI, defaultMD5);
+        }
+        /* ISS 08/11/2021
+          else {
             String oldmd5 = node.get(md5Uri)[0];
             if (oldmd5.equals("") || oldmd5.equals("d41d8cd98f00b204e9800998ecf8427e")) {
             setmd5 = true;
@@ -635,6 +644,7 @@ public class VOSpaceManager {
             String md5val = backend.md5(getLocation(node.getUri()));
             if (md5val != null) node.setProperty(Props.MD5_URI, md5val);
         }
+         */
         return node;
     }
 
@@ -1149,6 +1159,10 @@ public class VOSpaceManager {
         } catch (SQLException e) {
             throw new VOSpaceException(e);
         }
+    }
+
+    public int getRootNodeLength() {
+        return ROOT_NODE_LENGTH;
     }
 
 }

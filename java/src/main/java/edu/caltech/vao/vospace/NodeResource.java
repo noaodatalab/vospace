@@ -1,10 +1,6 @@
 
 package edu.caltech.vao.vospace;
 
-import java.io.InputStream;
-import java.io.PrintWriter;
-
-import java.lang.reflect.Method;
 import java.net.URI;
 
 import javax.ws.rs.GET;
@@ -17,24 +13,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
-import javax.xml.bind.JAXBElement;
-
-import ca.nrc.cadc.vos.NodeParsingException;
-import ca.nrc.cadc.vos.NodeReader;
-import com.ximpleware.*;
-import com.ximpleware.xpath.*;
-
-import edu.caltech.vao.vospace.meta.MySQLMetaStore;
 import edu.caltech.vao.vospace.xml.*;
 import edu.caltech.vao.vospace.VOSpaceException.VOFault;
 
@@ -55,8 +36,8 @@ public class NodeResource extends VOSpaceResource {
      */
     @GET
     @Produces(MediaType.APPLICATION_XML)
-    public Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
-        Node node = manager.getNode(manager.ROOT_NODE, detail, limit);
+    public edu.noirlab.datalab.vos.Node getNode(@QueryParam("detail") String detail, @QueryParam("limit") int limit) throws VOSpaceException {
+        edu.noirlab.datalab.vos.Node node = manager.getNodeJDOM2(manager.ROOT_NODE, detail, limit);
         return node;
     }
 
@@ -69,41 +50,10 @@ public class NodeResource extends VOSpaceResource {
     @Path("{nodeid: .*}")
     @GET
     @Produces(MediaType.APPLICATION_XML)
-    public Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
-        System.out.println("In getNode");
+    public edu.noirlab.datalab.vos.Node getNode(@PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
         String id = getId(nodeid);
         manager.validateAccess(authToken, id, true);
-        Node node = manager.getNode(id, detail, limit);
-        return node;
-    }
-
-    /**
-     * This method retrieves the specified node.
-     *
-     * @param nodeid The VOSpace identifier for the node to return.
-     * @return the specified node {nodeid:[^/]+?}
-     */
-    //@Path("{getChildrenNodesName: .*}/{nodeid: .*}")
-    @Path("/{nodeid: .*}/{getChildrenNodesName}")
-    @GET
-    @Produces(MediaType.APPLICATION_XML)
-    public Node getNode(@PathParam("getChildrenNodesName") String childrenNodesName, @PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
-        System.out.println("In getNode1");
-        String id = getId(nodeid);
-        manager.validateAccess(authToken, id, true);
-        Node node = manager.getNode(id, detail, limit, childrenNodesName);
-        //Node node = manager.getNode(id, detail, limit);
-        return node;
-    }
-
-    @Path("/{nodeid: .*}/2/{getChildrenNodesName}")
-    @GET
-    @Produces(MediaType.APPLICATION_XML)
-    public edu.noirlab.datalab.vos.Node getNode2(@PathParam("getChildrenNodesName") String childrenNodesName, @PathParam("nodeid") String nodeid, @QueryParam("detail") String detail, @QueryParam("limit") int limit, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException {
-        System.out.println("In getNode2");
-        String id = getId(nodeid);
-        manager.validateAccess(authToken, id, true);
-        edu.noirlab.datalab.vos.Node node = manager.getNode2(id, detail, limit, childrenNodesName);
+        edu.noirlab.datalab.vos.Node node = manager.getNodeJDOM2(id, detail, limit);
         return node;
     }
 
