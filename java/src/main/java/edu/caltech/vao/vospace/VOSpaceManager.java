@@ -497,7 +497,7 @@ public class VOSpaceManager {
                     }
                     _node.setCapabilities(null);
                     if (detail.equals("min")) {
-                        _node.setProperties(null);
+                        _node.setProperties( new ArrayList<>());
                     }
                 } else {
                     if (_node instanceof ca.nrc.cadc.vos.ContainerNode) {
@@ -513,8 +513,8 @@ public class VOSpaceManager {
 
                         container.setNodes(Arrays.asList(childNodes));
                     }
-                    node = _node;
                 }
+                node = _node;
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
