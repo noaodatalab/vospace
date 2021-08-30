@@ -585,8 +585,8 @@ public class VOSpaceManager {
 
                         container.setNodes(Arrays.asList(childNodes));
                     }
-                    node = _node;
                 }
+                node = _node;
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
