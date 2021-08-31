@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.events.XMLEvent;
 
+import ca.nrc.cadc.vos.NodeProperty;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
@@ -396,7 +397,7 @@ public class VOSpaceManager {
                 }
             }
 
-            node.setProvides(accepts);
+            node.setAccepts(accepts);
             node.setProvides(provides);
             node.setCapabilities(capabilities);
 
@@ -490,10 +491,15 @@ public class VOSpaceManager {
                 // Just copying the same logic we have in the original getNode method
                 detail = (detail == null) ? "max" : detail;
                 if (!detail.equals("max")) {
-                    if (_node instanceof ca.nrc.cadc.vos.DataNode) {
+                    if (_node instanceof ca.nrc.cadc.vos.DataNode ||
+                        _node instanceof ca.nrc.cadc.vos.ContainerNode ||
+                        _node instanceof ca.nrc.cadc.vos.StructuredDataNode ||
+                        _node instanceof ca.nrc.cadc.vos.UnstructuredDataNode) {
                         _node.setAccepts(null);
                         _node.setProvides(null);
-                        ((ca.nrc.cadc.vos.DataNode) _node).setBusy(null);
+                        if (_node instanceof  ca.nrc.cadc.vos.DataNode) {
+                            ((ca.nrc.cadc.vos.DataNode) _node).setBusy(null);
+                        }
                     }
                     _node.setCapabilities(null);
                     if (detail.equals("min")) {
@@ -515,6 +521,11 @@ public class VOSpaceManager {
                     }
                 }
                 node = _node;
+                // The original code sets the length no matter what
+                // which makes no sense to me, as the length property is
+                // part of the properties being set in a Node.
+                // setLength(node);
+
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
@@ -522,6 +533,15 @@ public class VOSpaceManager {
         edu.noirlab.datalab.vos.Node retNode = new edu.noirlab.datalab.vos.Node(node);
 
         return retNode;
+    }
+
+    // ca.nrc.cadc.vos version of the setLength method
+    public ca.nrc.cadc.vos.Node setLength(ca.nrc.cadc.vos.Node node) throws VOSpaceException {
+        List<NodeProperty> properties = new ArrayList<>();
+        properties.add(new NodeProperty(
+                Props.LENGTH_URI, Long.toString(backend.size(getLocation(node.getUri().toString())))));
+        node.setProperties(properties);
+        return node;
     }
 
     /**
