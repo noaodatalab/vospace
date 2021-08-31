@@ -8,53 +8,67 @@ import org.jdom2.Namespace;
 
 public class VTDXMLNodeWriter extends edu.noirlab.datalab.vos.NodeWriter {
     protected static Namespace voaNamespace;
-    protected static Namespace vosNamespace;
+    //protected static Namespace vosNamespace;
 
     public VTDXMLNodeWriter() {
         this(VOSPACE_NS_20);
     }
     public VTDXMLNodeWriter(String vospaceNamespace) {
-        super(vospaceNamespace);
-        this.vosNamespace = Namespace.getNamespace("vos", vospaceNamespace);
+        //super(vospaceNamespace);
+        this.vosNamespace = Namespace.getNamespace(null, vospaceNamespace);
+        //this.vosNamespace = Namespace.getNamespace("vos", vospaceNamespace);
         this.voaNamespace = Namespace.getNamespace("voa", vospaceNamespace);
     }
 
-    @Override
-    protected Element getNodeElement(Node node)
+
+    /**
+     *  Build the root Element of a Node.
+     *
+     * @param node Node.
+     * @return root Element.
+     */
+    protected Element getRootElement(Node node)
     {
-        Element ret = new Element("node", vosNamespace);
-        ret.addNamespaceDeclaration(voaNamespace);
-        ret.setAttribute("type", "vos" + ":" + node.getClass().getSimpleName(), xsiNamespace);
+        // Create the root element (node).
+        Element root = getNodeElement(node);
+        //root.addNamespaceDeclaration(vosNamespace);
+        root.addNamespaceDeclaration(xsiNamespace);
+        return root;
+    }
+
+    @Override
+    protected Element getNodeElement(Node node) {
+        Element ret = new Element("node", this.vosNamespace);
+        //ret.addNamespaceDeclaration(voaNamespace);
+        ret.setAttribute("type", "vos:" + node.getClass().getSimpleName(), xsiNamespace);
         ret.setAttribute("uri", node.getUri().toString());
-        //ret.setAttribute("type", vosNamespace.getPrefix() + ":" + node.getClass().getSimpleName(), xsiNamespace);
-
-        Element props = getPropertiesElement(node);
+        Element props = this.getPropertiesElement(node);
         ret.addContent(props);
+        if (node instanceof ContainerNode) {
+            ContainerNode cn = (ContainerNode)node;
+            ret.addContent(this.getNodesElement(cn));
 
-        if (node instanceof ContainerNode)
-        {
-            ContainerNode cn = (ContainerNode) node;
-            ret.addContent(getNodesElement(cn));
+        } else if (!(node instanceof DataNode) && !(node instanceof UnstructuredDataNode) && !(node instanceof StructuredDataNode)) {
+            if (node instanceof LinkNode) {
+                LinkNode ln = (LinkNode)node;
+                Element targetEl = new Element("target", this.vosNamespace);
+                targetEl.setText(ln.getTarget().toString());
+                ret.addContent(targetEl);
+            }
         }
-        else if ((node instanceof DataNode) ||
-                (node instanceof UnstructuredDataNode) ||
-                (node instanceof StructuredDataNode))
-        {
-            ret.addContent(getAcceptsElement(node));
-            ret.addContent(getProvidesElement(node));
-            ret.addContent(getCapabilitiesElement(node));
-            //DataNode dn = (DataNode) node;
-            //ret.setAttribute("busy", (dn.getBusy().equals(NodeBusyState.notBusy) ? "false" : "true"));
+
+        if (node.accepts() != null && node.accepts().size() > 0) {
+            ret.addContent(this.getAcceptsElement(node));
         }
-        else if (node instanceof LinkNode)
-        {
-            LinkNode ln = (LinkNode) node;
-            Element targetEl = new Element("target", vosNamespace);
-            targetEl.setText(ln.getTarget().toString());
-            ret.addContent(targetEl);
+        if (node.provides() != null && node.provides().size() > 0) {
+            ret.addContent(this.getProvidesElement(node));
         }
-        // always set to false at datalab vospace
+        if (node.capabilities() != null && node.capabilities().size() > 0) {
+            ret.addContent(this.getCapabilitiesElement(node));
+        }
+
         ret.setAttribute("busy", "false");
+
         return ret;
     }
 
