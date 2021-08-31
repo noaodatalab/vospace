@@ -12,7 +12,10 @@ public class Node {
     }
 
     public String toString() {
-        NodeWriter nodeWriter = new NodeWriter();
+        // use the VTDXML version of the writer so the new XML
+        // looks as similar as possible as the VOSpace 2.0 xml
+        //NodeWriter nodeWriter = NodeWriter();
+        NodeWriter nodeWriter = new VTDXMLNodeWriter();
         StringWriter sw = new StringWriter();
         try {
             nodeWriter.write(node, sw, true);
