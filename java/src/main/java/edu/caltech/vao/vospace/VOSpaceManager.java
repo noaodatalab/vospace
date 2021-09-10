@@ -9,6 +9,7 @@ import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
@@ -1132,6 +1133,55 @@ public class VOSpaceManager {
 
 
     /**
+     * This is the timeout we give to the two caches
+     * Two mins seems to be enough to avoid an explosion of
+     * connections to the auth server.
+     * Also it is a small enough period to not worry about
+     * clearing the cache.
+     *
+     **/
+    private int authTimeout = 2; //in minutes
+
+    // Two thread safe hash map caches.
+    // One for token validation
+    private Map<String, Date> authMap = new ConcurrentHashMap<>();
+    // One for token access validation
+    private Map<String, Date> accessMap = new ConcurrentHashMap<>();
+
+    private void addToCache(String authToken, Map<String, Date> cache) {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.MINUTE, authTimeout);
+        cache.put(authToken, cal.getTime());
+    }
+
+    private boolean isCacheOK(String authToken, Map<String, Date> cache) {
+        Date date1 = cache.get(authToken);
+        Date date2 = new Date();
+        // Either token not in cache or outdated
+        if ( date1 == null || date1.compareTo(date2) < 0) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private void addTokenToCache(String authToken) {
+        addToCache(authToken, authMap);
+    }
+
+    private boolean isCachedTokenOK(String authToken) {
+        return isCacheOK(authToken, authMap);
+    }
+
+    private void addAccessURIToCache(String authToken) {
+       addToCache(authToken, accessMap);
+    }
+
+    private boolean isCachedAccessURIOK(String authToken) {
+        return isCacheOK(authToken, accessMap);
+    }
+
+    /**
      * Validate the provided DataLab token
      */
     public void validateToken(String authToken) throws VOSpaceException {
@@ -1145,6 +1195,11 @@ public class VOSpaceManager {
         if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
             checkTokenFormat(authToken);
         } else {
+            // We want to reduce the amount of times we go to the auth server
+            // So first we check against the cached token hash.
+            if (isCachedTokenOK(authToken)) {
+                return;
+            }
             HttpClient client = new HttpClient();
             GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
 
@@ -1155,9 +1210,14 @@ public class VOSpaceManager {
                     logger.debug(voe.toString());
                     throw voe;
                 }
+
+                // token is ok, save it in token hash for authTimeout mins
+                addTokenToCache(authToken);
             } catch (IOException e) {
                 log_error(logger, e);
                 throw new VOSpaceException(e);
+            } finally {
+                get.releaseConnection();
             }
         }
     }
@@ -1199,11 +1259,32 @@ public class VOSpaceManager {
             if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
                 if (!Arrays.asList(StringUtils.split(groups, ",")).contains(owner)) throw new VOSpaceException(VOFault.PermissionDenied);
             } else {
+                // We want to reduce the amount of times we go to the auth server
+                // So first we check against the cached access hash.
+                String accessURI = authToken + "&owner=" + owner + "&groups=" + groups;
+                if (isCachedAccessURIOK(accessURI)) {
+                    return;
+                }
                 // Validates the access request
                 HttpClient client = new HttpClient();
-                GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + authToken + "&owner=" + owner + "&groups=" + groups);
-                int statusCode = client.executeMethod(get);
-                if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied);
+                GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + accessURI);
+                try {
+                    int statusCode = client.executeMethod(get);
+                    if (statusCode != HttpStatus.SC_OK) {
+                        VOSpaceException voe = new VOSpaceException(VOFault.PermissionDenied);
+                        logger.error(voe.toString());
+                        throw voe;
+                    }
+
+                    // access is ok, save it in access hash for "authTimeout" mins
+                    addAccessURIToCache(accessURI);
+                } finally {
+                    //release the TCP connection on this side
+                    //This should allow the OS to reclaim the port connection
+                    //Typically lsof will show the TCP connetion as CLOSE_WAIT
+                    //meaning waiting to the this process to release it.
+                    get.releaseConnection();
+                }
             }
         } catch (IOException e) {
             log_error(logger, e);
