@@ -1,19 +1,12 @@
 
 package edu.caltech.vao.vospace;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
-import java.util.Enumeration;
 import java.util.Map;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.DELETE;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
@@ -21,32 +14,29 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.xml.bind.JAXBElement;
 
 import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 import edu.caltech.vao.vospace.meta.MetaStore;
 import edu.caltech.vao.vospace.meta.MetaStoreFactory;
 
-import edu.caltech.vao.vospace.resource.*;
 import org.apache.log4j.Logger;
+import org.w3c.www.http.HTTP;
 import uws.UWSException;
 import uws.job.JobList;
 import uws.job.UWSJob;
 import uws.job.ExecutionPhase;
 import uws.job.user.JobOwner;
 import uws.job.user.DefaultJobOwner;
-import uws.service.actions.UWSAction;
 import uws.service.UserIdentifier;
 import uws.service.UWSFactory;
 import uws.service.UWSService;
 import uws.service.UWSUrl;
 import uws.service.file.LocalUWSFileManager;
+
+import static edu.noirlab.datalab.vos.Utils.log_error;
 
 @Path("transfers")
 public class TransferResource extends VOSpaceResource {
@@ -118,6 +108,7 @@ public class TransferResource extends VOSpaceResource {
 	    uws = getUWS(req);
 	    boolean done = uws.executeRequest(req, resp);
 	} catch (UWSException e) {
+	    log_error(log, e);
 	    // Display properly the caught UWSException:
 	    resp.sendError(e.getHttpErrorCode(), e.getMessage());
 	}
@@ -194,8 +185,10 @@ public class TransferResource extends VOSpaceResource {
 	    if (details == null) details = "<vos:transfer xmlns:vos=\"http://www.ivoa.net/xml/VOSpace/v2.0\"></vos:transfer>";
 	    return details;
         } catch (VOSpaceException ve) {
+            log_error(log, ve);
             throw ve;
         } catch (Exception e) {
+            log_error(log, e);
             throw new VOSpaceException(e);
         }
     }
@@ -270,8 +263,12 @@ public class TransferResource extends VOSpaceResource {
 	try {
   	    manager.validateToken(authToken);
 	} catch (VOSpaceException e) {
+	    log_error(log, e);
 	    resp.sendError(e.getStatusCode(), e.getMessage());
-	}
+	} catch (Exception e) {
+	    log_error(log, e);
+        resp.sendError(HTTP.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
     }
 
 }

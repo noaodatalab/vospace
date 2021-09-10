@@ -1,44 +1,21 @@
 
 package edu.caltech.vao.vospace;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.protocol.HTTP;
+import edu.caltech.vao.vospace.xml.*;
+import org.apache.log4j.Logger;
 
 
 import uws.UWSException;
 import uws.job.JobThread;
-import uws.job.ErrorType;
 import uws.job.Result;
 import uws.job.UWSJob;
-import uws.job.parameters.UWSParameters;
-import uws.job.ExecutionPhase;
 
 import edu.caltech.vao.vospace.meta.MetaStore;
 import edu.caltech.vao.vospace.meta.MetaStoreFactory;
@@ -46,19 +23,15 @@ import edu.caltech.vao.vospace.capability.Capability;
 import edu.caltech.vao.vospace.protocol.ProtocolHandler;
 import edu.caltech.vao.vospace.storage.StorageManager;
 import edu.caltech.vao.vospace.storage.StorageManagerFactory;
-import edu.caltech.vao.vospace.xml.ContainerNode;
-import edu.caltech.vao.vospace.xml.DataNode;
-import edu.caltech.vao.vospace.xml.Node;
-import edu.caltech.vao.vospace.xml.NodeFactory;
-import edu.caltech.vao.vospace.xml.Protocol;
-import edu.caltech.vao.vospace.xml.Transfer;
 
+import static edu.noirlab.datalab.vos.Utils.*;
 
 /**
   * A class to represent a transfer job.
   */
 public class TransferJob extends JobThread {
 
+    private static Logger logger = Logger.getLogger(TransferJob.class.getName());
     private final static boolean STATUS_BUSY = true;
     private final static boolean STATUS_FREE = false;
 
@@ -138,8 +111,10 @@ public class TransferJob extends JobThread {
                 }
             }
         } catch (SQLException e) {
+            log_error(logger, e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
+            log_error(logger, e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
     }
@@ -150,7 +125,8 @@ public class TransferJob extends JobThread {
      */
     protected void jobWork() throws UWSException, InterruptedException {
 
-        String target, direction;
+        String target = null;
+        String direction = null;
         boolean status = false;
         long startInstance = System.currentTimeMillis();
 
@@ -183,6 +159,7 @@ public class TransferJob extends JobThread {
             transfer = new Transfer(document);
             validateTransfer();
         } catch (VOSpaceException e) {
+            log_error(logger, e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
 
@@ -191,6 +168,7 @@ public class TransferJob extends JobThread {
             target = transfer.getTarget();
             direction = transfer.getDirection();
         } catch (VOSpaceException e) {
+            log_error(logger, "for target, direction [" + target + ", " + direction + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
 
@@ -211,10 +189,10 @@ public class TransferJob extends JobThread {
                     moveNode();
                 }
             } catch (VOSpaceException e) {
-                e.printStackTrace(System.err);
+                log_error(logger, "for target , direction [" + target + ", " + direction + "]", e);
                 throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
             } catch (SQLException e) {
-                e.printStackTrace(System.err);
+                log_error(logger, "for target , direction [" + target + ", " + direction + "]", e);
                 throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
             }
 
@@ -229,12 +207,14 @@ public class TransferJob extends JobThread {
                         target = file;
                         file = file.replace("vos://datalab.noao.edu!vospace", manager.BASEURI);
                     } catch (SQLException e) {
+                        log_error(logger, "for jobId [" + jobId + "]", e);
                         throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
                     }
                 }
 
                 // Loop activity
                 String jobId = getJobId();
+                int count = 0;
                 while (!isInterrupted() && !status) {
                     try {
                         Thread.sleep(1000);
@@ -244,7 +224,12 @@ public class TransferJob extends JobThread {
                             status = checkTime(startInstance);
                         }
                     } catch (SQLException e) {
+                        log_error(logger, "for jobId [" + jobId + "]", e);
                         throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
+                    }
+                    count++;
+                    if ( (count % 600) == 0) {
+                        logger.warn("JobID:[" + jobId + "] has been running for " + (count/60) + " minutes");
                     }
                 }
 
@@ -259,12 +244,15 @@ public class TransferJob extends JobThread {
                         node.setProperty(Props.MTIME_URI, date);
                         store.updateData(target, node.toString());
                     }
+                // Update length property for pushToVoSpace
                 } catch (SQLException e) {
+                    log_error(logger, "for target [" + target + "]", e);
                     throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
                 } catch (VOSpaceException e) {
+                    log_error(logger, "for target [" + target + "]", e);
                     throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
                 } catch (NullPointerException e) {
-                    System.err.println("No node for target: " + target);
+                    log_warn(logger, "target [" + target + "] deleted?", e);
                 }
             }
 
@@ -289,8 +277,10 @@ public class TransferJob extends JobThread {
                     // Does this need to wait for any capabilities to finish?
                 }
             } catch (SQLException e) {
+                log_error(logger, "for target [" + target + "]", e);
                 throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
             } catch (VOSpaceException e) {
+                log_error(logger, "for target [" + target + "]", e);
                 throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
             }
         }
@@ -314,6 +304,7 @@ public class TransferJob extends JobThread {
                     manager.addProcess(target, p);
                 }
             } catch (Exception e) {
+                log_error(logger, "for target [" + target + "]", e);
                 throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
             }
         }
@@ -335,8 +326,9 @@ public class TransferJob extends JobThread {
     private void pushToVoSpace() throws UWSException {
         // Request details
         Node node = null;
+        String target = "N/A";
         try {
-            String target = transfer.getTarget();
+            target = transfer.getTarget();
             // Create node (if necessary)
             if (!store.isStored(target)) {
                 Node blankNode = factory.getDefaultNode();
@@ -360,9 +352,10 @@ public class TransferJob extends JobThread {
             }
             getJob().addResult(new Result(getJob(), "transferDetails", manager.BASE_URL + "transfers/" + getJobId() + "/results/transferDetails"));
         } catch (VOSpaceException e) {
+            log_error(logger, "for target [" + target + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         } catch (Exception e) {
-            //      e.printStackTrace(System.err);
+            log_error(logger, "for target [" + target + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
     }
@@ -372,14 +365,17 @@ public class TransferJob extends JobThread {
      */
     private void pushFromVoSpace() throws UWSException {
         // Request details
+        String target = "N/A";
         try {
-            String target = transfer.getTarget();
+            target = transfer.getTarget();
             Node node = getNode(target);
             // Perform data transfer
             performTransfer(node);
         } catch (VOSpaceException e) {
+            log_error(logger, "for target [" + target + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         } catch (Exception e) {
+            log_error(logger, "for target [" + target + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
     }
@@ -390,8 +386,9 @@ public class TransferJob extends JobThread {
     private void pullToVoSpace() throws UWSException {
         // Request details
         Node node = null;
+        String target = "N/A";
         try {
-            String target = transfer.getTarget();
+            target = transfer.getTarget();
             // Create node (if necessary)
             if (!store.isStored(target)) {
                 Node blankNode = factory.getDefaultNode();
@@ -407,9 +404,10 @@ public class TransferJob extends JobThread {
             // Perform data transfer
             performTransfer(node);
         } catch (VOSpaceException e) {
+            log_error(logger, "for target [" + target + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         } catch (Exception e) {
-            // e.printStackTrace(System.err);
+            log_error(logger, "for target [" + target + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
     }
@@ -418,9 +416,10 @@ public class TransferJob extends JobThread {
      * Request a URL to retrieve data from the space
      */
     private void pullFromVoSpace() throws UWSException {
+        String target = "N/A";
         try {
             // Request details
-            String target = transfer.getTarget();
+            target = transfer.getTarget();
             // Negotiate protocol details
             completeProtocols(target, ProtocolHandler.SERVER);
             // Register transfer endpoints
@@ -429,8 +428,10 @@ public class TransferJob extends JobThread {
             store.addResult(getJobId(), transfer.toString());
             getJob().addResult(new Result(getJob(), "transferDetails", manager.BASE_URL + "transfers/" + getJobId() + "/results/transferDetails"));
         } catch (VOSpaceException e) {
+            log_error(logger, "for target [" + target + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         } catch (Exception e) {
+            log_error(logger, "for target [" + target + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
     }
@@ -480,6 +481,7 @@ public class TransferJob extends JobThread {
             try {
                 if (store.isCompleted(getJobId())) changed = true;
             } catch (SQLException e) {
+                log_error(logger, e);
                 throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
             }
         }
@@ -633,6 +635,7 @@ public class TransferJob extends JobThread {
             backend.moveBytes(oldLocation, newLocation);
             success = true;
         } catch (Exception e) {
+            log_error(logger, "for oldLocation [" + oldLocation + "] , [" + newLocation + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
         return success;
@@ -651,6 +654,7 @@ public class TransferJob extends JobThread {
             backend.copyBytes(oldLocation, newLocation);
             success = true;
         } catch (Exception e) {
+            log_error(logger, "for oldLocation [" + oldLocation + "] , [" + newLocation + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
         return success;
@@ -715,6 +719,7 @@ public class TransferJob extends JobThread {
                 }
             }
         } catch (Exception e) {
+            log_error(logger, "in completeProtocols nodeUri [" + nodeUri + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
     }
@@ -732,8 +737,10 @@ public class TransferJob extends JobThread {
                 node = factory.getNode(item);
             }
         } catch (SQLException e) {
+            log_error(logger, "for identifier [" + identifier + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
+            log_error(logger, "for identifier [" + identifier + "]", e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
         return node;
@@ -748,8 +755,10 @@ public class TransferJob extends JobThread {
             store.setStatus(node.getUri(), busy);
             store.updateData(node.getUri(), node.toString());
         } catch (SQLException e) {
+            log_error(logger,e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
+            log_error(logger,e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
     }
@@ -764,6 +773,7 @@ public class TransferJob extends JobThread {
                 store.storeTransfer(jobId, protocol.getEndpoint());
             }
         } catch (Exception e) {
+            log_error(logger,e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         }
     }
@@ -803,13 +813,21 @@ public class TransferJob extends JobThread {
                 }
             }
         } catch (SQLException e) {
+            log_error(logger,e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (IOException e) {
+            log_error(logger,e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
         } catch (VOSpaceException e) {
+            log_error(logger,e);
             throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e, e.getMessage());
         }
-        if (!success) throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "None of the requested protocols was successful");
+        if (!success) {
+            UWSException uwse = new UWSException(UWSException.INTERNAL_SERVER_ERROR,
+                    "None of the requested protocols was successful");
+            logger.error(uwse.toString());
+            throw uwse;
+        }
     }
 
 
@@ -824,8 +842,9 @@ public class TransferJob extends JobThread {
             Capability cap = manager.CAPABILITIES.get(capability);
             cap.invoke(identifier, getLocation(identifier), capability);
         } catch (Exception e) {
-            e.printStackTrace(System.err);
-            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, "The capability " + capability + " was unable to complete on node " + identifier);
+            String excpMsg = "The capability " + capability + " was unable to complete on node " + identifier;
+            log_error(logger, excpMsg, e);
+            throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, excpMsg);
         }
     }
 

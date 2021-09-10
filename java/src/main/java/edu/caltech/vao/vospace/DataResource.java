@@ -27,6 +27,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
+import static edu.noirlab.datalab.vos.Utils.log_error;
+
 @Path("data")
 public class DataResource extends VOSpaceResource {
 
@@ -121,9 +123,10 @@ public class DataResource extends VOSpaceResource {
                 out.write(buffer, 0, bytes_read); // write
             */
         } catch (VOSpaceException ve) {
+            log_error(log, ve);
             throw ve;
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            log_error(log, e);
             throw new VOSpaceException(e, location);
         } finally {
             /*

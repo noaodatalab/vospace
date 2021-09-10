@@ -44,6 +44,10 @@ import edu.caltech.vao.vospace.Props;
 import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.VOSpaceManager;
 
+import static edu.noirlab.datalab.vos.Utils.getTrace;
+import static edu.noirlab.datalab.vos.Utils.log_error;
+
+
 /**
  * This class represents a metadata store for VOSpace based on the MySQL
  * open source database
@@ -87,9 +91,9 @@ public class MySQLMetaStore implements MetaStore {
             Class.forName("org.apache.commons.dbcp.PoolingDriver");
             PoolingDriver driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
             driver.registerPool("connPool", connectionPool);
+
         } catch (Exception e) {
-            e.printStackTrace();
-            //      log.error(e.getMessage());
+            log_error(logger, e);
         }
     }
 
@@ -1338,7 +1342,6 @@ public class MySQLMetaStore implements MetaStore {
         return ans;
     }
 
-
     /*
      * Execute a query on the store
      */
@@ -1367,11 +1370,7 @@ public class MySQLMetaStore implements MetaStore {
                     }
 
                     if (dt >= 500 || logger.getLevel() == Level.TRACE) {
-                        StackTraceElement[] e = Thread.currentThread().getStackTrace();
-                        StringBuffer trace = new StringBuffer();
-                        for (int i = 0; i < e.length && i < 8; i++) {
-                            trace.append(e[i].toString() + "\n");
-                        }
+                        String trace = getTrace(Thread.currentThread().getStackTrace());
                         if (dt >= 500) {
                             logger.warn(trace);
                         } else {
@@ -1380,6 +1379,7 @@ public class MySQLMetaStore implements MetaStore {
                     }
                 }
             } catch (SQLException e) {
+                log_error(logger, "query [" + query + "], retries [" + retries + "]",  e);
                 String sqlState = e.getSQLState();
                 if (retries > 0 && ("08S01".equals(sqlState) || "40001".equals(sqlState))) {
                     // System.out.println(sqlState + " " + e.toString());
@@ -1389,8 +1389,12 @@ public class MySQLMetaStore implements MetaStore {
                 }
             } finally {
                 if (result == null) {
-                    try { if (statement != null) statement.close(); } catch (SQLException e) {}
-                    try { if (connection != null) connection.close(); } catch (SQLException e) {}
+                    try { if (statement != null) statement.close(); } catch (SQLException e) {
+                        log_error(logger, e);
+                    }
+                    try { if (connection != null) connection.close(); } catch (SQLException e) {
+                        log_error(logger, e);
+                    }
                 }
             }
         }
@@ -1424,11 +1428,7 @@ public class MySQLMetaStore implements MetaStore {
                     }
 
                     if (dt >= 500 || logger.getLevel() == Level.TRACE) {
-                        StackTraceElement[] e = Thread.currentThread().getStackTrace();
-                        StringBuffer trace = new StringBuffer();
-                        for (int i = 0; i < e.length && i < 8; i++) {
-                            trace.append(e[i].toString() + "\n");
-                        }
+                        String trace = getTrace(Thread.currentThread().getStackTrace());
                         if (dt >= 500) {
                             logger.warn(trace);
                         } else {
@@ -1437,6 +1437,7 @@ public class MySQLMetaStore implements MetaStore {
                     }
                 }
             } catch (SQLException e) {
+                log_error(logger, "query [" + query + "], retries [" + retries + "]", e);
                 String sqlState = e.getSQLState();
                 if (retries > 0 && ("08S01".equals(sqlState) || "40001".equals(sqlState))) {
                     // System.out.println(sqlState + " " + e.toString());
@@ -1445,8 +1446,12 @@ public class MySQLMetaStore implements MetaStore {
                     throw e;
                 }
             } finally {
-                try { if (statement != null) statement.close(); } catch (SQLException e) {}
-                try { if (connection != null) connection.close(); } catch (SQLException e) {}
+                try { if (statement != null) statement.close(); } catch (SQLException e) {
+                    log_error(logger, e);
+                }
+                try { if (connection != null) connection.close(); } catch (SQLException e) {
+                    log_error(logger, e);
+                }
 //              System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
             }
         }
@@ -1461,8 +1466,12 @@ public class MySQLMetaStore implements MetaStore {
             Statement statement = result.getStatement();
             Connection connection = statement.getConnection();
             result.close();
-            if (statement != null) statement.close();
-            if (connection != null) connection.close();
+            try { if (statement != null) statement.close(); } catch (SQLException e) {
+                log_error(logger, e);
+            }
+            try { if (connection != null) connection.close(); } catch (SQLException e) {
+                log_error(logger, e);
+            }
         }
 //      System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
     }
