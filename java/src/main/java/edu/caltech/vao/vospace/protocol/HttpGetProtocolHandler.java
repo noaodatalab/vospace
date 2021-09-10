@@ -15,13 +15,13 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import edu.caltech.vao.vospace.xml.Protocol;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.log4j.Logger;
 
 import static edu.noirlab.datalab.vos.Utils.log_error;
+import edu.noirlab.datalab.xml.Protocol;
 
 /**
  * This class handles the implementation details for the HTTP 1.1 GET protocol

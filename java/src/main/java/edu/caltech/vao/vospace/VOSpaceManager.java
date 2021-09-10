@@ -35,6 +35,7 @@ import edu.caltech.vao.vospace.xml.*;
 import edu.caltech.vao.vospace.VOSpaceException.VOFault;
 
 import static edu.noirlab.datalab.vos.Utils.log_error;
+import edu.noirlab.datalab.xml.Protocol;
 
 public class VOSpaceManager {
 

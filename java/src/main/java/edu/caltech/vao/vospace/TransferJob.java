@@ -25,6 +25,7 @@ import edu.caltech.vao.vospace.storage.StorageManager;
 import edu.caltech.vao.vospace.storage.StorageManagerFactory;
 
 import static edu.noirlab.datalab.vos.Utils.*;
+import edu.noirlab.datalab.xml.Protocol;
 
 /**
   * A class to represent a transfer job.

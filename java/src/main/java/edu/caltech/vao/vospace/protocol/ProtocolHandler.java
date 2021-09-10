@@ -8,7 +8,7 @@ package edu.caltech.vao.vospace.protocol;
 
 import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.storage.StorageManager;
-import edu.caltech.vao.vospace.xml.Protocol;
+import edu.noirlab.datalab.xml.Protocol;
 
 import java.io.IOException;
 
@@ -39,5 +39,5 @@ public interface ProtocolHandler {
     /*
      * Invoke the protocol handler and transfer data 
      */ 
-    public boolean invoke(Protocol protocol, String location, StorageManager backend) throws IOException; 
+    public boolean invoke(Protocol protocol, String location, StorageManager backend) throws IOException;
 }
