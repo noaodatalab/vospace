@@ -237,14 +237,20 @@ public class TransferJob extends JobThread {
                 try {
                     if (manager.hasBeenUpdated(target)) {
                         Node node = getNode(target);
-                        node = manager.setLength(node);
-                        // Change the timestamps in the properties.
-                        String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
-                        node.setProperty(Props.CTIME_URI, date);
-                        node.setProperty(Props.MTIME_URI, date);
-                        store.updateData(target, node.toString());
+                        // Avoid a NullPointer Exception if for some reason the
+                        // node was deleted in the mean time.
+                        if (node != null) {
+                            // Update length property for pushToVoSpace
+                            node = manager.setLength(node);
+                            // Change the timestamps in the properties.
+                            String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
+                            node.setProperty(Props.CTIME_URI, date);
+                            node.setProperty(Props.MTIME_URI, date);
+                            store.updateData(target, node.toString());
+                        } else {
+                            logger.warn("target [" + target + "] doesn't exist");
+                        }
                     }
-                // Update length property for pushToVoSpace
                 } catch (SQLException e) {
                     log_error(logger, "for target [" + target + "]", e);
                     throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);
