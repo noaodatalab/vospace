@@ -169,27 +169,37 @@ public class TransferResource extends VOSpaceResource {
     @GET
     @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public String getResultsDetails(@Context HttpServletRequest req, @Context HttpServletResponse resp, @PathParam("jobid") String id, @HeaderParam("X-DL-AuthToken") String authToken) throws VOSpaceException, IOException {
-    log.info("getResultsDetails[jobID:" + id + "]");
-	validateToken(authToken, resp);
-	String details = null;
+        log.info("getResultsDetails[jobID:" + id + "]");
+        String default_details = "<vos:transfer xmlns:vos=\"http://www.ivoa.net/xml/VOSpace/v2.0\"></vos:transfer>";
+        validateToken(authToken, resp);
+        String details = null;
         try {
-	    // Check job status first
-	    UWSService uws = getUWS(req);
-	    JobList jobs = uws.getJobList("transfers");
-	    UWSJob job = jobs.getJob(id);
-	    MetaStore store = MetaStoreFactory.getInstance().getMetaStore();
-	    while (job.getPhase() == ExecutionPhase.EXECUTING && details == null) {
-		Thread.sleep(100);
-		details = store.getResult(id);
-	    }
-	    if (details == null) details = "<vos:transfer xmlns:vos=\"http://www.ivoa.net/xml/VOSpace/v2.0\"></vos:transfer>";
-	    return details;
+            // Check job status first
+            UWSService uws = getUWS(req);
+            JobList jobs = uws.getJobList("transfers");
+            UWSJob job = jobs.getJob(id);
+            MetaStore store = MetaStoreFactory.getInstance().getMetaStore();
+            int count = 0;
+            while (job.getPhase() == ExecutionPhase.EXECUTING && details == null) {
+                Thread.sleep(1000);
+                details = store.getResult(id);
+                count++;
+                if ((count % 600) == 0) {
+                    log.warn("getResultsDetails jobId [" + id +
+                            "] has been running for [" + (count/60) + " mins]");
+                }
+            }
+            if (details == null) {
+                return default_details;
+            } else {
+                return details;
+            }
         } catch (VOSpaceException ve) {
             log_error(log, ve);
-            throw ve;
+            return default_details;
         } catch (Exception e) {
             log_error(log, e);
-            throw new VOSpaceException(e);
+            return default_details;
         }
     }
 
