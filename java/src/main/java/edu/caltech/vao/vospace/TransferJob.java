@@ -249,7 +249,7 @@ public class TransferJob extends JobThread {
                             node.setProperty(Props.MTIME_URI, date);
                             store.updateData(target, node.toString());
                         } else {
-                            logger.warn("target [" + target + "] doesn't exist");
+                            logger.info("target [" + target + "] doesn't exist");
                         }
                     }
                 } catch (SQLException e) {
