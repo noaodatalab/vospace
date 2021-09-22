@@ -24,14 +24,12 @@ import java.util.stream.Collectors;
 
 import ca.nrc.cadc.vos.NodeProperty;
 import ca.nrc.cadc.vos.VOSURI;
+import org.apache.commons.dbcp2.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.pool.ObjectPool;
-import org.apache.commons.pool.impl.GenericObjectPool;
-import org.apache.commons.dbcp.ConnectionFactory;
-import org.apache.commons.dbcp.PoolingDriver;
-import org.apache.commons.dbcp.PoolableConnectionFactory;
-import org.apache.commons.dbcp.DriverManagerConnectionFactory;
+import org.apache.commons.pool2.ObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 
@@ -56,6 +54,7 @@ public class MySQLMetaStore implements MetaStore {
     private static final String DEFAULT_DB_URL = "localhost/vospace";
     private static final String DEFAULT_DB_UID = "dba";
     private static final String DEFAULT_DB_PWD = "dba";
+    private PoolingDataSource<PoolableConnection> dataSource;
     private static Logger logger = Logger.getLogger(MySQLMetaStore.class.getName());
     public static final int MIN_DETAIL = 1;
     public static final int PROPERTY_DETAIL = 2;
@@ -67,6 +66,7 @@ public class MySQLMetaStore implements MetaStore {
     private String[] propertyColumns = null;
     private int STOREID = 0;
     private int CONNID = 0;
+
 
     /**
      * Construct a basic MySQLMetaStore
@@ -82,15 +82,22 @@ public class MySQLMetaStore implements MetaStore {
             DB_UID = props.containsKey("server.meta.dbuid") ? props.getProperty("server.meta.dbuid") : DEFAULT_DB_UID;
             DB_PWD = props.containsKey("server.meta.dbpwd") ? props.getProperty("server.meta.dbpwd") : DEFAULT_DB_PWD;
             connectionURL = "jdbc:mysql://" + DB_URL + "?" + "user=" + DB_UID + "&" + "password=" + DB_PWD;
-            // Get object pool
-            ObjectPool connectionPool = new GenericObjectPool(null);
+
             // Get connection factory
             ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(connectionURL, null);
-            PoolableConnectionFactory poolableConnectionFactory = new PoolableConnectionFactory(connectionFactory, connectionPool, null, null, false, true);
-            // Get pooling driver
-            Class.forName("org.apache.commons.dbcp.PoolingDriver");
-            PoolingDriver driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
-            driver.registerPool("connPool", connectionPool);
+            PoolableConnectionFactory poolableConnectionFactory = new PoolableConnectionFactory(connectionFactory,
+                    null);
+
+            GenericObjectPoolConfig config = new GenericObjectPoolConfig();
+            config.setMaxTotal(100);
+            config.setMaxIdle(5);
+            config.setMinIdle(5);
+            //PoolingDataSource expect an ObjectPool
+            ObjectPool<PoolableConnection> connectionPool = new GenericObjectPool<>(poolableConnectionFactory, config);
+            // Set the poolableConnectionFactory's pool property to the owning pool
+            poolableConnectionFactory.setPool(connectionPool);
+
+            this.dataSource = new PoolingDataSource<>(connectionPool);
 
         } catch (Exception e) {
             log_error(logger, e);
@@ -142,9 +149,10 @@ public class MySQLMetaStore implements MetaStore {
     * Get a db connection
     */
     private Connection getConnection() throws SQLException {
-        Connection connection = DriverManager.getConnection("jdbc:apache:commons:dbcp:connPool");
+        return dataSource.getConnection();
+        //Connection connection = DriverManager.getConnection("jdbc:apache:commons:dbcp:connPool");
 //      System.err.println("Getting connection: " + STOREID + "-" + ++CONNID);
-        return connection;
+        //return connection;
     }
 
     /*
@@ -1388,11 +1396,11 @@ public class MySQLMetaStore implements MetaStore {
                     throw e;
                 }
             } finally {
-                if (result == null) {
-                    try { if (statement != null) statement.close(); } catch (SQLException e) {
+                if ( result == null ) {
+                    try { if (statement != null) { statement.close(); } } catch (SQLException e) {
                         log_error(logger, e);
                     }
-                    try { if (connection != null) connection.close(); } catch (SQLException e) {
+                    try { if (connection != null) { connection.close(); } } catch (SQLException e) {
                         log_error(logger, e);
                     }
                 }
@@ -1446,10 +1454,10 @@ public class MySQLMetaStore implements MetaStore {
                     throw e;
                 }
             } finally {
-                try { if (statement != null) statement.close(); } catch (SQLException e) {
+                try { if (statement != null) { statement.close(); }} catch (SQLException e) {
                     log_error(logger, e);
                 }
-                try { if (connection != null) connection.close(); } catch (SQLException e) {
+                try { if (connection != null) {connection.close(); }} catch (SQLException e) {
                     log_error(logger, e);
                 }
 //              System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);

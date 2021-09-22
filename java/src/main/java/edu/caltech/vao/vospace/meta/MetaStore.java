@@ -7,7 +7,6 @@
 package edu.caltech.vao.vospace.meta;
 
 import edu.caltech.vao.vospace.NodeType;
-import org.apache.commons.pool.ObjectPool;
 
 import java.net.URISyntaxException;
 import java.sql.SQLException;
