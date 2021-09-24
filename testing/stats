@@ -1,0 +1,14 @@
+#!/bin/bash
+
+log_pattern=$1
+
+
+fail_no=`grep FAIL ${log_pattern}*.log | wc -l`
+echo "FAILS:"$fail_no
+total_no=`grep Total ${log_pattern}*.log | wc -l`
+script_no=`ls ${log_pattern}*.log | wc -l`
+echo "FAILED scripts:" $((script_no - total_no))
+echo "Finalized scripts: $total_no"
+
+avg_secs=`grep Total ${log_pattern}*.log | sed -e"s/.*Time \[//g" -e"s/\]//g" | awk -v script_no="$total_no" '{sum += $1} END {print sum/script_no}'`
+echo "avg in secs per script = "$avg_secs

@@ -1,0 +1,115 @@
+#!/bin/bash
+
+#storagemanager='http://vostest.datalab.noirlab.edu:3031'
+#storagemanager='http://vostest.datalab.noirlab.edu:7003'
+#storagemanager='http://127.0.0.1:7003'
+#storagemanager='http://127.0.0.1:3031'
+
+PYTEST="./test_vospace_API.py"
+#storagemanager='http://vostest.datalab.noirlab.edu:3031' 
+#auth_token='isuarezsola.3195.3195.$1$KMCFkMQy$DPpZg/CbVnCe/V6LVPIvp/%'
+storagemgr=${STORAGE_MGR}
+auth_token=${AUTH_TOKEN}
+level=1
+
+SEED='6b45951a-c237-4d11-a017-3154d24eTEST'
+# From https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
+
+  case $key in
+    -s|--seed)
+      SEED="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -sm|--storagemgr)
+      storagemgr="$2"
+      POSITIONAL+=("$1")
+      POSITIONAL+=("$2")
+      shift # past argument
+      shift # past value
+      ;;
+    -l|--level)
+      level="$2"
+      POSITIONAL+=("$1")
+      POSITIONAL+=("$2")
+      shift # past argument
+      shift # past value
+      ;;
+    -t|--token)
+      auth_token="$2"
+      POSITIONAL+=("$1")
+      POSITIONAL+=("$2")
+      shift # past argument
+      shift # past value
+      ;;
+    -n|--no)
+      TEST_NO="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -h|--help)
+      help=1
+      shift
+      ;;
+    --default)
+      shift # past argument
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift # past argument
+      ;;
+  esac
+done
+
+if [ -n "$help" ]
+then
+  echo "Usage $0 [-n--no <number of concurrent tests>] [-s|--seed <starter container name>] [-h|--help]"
+  echo ""
+  echo "Plus all the arguments of $PYTEST"
+  python $PYTEST -h
+  exit 0
+fi
+
+if [ -z "$level" ]
+then
+  POSITIONAL+=("-l")
+  POSITIONAL+=("$level")
+fi
+
+if [ -z "$auth_token" ]
+then
+  POSITIONAL+=("-t")
+  POSITIONAL+=("$auth_token")
+fi
+
+if [ -z "$storagemgr" ]
+then
+  POSITIONAL+=("-sm")
+  POSITIONAL+=("$storagemgr")
+fi
+ 
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+if [ -z "$TEST_NO" ]
+then
+  python $PYTEST -s $SEED $@
+  exit 0;
+fi
+
+for i in $(seq 1 $TEST_NO);
+do
+  container=${SEED}$i;
+  log_file="${container}.log"
+  echo "Started test [$i] and output sent to:"${log_file}
+  
+  #echo "python $PYTEST -s $container $@ > ${log_file}"
+  python $PYTEST -s $container $@ > ${log_file} 2>&1 &
+  if [ "$TEST_NO" -ge 10 ] && [ $level -ge 5 ]
+  then
+  	sleep 1s
+  fi
+done
+
