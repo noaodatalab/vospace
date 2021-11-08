@@ -1,34 +1,27 @@
 
 package edu.caltech.vao.vospace;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.events.XMLEvent;
 
+import ca.nrc.cadc.vos.NodeProperty;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.HttpStatus;
+import org.apache.log4j.Logger;
 
 import org.codehaus.stax2.XMLStreamReader2;
 
@@ -41,8 +34,12 @@ import edu.caltech.vao.vospace.view.TransformEngine;
 import edu.caltech.vao.vospace.xml.*;
 import edu.caltech.vao.vospace.VOSpaceException.VOFault;
 
+import static edu.noirlab.datalab.vos.Utils.log_error;
+import edu.noirlab.datalab.xml.Protocol;
+
 public class VOSpaceManager {
 
+    private static Logger logger = Logger.getLogger(VOSpaceManager.class.getName());
     private final static String AUTO_NODE = ".auto";
     private final static String NULL_NODE = ".null";
     private final static String BASE = "file:///tmp";
@@ -53,6 +50,7 @@ public class VOSpaceManager {
     private final static boolean STATUS_FREE = false;
     protected String BASE_URL = "http://localhost:8080/vospace";
     protected String ROOT_NODE = "vos://";
+    protected int ROOT_NODE_LENGTH = 6;   //precalculate the length of the ROOT NODE string
     protected final static int PROPERTIES_SPACE_ACCEPTS = 1;
     protected final static int PROPERTIES_SPACE_PROVIDES = 2;
     protected final static int PROPERTIES_SPACE_CONTAINS = 4;
@@ -99,8 +97,12 @@ public class VOSpaceManager {
     }
 
     public static VOSpaceManager getInstance() throws VOSpaceException {
-        if (ref == null) throw new VOSpaceException(
-                new NullPointerException("VOSpaceManager could not be initialized."));
+        if (ref == null) {
+            VOSpaceException voe = new VOSpaceException(
+                    new NullPointerException("VOSpaceManager could not be initialized."));
+            logger.error(voe.toString());
+            throw voe;
+        }
         return ref;
     }
 
@@ -111,6 +113,8 @@ public class VOSpaceManager {
             props.load(new FileInputStream(propFile));
             // Set space properties
             ROOT_NODE = props.containsKey("space.rootnode") ? props.getProperty("space.rootnode") : ROOT;
+            //precalculate the length of the ROOT NODE string
+            ROOT_NODE_LENGTH = ROOT_NODE.length();
             BASEURI = props.containsKey("space.baseuri") ? props.getProperty("space.baseuri") : BASE;
             STAGING_LOCATION = props.containsKey("space.staging_area") ? props.getProperty("space.staging_area") : BASE;
             structure = Boolean.parseBoolean(props.getProperty("space.supports.structure"));
@@ -149,8 +153,10 @@ public class VOSpaceManager {
             TOKEN_PATTERN = Pattern.compile("\\w+\\.\\d+\\.\\d+\\..*");
             nfactory = NodeFactory.getInstance();
         } catch (VOSpaceException ve) {
+            log_error(logger, ve);
             throw ve;
         } catch (Exception e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -165,22 +171,41 @@ public class VOSpaceManager {
     public Node create(Node node, String owner, boolean overwrite) throws VOSpaceException {
         String uri = node.getUri();
         // Is identifier syntactically valid?
-        if (!validId(uri)) throw new VOSpaceException(VOFault.InvalidURI, "", uri);
+        if (!validId(uri)) {
+            VOSpaceException voe = new VOSpaceException(VOFault.InvalidURI, "", uri);
+            logger.debug(voe + ": ID:" + uri);
+            throw voe;
+        }
         // Is the parent a valid container?
         if (!validParent(uri)) {
             // Check for a LinkNode in the path.
             String linkedURI = resolveLinks(uri);
-            if (linkedURI != null) throw new VOSpaceException(VOFault.LinkFoundFault, "", linkedURI);
-            else throw new VOSpaceException(VOFault.ContainerNotFound, "", uri);
+            if (linkedURI != null) {
+                VOSpaceException voe = new VOSpaceException(VOFault.LinkFoundFault, "", linkedURI);
+                logger.debug(voe + ": ID:" + linkedURI);
+                throw voe;
+            } else {
+                VOSpaceException voe = new VOSpaceException(VOFault.ContainerNotFound, "", uri);
+                logger.debug(voe + ": ID:" + uri);
+                throw voe;
+            }
         }
         try {
             // Does node already exist?
             boolean exists = store.isStored(uri);
-            if (exists && !overwrite) throw new VOSpaceException(VOFault.DuplicateNode, "", uri);
+            if (exists && !overwrite) {
+                VOSpaceException voe = new VOSpaceException(VOFault.DuplicateNode, "", uri);
+                logger.debug(voe + ": ID:" + uri);
+                throw voe;
+            }
             // Check specified node type
             if (exists) {
                 int type = store.getType(uri);
-                if (type != NodeType.getIdByUri(node.getType())) throw new VOSpaceException(VOFault.PermissionDenied, "The node type cannot be changed.", uri);
+                if (type != NodeType.getIdByUri(node.getType())) {
+                    VOSpaceException voe = new VOSpaceException(VOFault.PermissionDenied, "The node type cannot be changed.", uri);
+                    logger.debug(voe + ": ID:" + uri);
+                    throw voe;
+                }
             }
             NodeType type = NodeType.NODE;
             // Is a service-generated name required?
@@ -211,19 +236,33 @@ public class VOSpaceManager {
                 if (localLink && !store.isStored(targetURI)) {
                     // Check for a LinkNode in the path.
                     String linkedURI = resolveLinks(targetURI);
-                    if (linkedURI != null) throw new VOSpaceException(VOFault.LinkFoundFault,
-                            "The requested target URI contains a LinkNode.", "TARGET " + linkedURI);
-                    else throw new VOSpaceException(VOFault.NodeNotFound,
-                            "A Node does not exist with the requested target URI.", targetURI);
+                    if (linkedURI != null) {
+                        String excID = "TARGET " + linkedURI;
+                        VOSpaceException voe = new VOSpaceException(VOFault.LinkFoundFault,
+                                "The requested target URI contains a LinkNode.",
+                                excID);
+                        logger.debug(voe + ": ID:" + excID);
+                        throw voe;
+                    } else {
+                        VOSpaceException voe = new VOSpaceException(VOFault.NodeNotFound,
+                                "A Node does not exist with the requested target URI.",
+                                targetURI);
+                        logger.debug(voe + ": ID:" + targetURI);
+                        throw voe;
+                    }
                 }
             }
             // Check properties
             HashMap<String, String> nodeProps = node.getProperties();
             if (node.hasProperties()) {
                 for (String propUri: nodeProps.keySet()) {
-                    if (nodeProps.get(propUri) != "" && !checkProperty(propUri))
-                            throw new VOSpaceException(VOFault.PermissionDenied,
-                            "The property " + propUri + " is read only", uri);
+                    if (nodeProps.get(propUri) != "" && !checkProperty(propUri)) {
+                        VOSpaceException voe = new VOSpaceException(VOFault.PermissionDenied,
+                                "The property " + propUri + " is read only",
+                                uri);
+                        logger.debug(voe + ": ID:" + uri);
+                        throw voe;
+                    }
                 }
             }
             // Set properties (dates at least)
@@ -292,9 +331,10 @@ public class VOSpaceManager {
             // Check for deleted properties
             node.remove("/vos:node/vos:properties/vos:property[@xsi:nil = 'true']");
         } catch (VOSpaceException ve) {
+            log_error(logger, ve);
             throw ve;
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            log_error(logger, "uri:[" + uri + "]", e);
             throw new VOSpaceException(e, uri);
         }
         return node;
@@ -352,6 +392,68 @@ public class VOSpaceManager {
     }
 
     /**
+     * Adds views and capabilities to the passed in XML agnostic node
+     */
+    public void addViewsAndCapabilitiesJDOM2(ca.nrc.cadc.vos.Node node, NodeType type) throws VOSpaceException {
+        List<URI> accepts = new ArrayList<URI>();
+        List<URI> provides = new ArrayList<URI>();
+        List<URI> capabilities = new ArrayList<URI>();
+        try {
+            // Set <accepts> for UnstructuredDataNode
+            if (node instanceof ca.nrc.cadc.vos.UnstructuredDataNode) {
+                accepts.add(new URI(Views.get(Views.View.ANY)));
+            }
+            // Set <accepts> for StructuredDataNode
+            if (node instanceof ca.nrc.cadc.vos.StructuredDataNode) {
+                for (Views.View view : SPACE_ACCEPTS_IMAGE) {
+                    accepts.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_ACCEPTS_TABLE) {
+                    accepts.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_ACCEPTS_OTHER) {
+                    accepts.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_PROVIDES_IMAGE) {
+                    provides.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_PROVIDES_TABLE) {
+                    provides.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_PROVIDES_OTHER) {
+                    provides.add(new URI(Views.get(view)));
+                }
+            }
+            // Set <accepts> for ContainerNode
+            if (node instanceof ca.nrc.cadc.vos.ContainerNode) {
+                for (Views.View view : SPACE_ACCEPTS_ARCHIVE) {
+                    accepts.add(new URI(Views.get(view)));
+                }
+                for (Views.View view : SPACE_PROVIDES_ARCHIVE) {
+                    provides.add(new URI(Views.get(view)));
+                }
+            }
+            // Set capabilities
+            if (CAPABILITIES.size() > 0) {
+                for (String capUri : CAPABILITIES.keySet()) {
+                    Capability cap = (Capability) CAPABILITIES.get(capUri);
+                    if (cap.getApplicability().contains(type)) {
+                        capabilities.add(new URI(capUri));
+                    }
+                }
+            }
+
+            node.setAccepts(accepts);
+            node.setProvides(provides);
+            node.setCapabilities(capabilities);
+
+        } catch (URISyntaxException e) {
+            log_error(logger, e);
+            throw new VOSpaceException(e);
+        }
+    }
+
+    /**
      * Retrieve the specified node
      * @param identifier The identifier of the node to retrieve
      * @param detail The level of detail to apply to the node representation
@@ -368,8 +470,15 @@ public class VOSpaceManager {
             if (result.length == 0) {
                 // Check for a LinkNode in the path.
                 String linkedURI = resolveLinks(identifier);
-                if (linkedURI != null) throw new VOSpaceException(VOFault.LinkFoundFault, "", linkedURI);
-                else throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
+                if (linkedURI != null) {
+                    VOSpaceException voe = new VOSpaceException(VOFault.LinkFoundFault, "", linkedURI);
+                    logger.debug(voe.getFault() + " : " + linkedURI);
+                    throw voe;
+                } else {
+                    VOSpaceException voe = new VOSpaceException(VOFault.NodeNotFound, "", identifier);
+                    logger.debug(voe.getFault() + " : " + identifier);
+                    throw voe;
+                }
             }
             for (String item: result) {
                 node = nfactory.getNode(item);
@@ -400,7 +509,10 @@ public class VOSpaceManager {
                 }
                 // Set properties
                 node = setLength(node);
-                if (!(node instanceof ContainerNode) && !(node instanceof LinkNode)) node = setMD5(node);
+                // We are ignoring setting the MD5 attribute for now as
+                // it is not used by the storeClient and represents an
+                // important performance hit for bigger files.
+                // if (!(node instanceof ContainerNode) && !(node instanceof LinkNode)) node = setMD5(node);
             }
         } catch (SQLException e) {
             throw new VOSpaceException(e);
@@ -408,6 +520,94 @@ public class VOSpaceManager {
         return node;
     }
 
+    /**
+     * Retrieve the specified node with JDOM2 XML serialization logic
+     * @param identifier The identifier of the node to retrieve
+     * @param detail The level of detail to apply to the node representation
+     * @param limit The maximum number of results in the response
+     * @return the retrieved node as an edu.noirlab.datalab.vos.Node object
+     */
+    public edu.noirlab.datalab.vos.Node getNodeJDOM2(String identifier, String detail, int limit) throws VOSpaceException {
+        // Is identifier syntactically valid?
+        if (!validId(identifier)) {
+            VOSpaceException voe = new VOSpaceException(VOFault.InvalidURI);
+            logger.debug(voe.toString());
+            throw voe;
+        }
+        ca.nrc.cadc.vos.Node node = null;
+        // Retrieve original node
+        try {
+            ca.nrc.cadc.vos.Node[] result = store.getDataJDOM2(new String[] {identifier}, null, limit);
+            if (result.length == 0) {
+                // Check for a LinkNode in the path.
+                String linkedURI = resolveLinks(identifier);
+                if (linkedURI != null) {
+                    VOSpaceException voe = new VOSpaceException(VOFault.LinkFoundFault, "", linkedURI);
+                    logger.debug(voe + ": ID:" + linkedURI);
+                    throw voe;
+                } else {
+                    VOSpaceException voe = new VOSpaceException(VOFault.NodeNotFound, "", identifier);
+                    logger.debug(voe + ": ID:" + identifier);
+                    throw voe;
+                }
+            }
+            for (ca.nrc.cadc.vos.Node _node: result) {
+                // Just copying the same logic we have in the original getNode method
+                detail = (detail == null) ? "max" : detail;
+                if (!detail.equals("max")) {
+                    if (_node instanceof ca.nrc.cadc.vos.DataNode ||
+                        _node instanceof ca.nrc.cadc.vos.ContainerNode ||
+                        _node instanceof ca.nrc.cadc.vos.StructuredDataNode ||
+                        _node instanceof ca.nrc.cadc.vos.UnstructuredDataNode) {
+                        _node.setAccepts(null);
+                        _node.setProvides(null);
+                        if (_node instanceof  ca.nrc.cadc.vos.DataNode) {
+                            ((ca.nrc.cadc.vos.DataNode) _node).setBusy(null);
+                        }
+                    }
+                    _node.setCapabilities(null);
+                    if (detail.equals("min")) {
+                        _node.setProperties( new ArrayList<>());
+                    }
+                } else {
+                    if (_node instanceof ca.nrc.cadc.vos.ContainerNode) {
+                        ca.nrc.cadc.vos.ContainerNode container = (ca.nrc.cadc.vos.ContainerNode) _node;
+                        // Get children
+                        ca.nrc.cadc.vos.Node[] childNodes = null;
+                        try {
+                            childNodes = store.getChildrenNodesJDOM2(identifier);
+                        } catch (Exception e) {
+                            log_error(logger, e);
+                            throw new VOSpaceException(e);
+                        }
+
+                        container.setNodes(Arrays.asList(childNodes));
+                    }
+                }
+                node = _node;
+                // The original code sets the length no matter what
+                // which makes no sense to me, as the length property is
+                // part of the properties being set in a Node.
+                // setLength(node);
+
+            }
+        } catch (SQLException e) {
+            log_error(logger, e);
+            throw new VOSpaceException(e);
+        }
+        edu.noirlab.datalab.vos.Node retNode = new edu.noirlab.datalab.vos.Node(node);
+
+        return retNode;
+    }
+
+    // ca.nrc.cadc.vos version of the setLength method
+    public ca.nrc.cadc.vos.Node setLength(ca.nrc.cadc.vos.Node node) throws VOSpaceException {
+        List<NodeProperty> properties = new ArrayList<>();
+        properties.add(new NodeProperty(
+                Props.LENGTH_URI, Long.toString(backend.size(getLocation(node.getUri().toString())))));
+        node.setProperties(properties);
+        return node;
+    }
 
     /**
      * Set the length property on the specified node
@@ -453,19 +653,31 @@ public class VOSpaceManager {
 
     /**
      * Delete the specified node
-     * @param nodeid The identifier of the node to be deleted
+     * @param identifier The identifier of the node to be deleted
      */
     public void delete(String identifier) throws VOSpaceException {
         // Is identifier syntactically valid?
-        if (!validId(identifier)) throw new VOSpaceException(VOFault.InvalidURI);
+        if (!validId(identifier)) {
+            VOSpaceException voe = new VOSpaceException(VOFault.InvalidURI);
+            logger.debug(voe.toString());
+            throw voe;
+        }
+
         try {
             // Does node already exist?
             boolean exists = store.isStored(identifier);
             if (!exists) {
                 // Check for a LinkNode in the path.
                 String linkedURI = resolveLinks(identifier);
-                if (linkedURI != null) throw new VOSpaceException(VOFault.LinkFoundFault, "", linkedURI);
-                else throw new VOSpaceException(VOFault.NodeNotFound, "", identifier);
+                if (linkedURI != null) {
+                    VOSpaceException voe = new VOSpaceException(VOFault.LinkFoundFault, "", linkedURI);
+                    logger.debug(voe + ": ID:" + linkedURI);
+                    throw voe;
+                } else {
+                    VOSpaceException voe = new VOSpaceException(VOFault.NodeNotFound, "", identifier);
+                    logger.debug(voe + ": ID:" + identifier);
+                    throw voe;
+                }
             }
             // Remove node
             boolean isContainer = (store.getType(identifier) == NodeType.CONTAINER_NODE.ordinal());
@@ -476,6 +688,7 @@ public class VOSpaceManager {
                 backend.removeBytes(getLocation(link), false);
             }
         } catch (SQLException e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -513,6 +726,7 @@ public class VOSpaceManager {
             if (store.getType(parent) != NodeType.CONTAINER_NODE.ordinal()) return false;
             return true;
         } catch (SQLException e) {
+            log_error(logger, e);
             throw new VOSpaceException(e, id);
         }
     }
@@ -539,6 +753,7 @@ public class VOSpaceManager {
                 }
             }
         } catch (SQLException e) {
+            log_error(logger, e);
             throw new VOSpaceException(e, id);
         }
         return null;
@@ -640,7 +855,9 @@ public class VOSpaceManager {
                         }
                     }
                 } else {
-                    throw new VOSpaceException(VOFault.InvalidURI, "The specified URI is no longer valid.");
+                    VOSpaceException voe = new VOSpaceException(VOFault.InvalidURI, "The specified URI is no longer valid.");
+                    logger.debug(voe.toString());
+                    throw voe;
                 }
                 // View transformation
                 target = target.replace("~", "!");
@@ -653,11 +870,15 @@ public class VOSpaceManager {
                 if (!location.startsWith("file://")) location = "file://" + location;
                 return location;
             } else {
-                throw new VOSpaceException(VOFault.NodeNotFound, "The specified file cannot be found.");
+                VOSpaceException voe = new VOSpaceException(VOFault.NodeNotFound, "The specified file cannot be found.");
+                logger.debug(voe.toString());
+                throw voe;
             }
         } catch (VOSpaceException ve) {
+            log_error(logger, ve);
             throw ve;
         } catch (Exception e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -670,6 +891,7 @@ public class VOSpaceManager {
         try {
             store.completeTransfer(endpoint);
         } catch (Exception e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -688,6 +910,7 @@ public class VOSpaceManager {
             if (System.currentTimeMillis() - created > 2000) expired = true;
             return expired;
         } catch (Exception e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -724,9 +947,10 @@ public class VOSpaceManager {
                 store.updateData(target, node.toString());
             }
         } catch (VOSpaceException ve) {
+            log_error(logger, ve);
             throw ve;
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -741,9 +965,10 @@ public class VOSpaceManager {
             newNode.setProperty(Props.LENGTH_URI, Long.toString(backend.size(location)));
             store.updateData(newNode.getUri(), newNode.toString());
         } catch (VOSpaceException ve) {
+            log_error(logger, ve);
             throw ve;
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -787,8 +1012,10 @@ public class VOSpaceManager {
                 SPACE_CLIENT_PROTOCOLS.add(pType);
             }
         } catch (VOSpaceException ve) {
+            log_error(logger, ve);
             throw ve;
         } catch (Exception e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -825,8 +1052,10 @@ public class VOSpaceManager {
                 CAPABILITIES.put(capUri, capImpl);
             }
         } catch (VOSpaceException ve) {
+            log_error(logger, ve);
             throw ve;
         } catch (Exception e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -846,8 +1075,10 @@ public class VOSpaceManager {
             capImpl.setParams(params);
             return capImpl;
         } catch (VOSpaceException ve) {
+            log_error(logger, ve);
             throw ve;
         } catch (Exception e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
     }
@@ -881,6 +1112,7 @@ public class VOSpaceManager {
                 if (osTime - dbTime < 0) updated = false;
             }
         } catch (SQLException e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
         return updated;
@@ -893,25 +1125,100 @@ public class VOSpaceManager {
     private void checkTokenFormat(String authToken) throws VOSpaceException {
         // Validates a security token
         Matcher m = TOKEN_PATTERN.matcher(authToken);
-        if (!m.matches()) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
+        if (!m.matches()) {
+            VOSpaceException voe = new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
+            logger.debug(voe.toString());
+            throw voe;
+        }
     }
 
+
+    /**
+     * This is the timeout we give to the two caches
+     * Two mins seems to be enough to avoid an explosion of
+     * connections to the auth server.
+     * Also it is a small enough period to not worry about
+     * clearing the cache.
+     *
+     **/
+    private int authTimeout = 2; //in minutes
+
+    // Two thread safe hash map caches.
+    // One for token validation
+    private Map<String, Date> authMap = new ConcurrentHashMap<>();
+    // One for token access validation
+    private Map<String, Date> accessMap = new ConcurrentHashMap<>();
+
+    private void addToCache(String authToken, Map<String, Date> cache) {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.MINUTE, authTimeout);
+        cache.put(authToken, cal.getTime());
+    }
+
+    private boolean isCacheOK(String authToken, Map<String, Date> cache) {
+        Date date1 = cache.get(authToken);
+        Date date2 = new Date();
+        // Either token not in cache or outdated
+        if ( date1 == null || date1.compareTo(date2) < 0) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private void addTokenToCache(String authToken) {
+        addToCache(authToken, authMap);
+    }
+
+    private boolean isCachedTokenOK(String authToken) {
+        return isCacheOK(authToken, authMap);
+    }
+
+    private void addAccessURIToCache(String authToken) {
+       addToCache(authToken, accessMap);
+    }
+
+    private boolean isCachedAccessURIOK(String authToken) {
+        return isCacheOK(authToken, accessMap);
+    }
 
     /**
      * Validate the provided DataLab token
      */
     public void validateToken(String authToken) throws VOSpaceException {
+        if (authToken == null) {
+            VOSpaceException voe = new VOSpaceException(VOFault.InvalidToken, "The provided DataLab token is invalid");
+            logger.warn(voe.toString());
+            throw voe;
+
+        }
         if (AUTH_URL.startsWith("null://")) return;
         if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
             checkTokenFormat(authToken);
         } else {
+            // We want to reduce the amount of times we go to the auth server
+            // So first we check against the cached token hash.
+            if (isCachedTokenOK(authToken)) {
+                return;
+            }
             HttpClient client = new HttpClient();
             GetMethod get = new GetMethod(AUTH_URL + "/isValidToken?token=" + authToken);
+
             try {
                 int statusCode = client.executeMethod(get);
-                if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
+                if (statusCode != HttpStatus.SC_OK) {
+                    VOSpaceException voe = new VOSpaceException(VOFault.PermissionDenied, "The provided DataLab token is invalid");
+                    logger.debug(voe.toString());
+                    throw voe;
+                }
+
+                // token is ok, save it in token hash for authTimeout mins
+                addTokenToCache(authToken);
             } catch (IOException e) {
+                log_error(logger, e);
                 throw new VOSpaceException(e);
+            } finally {
+                get.releaseConnection();
             }
         }
     }
@@ -933,7 +1240,11 @@ public class VOSpaceManager {
                 node = node.substring(0, node.lastIndexOf("/"));
                 exists = store.isStored(node);
             }
-            if (ROOT_NODE.equals(node)) throw new VOSpaceException(VOFault.NodeNotFound);
+            if (ROOT_NODE.equals(node)) {
+                VOSpaceException voe = new VOSpaceException(VOFault.NodeNotFound);
+                logger.debug(voe.toString());
+                throw voe;
+            }
             // Get owner and groups for requested node
             String[] authProps = store.getPropertyValues(node, new String[]{ Props.ISPUBLIC_URI,
                     Props.PUBLICREAD_URI, Props.GROUPREAD_URI, Props.GROUPWRITE_URI });
@@ -949,17 +1260,48 @@ public class VOSpaceManager {
             if (AUTH_URL == "" || AUTH_URL.startsWith("local://")) {
                 if (!Arrays.asList(StringUtils.split(groups, ",")).contains(owner)) throw new VOSpaceException(VOFault.PermissionDenied);
             } else {
+                // We want to reduce the amount of times we go to the auth server
+                // So first we check against the cached access hash.
+                String accessURI = authToken + "&owner=" + owner + "&groups=" + groups;
+                if (isCachedAccessURIOK(accessURI)) {
+                    return;
+                }
                 // Validates the access request
                 HttpClient client = new HttpClient();
-                GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + authToken + "&owner=" + owner + "&groups=" + groups);
-                int statusCode = client.executeMethod(get);
-                if (statusCode != HttpStatus.SC_OK) throw new VOSpaceException(VOFault.PermissionDenied);
+                GetMethod get = new GetMethod(AUTH_URL + "/hasAccess?token=" + accessURI);
+                try {
+                    int statusCode = client.executeMethod(get);
+                    if (statusCode != HttpStatus.SC_OK) {
+                        VOSpaceException voe = new VOSpaceException(VOFault.PermissionDenied);
+                        logger.error(voe.toString());
+                        throw voe;
+                    }
+
+                    // access is ok, save it in access hash for "authTimeout" mins
+                    addAccessURIToCache(accessURI);
+                } finally {
+                    //release the TCP connection on this side
+                    //This should allow the OS to reclaim the port connection
+                    //Typically lsof will show the TCP connetion as CLOSE_WAIT
+                    //meaning waiting to the this process to release it.
+                    get.releaseConnection();
+                }
             }
         } catch (IOException e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         } catch (SQLException e) {
+            log_error(logger, e);
             throw new VOSpaceException(e);
         }
+    }
+
+    /**
+     * returns this VOSpace ROOT Node string length.
+     * @return int
+     */
+    public int getRootNodeLength() {
+        return ROOT_NODE_LENGTH;
     }
 
 }

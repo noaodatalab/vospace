@@ -8,15 +8,11 @@ package edu.caltech.vao.vospace.protocol;
 
 import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.storage.StorageManager;
-import edu.caltech.vao.vospace.xml.Protocol;
+import edu.noirlab.datalab.xml.Protocol;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.UUID;
 import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.methods.PutMethod;
 
 /**

@@ -7,29 +7,29 @@
 package edu.caltech.vao.vospace.protocol;
 
 import edu.caltech.vao.vospace.VOSpaceException;
+import edu.caltech.vao.vospace.VOSpaceManager;
 import edu.caltech.vao.vospace.storage.StorageManager;
-import edu.caltech.vao.vospace.xml.Protocol;
 
-import java.io.BufferedInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URL;
-import java.net.URISyntaxException;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.log4j.Logger;
+
+import static edu.noirlab.datalab.vos.Utils.log_error;
+import edu.noirlab.datalab.xml.Protocol;
 
 /**
  * This class handles the implementation details for the HTTP 1.1 GET protocol
  */
 public class HttpGetProtocolHandler implements ProtocolHandler {
+	private static Logger logger = Logger.getLogger(VOSpaceManager.class.getName());
 
-    private static String BASE_URL = "http://localhost:7007";
+	private static String BASE_URL = "http://localhost:7007";
 
     /*
      * Return the registered identifier for this protocol
@@ -48,22 +48,24 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
     /*
      * Fill in the details for a ProtocolType
      */
-    public Protocol admin(String nodeUri, Protocol protocol, int mode) throws VOSpaceException{
-	try {
-	    if (mode == SERVER) {
-		protocol.setEndpoint(BASE_URL + "/" + UUID.randomUUID());
-	    } else {
-		// Check url is valid
-		if (!Pattern.matches("^http\\://[a-zA-Z0-9\\-\\.]+\\.[a-zA-Z]{2,3}(/\\S*)?$", protocol.getEndpoint()))
-		        throw new VOSpaceException(VOSpaceException.VOFault.InternalFault, "Destination URI is invalid", nodeUri);
-	    }
-	    return protocol;
-        } catch (VOSpaceException ve) {
-            throw ve;
-	} catch (Exception e) {
-	    throw new VOSpaceException(e, nodeUri);
+	public Protocol admin(String nodeUri, Protocol protocol, int mode) throws VOSpaceException {
+		try {
+			if (mode == SERVER) {
+				protocol.setEndpoint(BASE_URL + "/" + UUID.randomUUID());
+			} else {
+				// Check url is valid
+				if (!Pattern.matches("^http\\://[a-zA-Z0-9\\-\\.]+\\.[a-zA-Z]{2,3}(/\\S*)?$", protocol.getEndpoint()))
+					throw new VOSpaceException(VOSpaceException.VOFault.InternalFault, "Destination URI is invalid", nodeUri);
+			}
+			return protocol;
+		} catch (VOSpaceException ve) {
+			log_error(logger, ve);
+			throw ve;
+		} catch (Exception e) {
+			log_error(logger, e);
+			throw new VOSpaceException(e, nodeUri);
+		}
 	}
-    }
 
     /*
      * Invoke the protocol handler and transfer data
@@ -74,7 +76,11 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
 	    HttpClient client = new HttpClient();
 	    GetMethod get = new GetMethod(protocol.getEndpoint());
  	    int statusCode = client.executeMethod(get);
-	    if (statusCode != HttpStatus.SC_OK) throw new IOException(get.getStatusLine().toString());
+	    if (statusCode != HttpStatus.SC_OK) {
+			IOException ioe = new IOException(get.getStatusLine().toString());
+			logger.error(ioe.toString());
+			throw ioe;
+		}
 	    //	    URI uri = new URI(location);
 	    InputStream in = get.getResponseBodyAsStream();
 	    backend.putBytes(location, in);
@@ -98,6 +104,7 @@ public class HttpGetProtocolHandler implements ProtocolHandler {
 	    //	} catch (URISyntaxException e) {
 	    //	    throw new IOException(e.getMessage());
 	} catch (VOSpaceException e) {
+		log_error(logger, e);
 	    throw new IOException(e.getMessage());
 	}
 	return success;

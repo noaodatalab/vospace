@@ -108,6 +108,8 @@ CREATE TABLE `nodes` (
   INDEX nod_dep_idx (`depth`),
   INDEX nod_typ_idx (`type`),
   INDEX nod_own_idx (`owner`),
+  INDEX nod_own_id_idx (`owner`(25), `identifier`(250)),
+  INDEX nod_own_dep_id_idx (`owner`(25), `depth`, `identifier`(250)),
   INDEX nod_loc_idx (`location`(767))
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 

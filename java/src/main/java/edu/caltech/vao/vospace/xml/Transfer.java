@@ -4,6 +4,7 @@ package edu.caltech.vao.vospace.xml;
 import java.util.ArrayList;
 
 import edu.caltech.vao.vospace.VOSpaceException;
+import edu.noirlab.datalab.xml.Protocol;
 
 public class Transfer {
 

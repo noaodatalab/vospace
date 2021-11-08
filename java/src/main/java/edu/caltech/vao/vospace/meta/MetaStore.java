@@ -6,7 +6,9 @@
 
 package edu.caltech.vao.vospace.meta;
 
-import org.apache.commons.pool.ObjectPool;
+import edu.caltech.vao.vospace.NodeType;
+
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import edu.caltech.vao.vospace.VOSpaceException;
 
@@ -71,6 +73,12 @@ public interface MetaStore {
     public String[] getData(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException;
 
     /*
+     * Retrieves the metadata for the specified identifier as a Node Object to be
+     * later serialized to XML via JDOM2
+     */
+    public ca.nrc.cadc.vos.Node[] getDataJDOM2(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException;
+
+    /*
      * Get the target of a link node
      */
     public String getTarget(String linkId) throws SQLException;
@@ -78,7 +86,7 @@ public interface MetaStore {
     /*
      * Remove the metadata for the specified identifier
      */
-    public String[] removeData(String identifier, boolean container) throws SQLException;
+    public String[] removeData(String identifier, boolean container) throws SQLException, VOSpaceException;
 
     /*
      * Update the metadata for the specified identifier
@@ -241,19 +249,22 @@ public interface MetaStore {
     /*
      * Get the direct children of the specified container node
      */
-    public String[] getChildren(String identifier) throws SQLException;
+    public String[] getChildren(String identifier) throws SQLException, VOSpaceException;
 
     /*
      * Get the direct children nodes of the specified container node
      */
     public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException;
 
-
+    /*
+     * Get the direct children nodes of the specified container node as a node object
+     */
+    public ca.nrc.cadc.vos.Node[] getChildrenNodesJDOM2(String identifier) throws SQLException, VOSpaceException;
 
     /*
      * Get all the children of the specified container node
      */
-    public String[] getAllChildren(String identifier) throws SQLException;
+    public String[] getAllChildren(String identifier) throws SQLException, VOSpaceException;
 
     /*
      * Store a result associated with a Job
@@ -311,4 +322,17 @@ public interface MetaStore {
      * Get the last modification time of the node
      */
     public long getLastModTime(String identifier) throws SQLException;
+
+    /**
+     * Return a NodeType based on node type id
+     */
+    public static NodeType getNodeType(int id) {
+        for (NodeType t: NodeType.values()) {
+            if (t.ordinal() == id) {
+                return t;
+            }
+        }
+        return null;
+    }
+
 }

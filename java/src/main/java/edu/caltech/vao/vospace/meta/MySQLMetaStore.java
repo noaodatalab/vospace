@@ -6,24 +6,32 @@
 
 package edu.caltech.vao.vospace.meta;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import ca.nrc.cadc.vos.NodeProperty;
+import ca.nrc.cadc.vos.VOSURI;
+import org.apache.commons.dbcp2.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.pool.ObjectPool;
-import org.apache.commons.pool.impl.GenericObjectPool;
-import org.apache.commons.dbcp.ConnectionFactory;
-import org.apache.commons.dbcp.PoolingDriver;
-import org.apache.commons.dbcp.PoolableConnectionFactory;
-import org.apache.commons.dbcp.DriverManagerConnectionFactory;
+import org.apache.commons.pool2.ObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.apache.log4j.Logger;
+import org.apache.log4j.Level;
 
 import edu.caltech.vao.vospace.xml.Node;
 import edu.caltech.vao.vospace.xml.NodeFactory;
@@ -34,6 +42,10 @@ import edu.caltech.vao.vospace.Props;
 import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.VOSpaceManager;
 
+import static edu.noirlab.datalab.vos.Utils.getTrace;
+import static edu.noirlab.datalab.vos.Utils.log_error;
+
+
 /**
  * This class represents a metadata store for VOSpace based on the MySQL
  * open source database
@@ -42,6 +54,8 @@ public class MySQLMetaStore implements MetaStore {
     private static final String DEFAULT_DB_URL = "localhost/vospace";
     private static final String DEFAULT_DB_UID = "dba";
     private static final String DEFAULT_DB_PWD = "dba";
+    private PoolingDataSource<PoolableConnection> dataSource;
+    private static Logger logger = Logger.getLogger(MySQLMetaStore.class.getName());
     public static final int MIN_DETAIL = 1;
     public static final int PROPERTY_DETAIL = 2;
     public static final int MAX_DETAIL = 3;
@@ -52,6 +66,7 @@ public class MySQLMetaStore implements MetaStore {
     private String[] propertyColumns = null;
     private int STOREID = 0;
     private int CONNID = 0;
+
 
     /**
      * Construct a basic MySQLMetaStore
@@ -67,18 +82,25 @@ public class MySQLMetaStore implements MetaStore {
             DB_UID = props.containsKey("server.meta.dbuid") ? props.getProperty("server.meta.dbuid") : DEFAULT_DB_UID;
             DB_PWD = props.containsKey("server.meta.dbpwd") ? props.getProperty("server.meta.dbpwd") : DEFAULT_DB_PWD;
             connectionURL = "jdbc:mysql://" + DB_URL + "?" + "user=" + DB_UID + "&" + "password=" + DB_PWD;
-            // Get object pool
-            ObjectPool connectionPool = new GenericObjectPool(null);
+
             // Get connection factory
             ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(connectionURL, null);
-            PoolableConnectionFactory poolableConnectionFactory = new PoolableConnectionFactory(connectionFactory, connectionPool, null, null, false, true);
-            // Get pooling driver
-            Class.forName("org.apache.commons.dbcp.PoolingDriver");
-            PoolingDriver driver = (PoolingDriver) DriverManager.getDriver("jdbc:apache:commons:dbcp:");
-            driver.registerPool("connPool", connectionPool);
+            PoolableConnectionFactory poolableConnectionFactory = new PoolableConnectionFactory(connectionFactory,
+                    null);
+
+            GenericObjectPoolConfig config = new GenericObjectPoolConfig();
+            config.setMaxTotal(100);
+            config.setMaxIdle(5);
+            config.setMinIdle(5);
+            //PoolingDataSource expect an ObjectPool
+            ObjectPool<PoolableConnection> connectionPool = new GenericObjectPool<>(poolableConnectionFactory, config);
+            // Set the poolableConnectionFactory's pool property to the owning pool
+            poolableConnectionFactory.setPool(connectionPool);
+
+            this.dataSource = new PoolingDataSource<>(connectionPool);
+
         } catch (Exception e) {
-            e.printStackTrace();
-            //      log.error(e.getMessage());
+            log_error(logger, e);
         }
     }
 
@@ -127,9 +149,10 @@ public class MySQLMetaStore implements MetaStore {
     * Get a db connection
     */
     private Connection getConnection() throws SQLException {
-        Connection connection = DriverManager.getConnection("jdbc:apache:commons:dbcp:connPool");
+        return dataSource.getConnection();
+        //Connection connection = DriverManager.getConnection("jdbc:apache:commons:dbcp:connPool");
 //      System.err.println("Getting connection: " + STOREID + "-" + ++CONNID);
-        return connection;
+        //return connection;
     }
 
     /*
@@ -188,6 +211,25 @@ public class MySQLMetaStore implements MetaStore {
         String query = "select owner from nodes where identifier = '" + fixId(identifier) + "'";
         owner = getAsString(query);
         return owner;
+    }
+
+    /*
+     * Get the owner from the identifier ID string
+     * @param identifier The Id of the node
+     * @return the owner of the node
+     */
+    protected String getOwnerFromId(String identifier) throws VOSpaceException {
+        int rootNodeLength = VOSpaceManager.getInstance().getRootNodeLength();
+        String idPath = identifier.substring(rootNodeLength);
+        String[] idTokens = idPath.split("\\/");
+        if (idTokens.length > 0) {
+            String owner = idTokens[1];
+            return owner;
+        } else {
+            throw new VOSpaceException(VOSpaceException.VOFault.InvalidURI,
+                    "Can not find owner in identifier after removing root node." +
+                            "[" + idPath + "]");
+        }
     }
 
     /*
@@ -375,6 +417,61 @@ public class MySQLMetaStore implements MetaStore {
         return nodes.toArray(new String[0]);
     }
 
+    /**
+    *  getDataJDOM2 is the JDOM2 version of the above getData, with the caveat
+     *  that returns a list of object Nodes as opposed to XML strings.
+     *  We found that doing the Object to XML serialization at the very end
+     *  is more efficient.
+    */
+    public ca.nrc.cadc.vos.Node[] getDataJDOM2(String[] identifiers, String token, int limit) throws SQLException, VOSpaceException {
+        String query = null, whereQuery = null;
+        int count = 0, offset = 0;
+        // Get count
+        for (int i = 0; i < identifiers.length; i++) {
+            if (i == 0) whereQuery = "where";
+            if (identifiers[i].contains("*")) {
+                whereQuery += " identifier like '" + escapeId(identifiers[i]).replace("*", "%") + "'";
+            } else {
+                whereQuery += " identifier = '" + fixId(identifiers[i]) + "'";
+            }
+            if (i != identifiers.length - 1) whereQuery += " or ";
+        }
+        if (token != null) {
+            String tokenQuery = "select offset, count, updateDate, whereQuery from listings where token = '" + token + "'";
+            ResultSet tokenResult = null;
+            try {
+                tokenResult = execute(tokenQuery);
+                if (tokenResult.next()) {
+                    offset = tokenResult.getInt(1);
+                    count = tokenResult.getInt(2);
+                    whereQuery = tokenResult.getString(4);
+                } else {
+                    throw new SQLException("Invalid token");
+                }
+            } finally {
+                closeResult(tokenResult);
+            }
+        }
+        // Construct listing query
+        query = "select identifier, type from nodes ";
+        query += whereQuery + " order by type ";
+        if (limit > 0) query += " limit " + limit;
+        if (offset > 0) query += " offset " + offset;
+        ResultSet result = null;
+        ArrayList<ca.nrc.cadc.vos.Node> nodes = new ArrayList<ca.nrc.cadc.vos.Node>();
+        try {
+            result = execute(query);
+            while (result.next()) {
+                String nodeId = result.getString(1);
+                int nodeType = result.getInt(2);
+                nodes.add(createNodeJDOM2(nodeId, nodeType));
+            }
+        } finally {
+            closeResult(result);
+        }
+        return nodes.toArray(new ca.nrc.cadc.vos.Node[0]);
+    }
+
     /*
      * Get the target of a link node
      */
@@ -430,6 +527,71 @@ public class MySQLMetaStore implements MetaStore {
     }
 
     /*
+     * Create the specified node object by combining the other data stored in the database
+     * This node object can later be serialized to XML in one swap.
+     */
+    private ca.nrc.cadc.vos.Node createNodeJDOM2(String identifier, int type) throws SQLException, VOSpaceException {
+        // Create a new Node object of the proper type
+        String fixedId = fixId(identifier);
+        //Node node = NodeFactory.getInstance().getNodeByType(NodeType.getUriById(type));
+        ca.nrc.cadc.vos.Node node = null;
+        try {
+            node = NodeFactory.getInstance().getJDOM2NodeByType(type, new VOSURI(fixedId));
+            // Get the Properties for the node, and set them in the Node object
+            String[] propNames = Props.allProps();
+            // First build a query of all column names to get all column values
+            String query = "select " + StringUtils.join(propNames, ",") + " from properties where identifier = '" + fixedId + "'";
+            // Execute the query and set the property values in the Node.
+            ResultSet result = null;
+            List<NodeProperty> properties = new ArrayList<>();
+            try {
+                result = execute(query);
+                if (result.next()) {
+                    String value = null;
+                    for (String name : propNames) {
+                        value = result.getString(name);
+                        if (value != null) {
+                            NodeProperty np = new NodeProperty("ivo://ivoa.net/vospace/core#" + name, value);
+                            properties.add(np);
+                        }
+                    }
+                }
+            } finally {
+                closeResult(result);
+            }
+            query = "select property, value from addl_props where identifier = '" + fixedId + "'";
+            // Execute the query and set the property values in the Node.
+            try {
+                result = execute(query);
+                while (result.next()) {
+                    String property = result.getString(1);
+                    String value = result.getString(2);
+                    if (value != null) {
+                        NodeProperty np = new NodeProperty("ivo://ivoa.net/vospace/core#" + property, value);
+                        properties.add(np);
+                    }
+                }
+            } finally {
+                closeResult(result);
+            }
+            node.setProperties(properties);
+            if (node instanceof ca.nrc.cadc.vos.LinkNode) {
+                ((ca.nrc.cadc.vos.LinkNode) node).setTarget(new URI(getTarget(fixedId)));
+            }
+            // Set the Views and Capabilities; unfortunately requires the VOSpaceManager
+            NodeType nodeType = MetaStore.getNodeType(type);
+            if (viewsAndCaps.contains(nodeType)) {
+                VOSpaceManager.getInstance().addViewsAndCapabilitiesJDOM2(node, nodeType);
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            throw new VOSpaceException(VOSpaceException.VOFault.InvalidURI, e.getLocalizedMessage());
+        }
+        // Return the Node
+        return node;
+    }
+
+    /*
      * Get the specified node
      */
     public String getNode(String identifier) throws SQLException, VOSpaceException {
@@ -444,9 +606,12 @@ public class MySQLMetaStore implements MetaStore {
     /*
      * Get the direct children of the specified container node
      */
-    public String[] getChildren(String identifier) throws SQLException {
-        String query = "select identifier from nodes where depth = " + (getIdDepth(identifier) + 1)
+    public String[] getChildren(String identifier) throws SQLException, VOSpaceException {
+        String query = "select identifier from nodes where " +
+                " owner = '" + getOwnerFromId(identifier) + "'" +
+                " and depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
+
         return getAsStringArray(query);
         /*
         ArrayList<String> children = new ArrayList<String>();
@@ -465,33 +630,132 @@ public class MySQLMetaStore implements MetaStore {
      * Get the direct children nodes of the specified container node
      */
     public String[] getChildrenNodes(String identifier) throws SQLException, VOSpaceException {
-        /* String query = "select node from nodes where identifier like '" + fixId(identifier) + "/%' and identifier not like '" + fixId(identifier) + "/%/%'";
-        String[] children = getAsStringArray(query);
-        return children; */
-        String query = "select identifier, type from nodes where depth = " + (getIdDepth(identifier) + 1)
-                + " and identifier like '" + escapeId(identifier) + "/%'";
-        ResultSet result = null;
-        ArrayList<String> children = new ArrayList<String>();
+
+        ca.nrc.cadc.vos.Node[] nodeArray = getChildrenNodesJDOM2(identifier);
+        edu.noirlab.datalab.vos.VTDXMLNodeWriter instance = new edu.noirlab.datalab.vos.VTDXMLNodeWriter();
+        ArrayList<String> nodeXMLArray = new ArrayList<String>();
         try {
-            result = execute(query);
+            for (ca.nrc.cadc.vos.Node elem : nodeArray) {
+                StringWriter sw = new StringWriter();
+                instance.write(elem, sw, true);
+                nodeXMLArray.add(sw.toString());
+                sw.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println(e.getLocalizedMessage());
+            throw new VOSpaceException(e);
+        }
+
+        return nodeXMLArray.toArray(new String[0]);
+    }
+
+    List<NodeType> viewsAndCaps = Arrays.asList(
+            NodeType.DATA_NODE,
+            NodeType.CONTAINER_NODE,
+            NodeType.STRUCTURED_DATA_NODE,
+            NodeType.UNSTRUCTURED_DATA_NODE);
+
+    /*
+     * Get the direct children nodes of the specified container node.
+     * This is the alternative version to the original getChildrenNodes.
+     * This new version, however, uses ca.nrd.cadc.vos.Node classes to
+     * represent the Node object and it uses a subquery to join the Nodes,
+     * properties and addl_properties table in one single SQL query.
+     */
+    public ca.nrc.cadc.vos.Node[] getChildrenNodesJDOM2(String identifier) throws SQLException, VOSpaceException {
+        String nodesQuery= "select identifier, type from nodes where " +
+                " owner = '" + getOwnerFromId(identifier) + "'" +
+                " and depth = " + (getIdDepth(identifier) + 1) +
+                " and identifier like '" + escapeId(identifier) + "/%'";
+
+        String addlQuery = "select a.property, a.value, a.identifier from addl_props as a";
+        String[] propNames = Props.allProps();
+        String queryProp = String.format("select t.identifier, t.type," +
+                StringUtils.join(Arrays.stream(propNames).map(s->"p." +s).
+                        collect(Collectors.toList()), ",") +
+                ", addl.property, addl.value from properties as p, (%s) as t " +
+                " LEFT JOIN (%s, (%s) as t where a.identifier = t.identifier) as addl " +
+                " on addl.identifier = t.identifier " +
+                " where p.identifier = t.identifier", nodesQuery, addlQuery, nodesQuery);
+
+        //format:
+        // type,    node_uri  , busy,       groupread,
+        // btime,   publicread, length,     ctime,
+        // ispublic,mtime,      groupwrite, date
+        ResultSet result = null;
+
+        ArrayList<ca.nrc.cadc.vos.Node> nodeArray = new ArrayList<ca.nrc.cadc.vos.Node>();
+        try {
+            result = execute(queryProp);
+            String[] formatArgs = new String[4];
             while (result.next()) {
                 String childId = result.getString(1);
-                int childType = result.getInt(2);
-                children.add(createNode(childId, childType));
+                int childTypeId = result.getInt(2);
+                String fixedChildId = fixId(childId);
+                formatArgs[0] = fixedChildId;
+                ca.nrc.cadc.vos.Node nodeJDOM2 = NodeFactory.getInstance().getJDOM2NodeByType(childTypeId, new VOSURI(childId));
+                String value = null;
+
+                List<NodeProperty> properties = new ArrayList<>();
+                for (String propertyName: propNames) {
+                    value = result.getString("p." + propertyName);
+                    //delete below line
+                    if (value != null) {
+                        NodeProperty np = new NodeProperty("ivo://ivoa.net/vospace/core#" + propertyName, value);
+                        properties.add(np);
+                    }
+                }
+
+                //additional properties
+                String propertyName = result.getString("addl.property");
+                value = result.getString("addl.value");
+                if (propertyName !=null && value != null) {
+                    properties.add(new NodeProperty("ivo://ivoa.net/vospace/core#"+propertyName, value));
+                }
+                nodeJDOM2.setProperties(properties);
+
+                NodeType childType = MetaStore.getNodeType(childTypeId);
+                if (NodeType.LINK_NODE == MetaStore.getNodeType(childTypeId)) {
+                    String target = getTarget(fixedChildId);
+                    ((ca.nrc.cadc.vos.LinkNode) nodeJDOM2).setTarget(new URI(target));
+                }
+
+                // Set the Views and Capabilities; unfortunately requires the VOSpaceManager
+                if ( viewsAndCaps.contains(childType)) {
+                    VOSpaceManager.getInstance().addViewsAndCapabilitiesJDOM2(nodeJDOM2, childType);
+                }
+
+                nodeArray.add(nodeJDOM2);
             }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            String msg = e.getLocalizedMessage();
+            System.out.println(msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+            String msg = e.getLocalizedMessage();
+            System.out.println(msg);
         } finally {
             closeResult(result);
         }
-        return children.toArray(new String[0]);
-    }
 
+        return nodeArray.toArray(new ca.nrc.cadc.vos.Node[0]);
+    }
 
     /*
      * Get all the children of the specified container node
      */
-    public String[] getAllChildren(String identifier) throws SQLException {
+    public String[] getAllChildren(String identifier) throws SQLException, VOSpaceException {
         ArrayList<String> children = new ArrayList<String>();
-        String query = "select identifier from nodes where identifier like '" + escapeId(identifier) + "/%'";
+        // Note: Don't filter by depth in the where clause as 
+        // we want all nodes and not only the immediate ones.
+        String query = "select identifier from nodes where " +
+                " owner = '" + getOwnerFromId(identifier) + "'" +
+                " and identifier like '" + escapeId(identifier) + "/%'";
         for (String child : getAsStringArray(query)) {
             if (!child.equals(fixId(identifier))) {
                 children.add(child);
@@ -507,12 +771,16 @@ public class MySQLMetaStore implements MetaStore {
      * Returns a list of links which pointed to the deleted identifier and were
      * also removed in the process of removing the identifier.
      */
-    public String[] removeData(String identifier, boolean container) throws SQLException {
+    public String[] removeData(String identifier, boolean container) throws SQLException, VOSpaceException {
         String query = "";
         ArrayList<String> removedLinks = new ArrayList<String>();
         if (container) {
             String escaped = escapeId(identifier);
-            query = "delete from nodes where identifier like '" + escaped + "/%'";
+            // Note: Don't filter by depth in the where clause as 
+            // we want all nodes and not only the immediate ones.
+            query = "delete from nodes where " +
+                    " owner = '" + getOwnerFromId(identifier) + "'" +
+                    " and identifier like '" + escaped + "/%'";
             update(query);
             query = "delete from properties where identifier like '" + escaped + "/%'";
             update(query);
@@ -670,7 +938,10 @@ public class MySQLMetaStore implements MetaStore {
      * Store the details of the specified trafnsfer
      */
     public void storeTransfer(String identifier, String endpoint) throws SQLException {
-        String query = "insert into transfers (jobid, endpoint, created) values ('" + fixId(identifier) + "', '" + endpoint + "', cast(now() as datetime))";
+        String query = "insert into transfers (jobid, rendpoint, created) " +
+                "values ('" + fixId(identifier) + "', " +
+                "'" + new StringBuilder(endpoint).reverse() + "', " +
+                " cast(now() as datetime))";
         update(query);
     }
 
@@ -678,7 +949,11 @@ public class MySQLMetaStore implements MetaStore {
      * Retrieve the job associated with the specified endpoint
      */
     public String getTransfer(String endpoint) throws SQLException {
-        String query = "select details from results j, transfers t where t.jobid = j.identifier and t.endpoint like '%" + escapeStr(endpoint) + "'";
+        //String query = "select details from results j, transfers t where t.jobid = j.identifier and t.endpoint like '%" + escapeStr(endpoint) + "'";
+        String query = "select details from results j, transfers t where" +
+                " t.jobid = j.identifier " +
+                "and t.rendpoint " +
+                "like '" + new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         String job = getAsString(query);
         return job;
     }
@@ -698,7 +973,9 @@ public class MySQLMetaStore implements MetaStore {
      */
     public boolean isCompletedByEndpoint(String endpoint) throws SQLException {
         boolean completed = false;
-        String query = "select completed from transfers where endpoint like '%" + escapeStr(endpoint) + "'";
+        //String query = "select completed from transfers where endpoint like '%" + escapeStr(endpoint) + "'";
+        String query = "select completed from transfers where rendpoint like '" +
+                new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         if (getAsDate(query) != null) completed = true;
         return completed;
     }
@@ -727,6 +1004,8 @@ public class MySQLMetaStore implements MetaStore {
     public String resolveLocation(String endpoint) throws SQLException {
         String location = null;
 //      String query = "select n.location from nodes n, transfers t where n.identifier = t.identifier and locate('" + endpoint + "', t.endpoint) > 0 and timestampdiff(minute, t.created, now()) < 60 and completed is null";
+        // ISS - NOTE: I didn't change the endpoint to rev_endpoint in this SQL
+        // as it looks like this functionality is not used by anyone.
         String query = "select location from transfers where locate('" + endpoint + "', endpoint) > 0 and timestampdiff(minute, created, now()) < 60 and completed is null";
         location = getAsString(query);
         return location;
@@ -737,7 +1016,8 @@ public class MySQLMetaStore implements MetaStore {
      */
     public long getCreated(String endpoint) throws SQLException {
         long created = 0;
-        String query = "select created from transfers where locate('" + endpoint + "', endpoint) > 0";
+        String query = "select created from transfers where rendpoint " +
+                "like '" + new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         created = getAsTime(query);
         return created;
     }
@@ -756,7 +1036,9 @@ public class MySQLMetaStore implements MetaStore {
      * Mark the specified transfer as complete
      */
     public void completeTransfer(String endpoint) throws SQLException {
-        String query = "update transfers set completed = cast(now() as datetime) where endpoint like '%" +  escapeStr(endpoint) + "'";
+        String query = "update transfers set completed = cast(now() as datetime) " +
+                "where rendpoint like '" +
+                new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         update(query);
     }
 
@@ -789,7 +1071,8 @@ public class MySQLMetaStore implements MetaStore {
      */
     public String resolveTransfer(String endpoint) throws SQLException {
         String identifier = null;
-        String query = "select identifier from transfers where locate('" + endpoint + "', endpoint) > 0";
+        String query = "select identifier from transfers where rendpoint " +
+                "like '" + new StringBuilder(endpoint).reverse() + "%'";
         identifier = getAsString(query);
         return identifier;
     }
@@ -1067,7 +1350,6 @@ public class MySQLMetaStore implements MetaStore {
         return ans;
     }
 
-
     /*
      * Execute a query on the store
      */
@@ -1079,12 +1361,33 @@ public class MySQLMetaStore implements MetaStore {
         int retries = 5;
         while (retries > 0) {
             try {
+                long t0 = System.currentTimeMillis();
                 connection = getConnection();
                 statement = connection.createStatement();
                 boolean success = statement.execute(query);
                 if (success) result = statement.getResultSet();
                 retries = 0;
+                long dt = System.currentTimeMillis() - t0;
+                // We want to see what queries take more than .5 seconds
+                if (logger.isDebugEnabled() || dt >= 500) {
+                    String logMsg = query + "t:[" +dt + "ms ] r:[" + retries + "]";
+                    if (dt >= 500) {
+                        logger.warn(logMsg);
+                    } else {
+                        logger.debug(logMsg);
+                    }
+
+                    if (dt >= 500 || logger.getLevel() == Level.TRACE) {
+                        String trace = getTrace(Thread.currentThread().getStackTrace());
+                        if (dt >= 500) {
+                            logger.warn(trace);
+                        } else {
+                            logger.debug(trace);
+                        }
+                    }
+                }
             } catch (SQLException e) {
+                log_error(logger, "query [" + query + "], retries [" + retries + "]",  e);
                 String sqlState = e.getSQLState();
                 if (retries > 0 && ("08S01".equals(sqlState) || "40001".equals(sqlState))) {
                     // System.out.println(sqlState + " " + e.toString());
@@ -1093,9 +1396,13 @@ public class MySQLMetaStore implements MetaStore {
                     throw e;
                 }
             } finally {
-                if (result == null) {
-                    try { if (statement != null) statement.close(); } catch (SQLException e) {}
-                    try { if (connection != null) connection.close(); } catch (SQLException e) {}
+                if ( result == null ) {
+                    try { if (statement != null) { statement.close(); } } catch (SQLException e) {
+                        log_error(logger, e);
+                    }
+                    try { if (connection != null) { connection.close(); } } catch (SQLException e) {
+                        log_error(logger, e);
+                    }
                 }
             }
         }
@@ -1112,11 +1419,33 @@ public class MySQLMetaStore implements MetaStore {
         int retries = 5;
         while (retries > 0) {
             try {
+                long t0 = System.currentTimeMillis();
                 connection = getConnection();
                 statement = connection.createStatement();
                 statement.executeUpdate(query);
                 retries = 0;
+                long dt = System.currentTimeMillis() - t0;
+                // We want to see what queries take more than .5 seconds
+                if (logger.isDebugEnabled() || dt >= 500) {
+                    String logMsg = query + " t:[" + dt + "ms ] r:[" + retries + "]";
+
+                    if (dt >= 500) {
+                        logger.warn(logMsg);
+                    } else {
+                        logger.debug(logMsg);
+                    }
+
+                    if (dt >= 500 || logger.getLevel() == Level.TRACE) {
+                        String trace = getTrace(Thread.currentThread().getStackTrace());
+                        if (dt >= 500) {
+                            logger.warn(trace);
+                        } else {
+                            logger.debug(trace);
+                        }
+                    }
+                }
             } catch (SQLException e) {
+                log_error(logger, "query [" + query + "], retries [" + retries + "]", e);
                 String sqlState = e.getSQLState();
                 if (retries > 0 && ("08S01".equals(sqlState) || "40001".equals(sqlState))) {
                     // System.out.println(sqlState + " " + e.toString());
@@ -1125,8 +1454,12 @@ public class MySQLMetaStore implements MetaStore {
                     throw e;
                 }
             } finally {
-                try { if (statement != null) statement.close(); } catch (SQLException e) {}
-                try { if (connection != null) connection.close(); } catch (SQLException e) {}
+                try { if (statement != null) { statement.close(); }} catch (SQLException e) {
+                    log_error(logger, e);
+                }
+                try { if (connection != null) {connection.close(); }} catch (SQLException e) {
+                    log_error(logger, e);
+                }
 //              System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
             }
         }
@@ -1141,8 +1474,12 @@ public class MySQLMetaStore implements MetaStore {
             Statement statement = result.getStatement();
             Connection connection = statement.getConnection();
             result.close();
-            if (statement != null) statement.close();
-            if (connection != null) connection.close();
+            try { if (statement != null) statement.close(); } catch (SQLException e) {
+                log_error(logger, e);
+            }
+            try { if (connection != null) connection.close(); } catch (SQLException e) {
+                log_error(logger, e);
+            }
         }
 //      System.err.println("*** Closing db connection: " + STOREID + "-" + CONNID);
     }
@@ -1320,7 +1657,9 @@ public class MySQLMetaStore implements MetaStore {
      */
     public boolean isTransferByEndpoint(String endpoint) throws SQLException {
         boolean transfer = false;
-        String query = "select identifier from transfers where endpoint like '%" + escapeStr(endpoint) + "'";
+        //String query = "select identifier from transfers where endpoint like '%" + escapeStr(endpoint) + "'";
+        String query = "select identifier from transfers where rendpoint like '" +
+                new StringBuilder(escapeStr(endpoint)).reverse() + "%'";
         if (getAsString(query) != null) transfer = true;
         return transfer;
     }
