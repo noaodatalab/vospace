@@ -206,7 +206,7 @@ public class TransferJob extends JobThread {
                         String details = store.getResult(jobId);
                         file = details.substring(details.indexOf("<vos:target>") + 12, details.indexOf("</vos:target>"));
                         target = file;
-                        file = file.replace("vos://datalab.noao.edu!vospace", manager.BASEURI);
+                        file = file.replace("vos://datalab.noirlab!vospace", manager.BASEURI);
                     } catch (SQLException e) {
                         log_error(logger, "for jobId [" + jobId + "]", e);
                         throw new UWSException(UWSException.INTERNAL_SERVER_ERROR, e);

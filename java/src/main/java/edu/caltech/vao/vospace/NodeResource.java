@@ -25,9 +25,6 @@ public class NodeResource extends VOSpaceResource {
 
     private static Logger log = Logger.getLogger(NodeResource.class);
 
-    //    private final String ROOTNODE = "vos://nvo.caltech!vospace";
-    private final String ROOTNODE = "vos://datalab.noao.edu!vospace";
-
     public NodeResource() throws VOSpaceException {
         super();
     }
