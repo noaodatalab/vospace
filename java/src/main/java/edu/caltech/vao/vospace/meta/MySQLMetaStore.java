@@ -788,6 +788,8 @@ public class MySQLMetaStore implements MetaStore {
             update(query);
             query = "delete from links where identifier like '" + escaped + "/%'";
             update(query);
+            query = "delete from capabilities where identifier like '" + escaped + "/%'";
+            update(query);
             // Find all the links to the container contents
             query = "select identifier from links where target like '" + escaped + "/%'";
             Collections.addAll(removedLinks, getAsStringArray(query));
@@ -800,6 +802,8 @@ public class MySQLMetaStore implements MetaStore {
         query = "delete from addl_props where identifier = '" + identifier + "'";
         update(query);
         query = "delete from links where identifier = '" + identifier + "'";
+        update(query);
+        query = "delete from capabilities where identifier = '" + identifier + "'";
         update(query);
         // Find all the links to the identifier
         query = "select identifier from links where target = '" + identifier + "'";
