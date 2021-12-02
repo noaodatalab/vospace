@@ -47,7 +47,7 @@ public class CapRunner implements Capability {
      * Return the registered identifier for this capability
      */
     public String getUri() {
-	return "ivo://datalab.noao.edu/vospace/capabilities#runner";
+	return "ivo://datalab.noirlab/vospace/capabilities#runner";
     }
 
 

@@ -36,7 +36,7 @@ public class TableIngester implements Capability {
      * Return the registered identifier for this capability
      */
     public String getUri() {
-	return "ivo://datalab.noao.edu/vospace/capabilities#tableingester";
+	return "ivo://datalab.noirlab/vospace/capabilities#tableingester";
     }
 
 
