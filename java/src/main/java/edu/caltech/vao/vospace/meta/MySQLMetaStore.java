@@ -42,8 +42,7 @@ import edu.caltech.vao.vospace.Props;
 import edu.caltech.vao.vospace.VOSpaceException;
 import edu.caltech.vao.vospace.VOSpaceManager;
 
-import static edu.noirlab.datalab.vos.Utils.getTrace;
-import static edu.noirlab.datalab.vos.Utils.log_error;
+import static edu.noirlab.datalab.vos.Utils.*;
 
 
 /**
@@ -719,7 +718,13 @@ public class MySQLMetaStore implements MetaStore {
                 NodeType childType = MetaStore.getNodeType(childTypeId);
                 if (NodeType.LINK_NODE == MetaStore.getNodeType(childTypeId)) {
                     String target = getTarget(fixedChildId);
-                    ((ca.nrc.cadc.vos.LinkNode) nodeJDOM2).setTarget(new URI(target));
+                    URI targetURI = new URI("null");
+                    if (target != null) {
+                       targetURI = new URI(target);
+                    } else {
+                        logger.warn("LinkFoundFault: no target for [" + childTypeId + "]");
+                    }
+                    ((ca.nrc.cadc.vos.LinkNode) nodeJDOM2).setTarget(targetURI);
                 }
 
                 // Set the Views and Capabilities; unfortunately requires the VOSpaceManager
@@ -730,15 +735,17 @@ public class MySQLMetaStore implements MetaStore {
                 nodeArray.add(nodeJDOM2);
             }
         } catch (URISyntaxException e) {
-            e.printStackTrace();
+            log_error(logger, "getChildrenNodesJDOM2 identifier [" + identifier + "]",  e);
+            throw new VOSpaceException(VOSpaceException.VOFault.InternalFault,
+                    "Error processing container [" + identifier + "]");
         } catch (RuntimeException e) {
-            e.printStackTrace();
-            String msg = e.getLocalizedMessage();
-            System.out.println(msg);
+            log_error(logger, "getChildrenNodesJDOM2 identifier [" + identifier + "]",  e);
+            throw new VOSpaceException(VOSpaceException.VOFault.InternalFault,
+                    "Error processing container [" + identifier + "]");
         } catch (Exception e) {
-            e.printStackTrace();
-            String msg = e.getLocalizedMessage();
-            System.out.println(msg);
+            log_error(logger, "getChildrenNodesJDOM2 identifier [" + identifier + "]",  e);
+            throw new VOSpaceException(VOSpaceException.VOFault.InternalFault,
+                    "Error processing container [" + identifier + "]");
         } finally {
             closeResult(result);
         }
