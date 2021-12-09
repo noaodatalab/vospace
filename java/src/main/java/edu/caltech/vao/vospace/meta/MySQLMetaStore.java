@@ -606,7 +606,7 @@ public class MySQLMetaStore implements MetaStore {
      * Get the direct children of the specified container node
      */
     public String[] getChildren(String identifier) throws SQLException, VOSpaceException {
-        String query = "select identifier from nodes where " +
+        String query = "select identifier from nodes force index (nod_own_dep_id_idx) where " +
                 " owner = '" + getOwnerFromId(identifier) + "'" +
                 " and depth = " + (getIdDepth(identifier) + 1)
                 + " and identifier like '" + escapeId(identifier) + "/%'";
@@ -664,7 +664,7 @@ public class MySQLMetaStore implements MetaStore {
      * properties and addl_properties table in one single SQL query.
      */
     public ca.nrc.cadc.vos.Node[] getChildrenNodesJDOM2(String identifier) throws SQLException, VOSpaceException {
-        String nodesQuery= "select identifier, type from nodes where " +
+        String nodesQuery= "select identifier, type from nodes force index (nod_own_dep_id_idx) where " +
                 " owner = '" + getOwnerFromId(identifier) + "'" +
                 " and depth = " + (getIdDepth(identifier) + 1) +
                 " and identifier like '" + escapeId(identifier) + "/%'";
