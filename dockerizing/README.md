@@ -25,6 +25,11 @@ To start only mysql
 
 _docker-compose --env-file ./docker_vospace.env -f docker-compose.yml start mysql_
 
+To stop them simply replace start for stop
+**E.g.**
+
+_docker-compose --env-file ./docker_vospace.env -f docker-compose.yml stop mysql_
+
 
 ### Verify images and containers
 #### Images
@@ -67,7 +72,7 @@ To run an external mysql client from the local machine onto the mysql container 
 
 **E.g.**
 
-_mysql -h 127.0.0.1 -u dba -p  vsospace\_dev_
+_mysql -h 127.0.0.1 -u dba -p  vospace\_dev_
 
 **_Note_** the _127.0.0.1_ as opposed to _localhost_. If you use _localhost_ the mysql client will try to 
 find and use the local unix socket, which is available within the container but not the host.
@@ -80,7 +85,7 @@ I installed a mysql client in my Mac via brew, then run it as below:
 
 **E.g.**
 
-_/usr/local/opt/mysql-client/bin/mysql -h 127.0.0.1 -u dba -p  vsospace\_dev_
+_/usr/local/opt/mysql-client/bin/mysql -h 127.0.0.1 -u dba -p  vospace\_dev_
 
 #### From the container itself
 The other is to access the mysql client from the mysql container itself
@@ -89,7 +94,7 @@ The other is to access the mysql client from the mysql container itself
 
 **E.g.**
 
-_docker exec -it $(docker ps -aqf "name=^${CONTAINER_NAME}$") sh -c "mysql -u dba -p vsospace\_dev"_
+_docker exec -it $(docker ps -aqf "name=^${CONTAINER_NAME}$") sh -c "mysql -u dba -p vospace\_dev"_
 
 
 ### Tomcat container
