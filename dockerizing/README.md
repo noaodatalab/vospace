@@ -26,10 +26,10 @@ To start only mysql
 _docker-compose --env-file ./docker_vospace.env -f docker-compose.yml start mysql_
 
 To stop them simply replace start for stop
+
 **E.g.**
 
 _docker-compose --env-file ./docker_vospace.env -f docker-compose.yml stop mysql_
-
 
 ### Verify images and containers
 #### Images
@@ -133,25 +133,58 @@ OK - Reloaded application at context path [/vospace]
 
 #### Testing the Tomcat server via http
 
-`http://localhost:8080/vospace/test/Dummy`
+##### Testing the vospace webapp
 
-should display:
+For a given username, get a valid token for the authmanager service you are using, then url scape that token.
+E.g.
+The token for user "testuser" is:
+TOKEN=testuser.991.991.$1$ZZLYRZsz$4WPknj.1gu0WL33BnLbpR.
 
+The scaped toke will look like:
+ESC_TOKEN=testuesr.991.991.%241%24ZZLYRZsz%244WPknj.1gu0WL33BnLbpR.
+
+Then use the following curl command to test it:
+`curl -siH "X-Dl-Authtoken: $ESC_TOKEN" -w\n http://localhost:8080/vospace-2.0/vospace/nodes/isuarezsola`
+
+e.g.
+`curl -siH "X-Dl-Authtoken: testuesr.991.991.%241%24ZZLYRZsz%244WPknj.1gu0WL33BnLbpR." -w\n http://localhost:8080/vospace-2.0/vospace/nodes/isuarezsola`
+
+The output will be a xml message, that starts with:
+`<node xmlns="http://www.ivoa.net/xml/VOSpace/v2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="vos:ContainerNode" uri="vos://datalab.noirlab!vospace/testuser" busy="false"><properties><property uri="ivo://ivoa.net/vospace/core#date">2021-12-16T14:47:39.780310</property>...`
+
+**NOTE:** ***To get a token use the authClient api:***
+
+**E.g.**
 ```
-Dummy Test
-Dummy Test 2!!
-Dummy Test 3!!
-Dummy Test 4!!
+from dl import authClient
+
+user="testuser"
+passwd="<testuser password>"
+print("[%s]" % authClient.login(user, passwd))
 ```
+
 
 
 ## Useful docker commands
 ### Access a container via sh
+
+First, check what containers are running with
+docker ps -a
+
+Then run
+
 `docker exec -it <container id> sh`
 
 **e.g.**
 
-_docker exec -it 0736d5a22ad7 sh_
+```
+docker ps -a
+CONTAINER ID   IMAGE                        COMMAND                  CREATED          STATUS          PORTS                                            NAMES
+4b4f9a9f16bd   vospace/alpine-mysql:3.7     "/startup.sh"            56 minutes ago   Up 56 minutes   0.0.0.0:3306->3306/tcp                           vospace_mysql
+b51afffa9011   tomcat:9.0.70-jre8-vospace   "catalina.sh jpda run"   56 minutes ago   Up 56 minutes   0.0.0.0:8000->8000/tcp, 0.0.0.0:8080->8080/tcp   vospace_tomcat
+```
+
+_docker exec -it b51afffa9011 sh_
 
 ### Access a container via its image name
 `docker exec -it $(docker ps -a | grep "$IMAGE_NAME" | cut -d " " -f1) sh`
