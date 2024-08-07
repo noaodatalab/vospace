@@ -117,6 +117,8 @@ There still a few more things it can be done:
 - tomcat 5.5 and above
 
 ## Build and Installation
+
+### Apache ANT
 Under the ./java directory there is a `build.xml` *ant* file.
 
 To list available *ant* commands/targets do:
@@ -138,6 +140,18 @@ Default target: dist
 
 by running `ant` or `ant dist` a `vospace-2.0.war` will be created. Then simply copy/drop
 that file into your tomcat webapps directory and restart tomcat server.
+
+#### ANT with Docker
+There is a Docker file available for those that do not have a local Java environment. To run Apache Ant with docker first build the image and then run the desired the commands.
+1. If you do not have a local image for ANT first build it
+```
+docker build -f ./docker/ApacheAnt/Dockerfile -t apache-ant .
+```
+2. Now run various ANT commands using the image above:
+```
+docker run --hostname vostest -v ./java:/app apache-ant [command]
+```
+**Note:** hostname should match the appropriate properties file. Options are ```vostest, gp04, dltest, dldev, dldb1```
 
 ## Testing
 
