@@ -1,32 +1,49 @@
-FROM tomcat:9.0.93-jre8
+# Sets a specific version of tomcat
+ARG TOMCAT_VERSION=9.0.93-jre8
 
-# Create a tomcat user with appropriate UID and GID. This needs to match
-# the host files if mounting a VOSpace directory. We name it tomcat primarily
-# for legacy reasons
-# TODO: make the UID and GID and label build arg?
-RUN groupadd -g 81 tomcat && \
-    useradd -m -u 81 -g tomcat tomcat
+# Tomcat official: https://hub.docker.com/_/tomcat
+FROM tomcat:${TOMCAT_VERSION}
+
+# Sets the UID of the storage and vospace user
+ARG STORAGE_UID=81
+
+# Sets the GID of the storage and vospace user
+ARG STORAGE_GID=81
+
+# Sets the name of the vospace user (for legacy reasons the default is tomcat)
+ARG STORAGE_USER=tomcat
+
+# Sets the name of the vospace group (for legacy reasons the default is tomcat)
+ARG STORAGE_GROUP=tomcat
+
+# Sets the root location of the tree storage (for legacy reasons the default is /net/dl2/vospace/)
+# Note: the container path, host path, and database all need to be in agreement.
+ARG STORAGE_ROOT=/net/dl2/vospace/
+
+# Create a user with the provided UID and GID. This needs to match the host files when mounting
+# a VOSpace directory.
+RUN groupadd -g "${STORAGE_GID}" "${STORAGE_GROUP}" && \
+    useradd -m -u ${STORAGE_UID} -g ${STORAGE_GROUP} ${STORAGE_USER}
  
 # setup main VOS store directory
-# TODO: should this also be a build arg?
-RUN mkdir -p /net/dl2/vospace/
+RUN mkdir -p ${STORAGE_ROOT}
 
-# set directory permissions for tomcat user
-RUN chown -R tomcat:tomcat /usr/local/tomcat/* /net/dl2/vospace/
+# set directory permissions of the tomcat and storage directories
+RUN chown -R ${STORAGE_USER}:${STORAGE_GROUP} /usr/local/tomcat/* ${STORAGE_ROOT}
 
 # storage location
-VOLUME /net/dl2/vospace/users
+VOLUME ${STORAGE_ROOT}users
 
 # staging data location
-VOLUME /net/dl2/vospace/tmp
+VOLUME ${STORAGE_ROOT}tmp
 
 # Switch to the custom user
-USER tomcat
+USER ${STORAGE_USER}
 
-# set working directory to tomcat location
+# set working directory to tomcat location (this is the default install location)
 WORKDIR /usr/local/tomcat/
 
-# copy the distributable into the container
+# copy the vospace distributable into the container
 COPY ./java/vospace-2.0.war ./webapps/
 
 # start the tomcat server
