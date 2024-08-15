@@ -1,0 +1,6 @@
+# generated directories
+java/build/
+java/src/main/webapp
+
+# local env settings
+.env
