@@ -1,4 +1,4 @@
-FROM tomcat:9.0.70-jre8
+FROM tomcat:9.0.93-jre8
 
 # Create a tomcat user with appropriate UID and GID. This needs to match
 # the host files if mounting a VOSpace directory. We name it tomcat primarily
