@@ -35,7 +35,7 @@ jobs:
         docker run -d \
           --env-file .env.example \
           --name vospace-example \
-          --port 3001:8080/tcp \
+          --publish 3001:8080/tcp \
           ${{ env.IMAGE_TAG }}
 
     - name:  Test - perform health checks
