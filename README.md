@@ -145,13 +145,12 @@ that file into your tomcat webapps directory and restart tomcat server.
 There is a Docker file available for those that do not have a local Java environment. To run Apache Ant with docker first build the image and then run the desired the commands.
 1. If you do not have a local image for ANT first build it
 ```
-docker build -f ./docker/ApacheAnt/Dockerfile -t apache-ant .
+docker build -f Dockerfile.ApacheAnt -t apache-ant .
 ```
 2. Now run various ANT commands using the image above:
 ```
-docker run --hostname vostest -v ./java:/app apache-ant [command]
+docker run --rm  -v ./java:/app apache-ant [command]
 ```
-**Note:** hostname should match the appropriate properties file. Options are ```vostest, gp04, dltest, dldev, dldb1```
 
 ## Testing
 
