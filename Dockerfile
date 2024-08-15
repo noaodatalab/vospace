@@ -20,15 +20,19 @@ ARG STORAGE_GROUP=tomcat
 # Note: the container path, host path, and database all need to be in agreement.
 ARG STORAGE_ROOT=/net/dl2/vospace/
 
+# Sets the root location of the read only mass store. This can be used to attach various
+# high level science products which aren't associated with the mutable user storage.
+ARG MASS_STORE_ROOT=/net/mss1/archive/hlsp/
+
 # Create a user with the provided UID and GID. This needs to match the host files when mounting
 # a VOSpace directory.
 RUN groupadd -g "${STORAGE_GID}" "${STORAGE_GROUP}" && \
     useradd -m -u ${STORAGE_UID} -g ${STORAGE_GROUP} ${STORAGE_USER}
  
 # setup main VOS store directory
-RUN mkdir -p ${STORAGE_ROOT}
+RUN mkdir -p ${STORAGE_ROOT} ${MASS_STORE_ROOT}
 
-# set directory permissions of the tomcat and storage directories
+# set directory permissions of the tomcat and storage directories which require write access
 RUN chown -R ${STORAGE_USER}:${STORAGE_GROUP} /usr/local/tomcat/* ${STORAGE_ROOT}
 
 # storage location
@@ -36,6 +40,9 @@ VOLUME ${STORAGE_ROOT}users
 
 # staging data location
 VOLUME ${STORAGE_ROOT}tmp
+
+# mass store
+VOLUME ${MASS_STORE_ROOT}
 
 # Switch to the custom user
 USER ${STORAGE_USER}
