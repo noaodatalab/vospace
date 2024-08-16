@@ -1,6 +1,7 @@
 # generated directories
 java/build/
 java/src/main/webapp
+java/vospace-2.0.war
 
 # local env settings
 .env
