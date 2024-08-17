@@ -1,19 +1,4 @@
 --
--- Drop all the existing tables
---
-
-DROP TABLE IF EXISTS `properties`;
-DROP TABLE IF EXISTS `addl_props`;
-DROP TABLE IF EXISTS `capabilities`;
-DROP TABLE IF EXISTS `jobs`;
-DROP TABLE IF EXISTS `listings`;
-DROP TABLE IF EXISTS `metaproperties`;
-DROP TABLE IF EXISTS `results`;
-DROP TABLE IF EXISTS `transfers`;
-DROP TABLE IF EXISTS `nodes`;
-DROP TABLE IF EXISTS `links`;
-
---
 -- Table structure for table `capabilities`
 --
 
