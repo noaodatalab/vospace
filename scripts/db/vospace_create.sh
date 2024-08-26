@@ -4,10 +4,11 @@ set -e;
 if [ $# -lt 1 ]; then db='vospace_new'; else db=$1; fi
 if [ $# -lt 2 ]; then user='test'; else user=$2; fi
 if [ $# -lt 3 ]; then pw=''; else pw=$3; fi
+if [ $# -lt 4 ]; then serviceName='vos-mysql'; else serviceName=$4; fi
 
-echo "Starting init of $db for $user@vos-mysql with pw: $pw..."
+echo "Starting init of $db for $user@$serviceName with pw: $pw..."
 
-P_MYSQL="docker compose exec vos-mysql mariadb -h vos-mysql -u $user -p$pw $db -e"
+P_MYSQL="docker compose exec $serviceName mariadb -h $serviceName -u $user -p$pw $db -e"
 ivoa_props_file="$(pwd)/java/src/main/webapp/WEB-INF/classes/ivoa_props.properties"
 exd=`dirname $0`
 $P_MYSQL "$(< $(pwd)/scripts/db/vospace_create.sql)"
