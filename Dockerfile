@@ -26,14 +26,20 @@ ARG MASS_STORE_ROOT=/net/mss1/archive/hlsp/
 
 # Create a user with the provided UID and GID. This needs to match the host files when mounting
 # a VOSpace directory.
-RUN groupadd -g "${STORAGE_GID}" "${STORAGE_GROUP}" && \
-    useradd -m -u ${STORAGE_UID} -g ${STORAGE_GROUP} ${STORAGE_USER}
- 
-# setup main VOS store directory
-RUN mkdir -p ${STORAGE_ROOT} ${MASS_STORE_ROOT}
+RUN groupadd --force -g "${STORAGE_GID}" "${STORAGE_GROUP}" && \
+    useradd --non-unique -m -u ${STORAGE_UID} -g ${STORAGE_GROUP} ${STORAGE_USER}
 
-# set directory permissions of the tomcat and storage directories which require write access
-RUN chown -R ${STORAGE_USER}:${STORAGE_GROUP} /usr/local/tomcat/* ${STORAGE_ROOT}
+# first create the base directory and give our user permissions
+RUN mkdir -p /net && chown -R ${STORAGE_USER}:${STORAGE_GROUP} /net
+
+# permit access to tomcat directory
+RUN chown -R ${STORAGE_USER}:${STORAGE_GROUP} /usr/local/tomcat/*
+
+# Switch to the custom user
+USER ${STORAGE_USER}
+
+# setup main VOS store directory
+RUN mkdir -p ${STORAGE_ROOT} ${STORAGE_ROOT}users ${STORAGE_ROOT}tmp ${MASS_STORE_ROOT}
 
 # storage location
 VOLUME ${STORAGE_ROOT}users
@@ -43,9 +49,6 @@ VOLUME ${STORAGE_ROOT}tmp
 
 # mass store
 VOLUME ${MASS_STORE_ROOT}
-
-# Switch to the custom user
-USER ${STORAGE_USER}
 
 # set working directory to tomcat location (this is the default install location)
 WORKDIR /usr/local/tomcat/
