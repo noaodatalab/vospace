@@ -3,10 +3,10 @@ services:
     image: ghcr.io/astro-datalab/vospace/vospace:348b35f
     build:
         args:
-            STORAGE_USER: tomcat
-            STORAGE_UID: 81
-            STORAGE_GROUP: tomcat
-            STORAGE_GID: 81
+            STORAGE_USER: ${STORAGE_USER}
+            STORAGE_UID: ${STORAGE_UID}
+            STORAGE_GROUP: ${STORAGE_GROUP}
+            STORAGE_GID: ${STORAGE_GID}
     restart: unless-stopped
     env_file: .env
     ports:
