@@ -24,6 +24,10 @@ ARG STORAGE_ROOT=/net/dl2/vospace/
 # high level science products which aren't associated with the mutable user storage.
 ARG MASS_STORE_ROOT=/net/mss1/archive/hlsp/
 
+# add entrypoint script as executable
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Create a user with the provided UID and GID. This needs to match the host files when mounting
 # a VOSpace directory.
 RUN groupadd --force -g "${STORAGE_GID}" "${STORAGE_GROUP}" && \
@@ -55,6 +59,9 @@ WORKDIR /usr/local/tomcat/
 
 # copy the vospace distributable into the container
 COPY ./java/vospace-2.0.war ./webapps/
+
+# set the main entrpoint
+ENTRYPOINT [ "/entrypoint.sh" ]
 
 # start the tomcat server
 CMD ["catalina.sh", "run"]
