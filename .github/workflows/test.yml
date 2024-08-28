@@ -60,7 +60,7 @@ jobs:
         http://localhost:8002/vospace-2.0/vospace/
     
     - name: Seed database
-      run: scripts/dev/seed_test_data.sh .env.example
+      run: sleep 5s && scripts/dev/seed_test_data.sh .env.example
       
     
     - name: Run Python test suite
