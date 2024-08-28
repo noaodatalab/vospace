@@ -38,11 +38,11 @@ jobs:
 
     - name: Create storage user
       run: |
-        groupadd --force -g "1001" "example_group" && \
-        useradd --non-unique -m -u "1001" -g "example_group" "example_owner"
+        sudo groupadd --force -g "1001" "example_group" && \
+        sudo  useradd --non-unique -m -u "1001" -g "example_group" "example_owner"
 
     - name: Update storage permissions
-      run: chown -R example_owner:example_group ./fixtures/vosdata/
+      run: sudo chown -R example_owner:example_group ./fixtures/vosdata/
 
     - name: Build VOSpace image
       run: docker compose -f compose.dev.yml up -d --build
