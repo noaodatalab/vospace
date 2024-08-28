@@ -68,4 +68,7 @@ jobs:
       continue-on-error: true
     
     - name: Output container logs
-      run: docker logs $(basename $(pwd))-vos-api-1
+      run: docker compose logs vos-api
+    
+    - name: Output VOS properties
+      run: docker compose exec vos-api cat /usr/local/tomcat/webapps/vospace-2.0/WEB-INF/classes/vospace.properties
