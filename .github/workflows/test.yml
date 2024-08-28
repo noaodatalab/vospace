@@ -68,4 +68,4 @@ jobs:
       continue-on-error: true
     
     - name: Output container logs
-      run: docker logs $(PWD)-vos-api-1
+      run: docker logs $(basename $(basename $(pwd))-vos-api-1
