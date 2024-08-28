@@ -3,7 +3,7 @@ name: Tests and Checks
 on:
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
   build-check:
