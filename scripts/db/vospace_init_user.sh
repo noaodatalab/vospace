@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Initialize primary container nodes for the provided user
-# Arguments are <username>, <storage_root>, <db_name>, <db_host>, <db_pw>
+# Arguments are <username>, <storage_root>, <db_name>, <db_pw>, <db_host>
 d=`date +%Y-%m-%dT%H:%M:%S%z`
 if [ $# -lt 1 ]; then u=$USER; else u=$1; fi
 if [ $# -lt 2 ]; then v="/dl2/vospace/users"; else v=$2; fi
 if [ $# -lt 3 ]; then db='vospace_new'; else db=$3; fi
-if [ $# -lt 4 ]; then db_host='localhost'; else db_host=$4; fi
-if [ $# -lt 5 ]; then db_user='test'; else db_user=$5; fi
-if [ $# -lt 6 ]; then pw=''; else pw=$6; fi
+if [ $# -lt 4 ]; then db_user='test'; else db_user=$4; fi
+if [ $# -lt 5 ]; then pw=''; else pw=$5; fi
+if [ $# -lt 6 ]; then db_host='localhost'; else db_host=$6; fi
 
 # verify main root directory, public and tmp directories exist
 ERR=$(echo "if [ ! -e ${v}/${u} ]; then exit 1; fi" | docker compose exec -T vos-api bash -s - && echo "error")

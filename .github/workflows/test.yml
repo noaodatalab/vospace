@@ -1,0 +1,58 @@
+name: Tests and Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build local ANT image
+      run: docker build -f Dockerfile.ApacheAnt -t apache-ant .
+
+    - name: Create VOSpace Java build with ANT
+      run: docker run -v ./java:/app apache-ant dist
+
+    - name: Make sure ANT finished successfully
+      run: docker wait apache-ant
+  
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build local ANT image
+      run: docker build -f Dockerfile.ApacheAnt -t apache-ant .
+
+    - name: Create Java build with ANT
+      run: docker run --rm -v ./java:/app apache-ant dist
+
+    - name: Create .env file
+      run: cp .env .env.example
+
+    - name: Build VOSpace image
+      run: docker compose -f compose.dev.yml up -d --build
+
+    - name:  Wait for VOSpace to come online
+      run: |
+        curl \
+        --fail \
+        --connect-timeout 10 \
+        --retry 3 \
+        --retry-delay 5 \
+        --retry-max-time 40 \
+        --retry-all-errors \
+        -o /dev/null \
+        http://localhost:8002/vospace-2.0/vospace/
+    
+    - name: Seed database
+      run: scripts/dev/seed_test_data.sh .env.example
+    
+    - name: Run Python test suite
+      run: PUBLISH_PORT=8002 python3 -m unittest testing/test_vospace.py

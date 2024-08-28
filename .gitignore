@@ -5,3 +5,16 @@ java/vospace-2.0.war
 
 # local env settings
 .env
+
+# compiled files
+*.pyc
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python Distribution / packaging
+.Python
+build/
+dist/
