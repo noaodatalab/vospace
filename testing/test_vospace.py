@@ -111,12 +111,6 @@ class VOSpace(unittest.TestCase):
         res = requests.get(f"{node_url}/some--missing--dir", **args)
         self.assertEqual(res.status_code, 404)
 
-    def test_transfer(self):
-        pass
-
-    def test_copy_node(self):
-        pass
-
     def test_link_node(self):
         # first create a node that we can link later
         fro_dir = f"{self.testdir}/ln-target-{VosFile.key()}"
@@ -137,12 +131,6 @@ class VOSpace(unittest.TestCase):
         to_xml = REST.get_node(self.user1, to_dir)
         self.assertIn("vos:LinkNode", to_xml)
         self.assertIn(fro_dir, to_xml)
-
-    def test_lock_node(self):
-        pass
-
-    def test_move_node(self):
-        pass
 
     def test_set_property(self):
         """
@@ -182,8 +170,25 @@ class VOSpace(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIn(nprop.value, REST.get_node(self.user1, testdir))
 
-    def get_node_type(self):
-        pass
+    def test_transfer(self):
+        """
+        Various transfer creation tests
+        """
+
+    def test_copy_node(self):
+        """
+        Tests copying a node via transfer methods
+        """
+
+    def test_move_node(self):
+        """
+        Tests moving a node via transfer methods
+        """
+
+    def test_lock_node(self):
+        """
+        Tests locking a node
+        """
 
 if __name__ == "__main__":
     unittest.main()

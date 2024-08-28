@@ -1,5 +1,5 @@
 """
-Various utility methods for VOS test suite
+Various utility classes for the VOS test suite
 """
 from dataclasses import dataclass
 from datetime import datetime
