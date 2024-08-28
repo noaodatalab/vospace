@@ -60,7 +60,7 @@ jobs:
         http://localhost:8002/vospace-2.0/vospace/
     
     - name: Seed database
-      run: sleep 5s && scripts/dev/seed_test_data.sh .env.example
+      run: sleep 5s && scripts/dev/seed_test_data.sh .env && sleep 3s
       
     
     - name: Run Python test suite
@@ -69,6 +69,9 @@ jobs:
     
     - name: Output container logs
       run: docker compose logs vos-api
+    
+    - name: Output VOS logs
+      run: docker compose exec vos-api cat /usr/local/tomcat/logs/vospace.log
     
     - name: Output VOS properties
       run: docker compose exec vos-api cat /usr/local/tomcat/webapps/vospace-2.0/WEB-INF/classes/vospace.properties
