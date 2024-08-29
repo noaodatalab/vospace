@@ -33,12 +33,16 @@ docker run \
 ```
 
 ### Docker Compose
+
 A docker compose file is provided which can be used to easily startup the VOSpace API with an included MySQL database.
 Use the following command to start VOSpace with compose.
+
 ```
 docker compose up
 ```
+
 To initialize the database schema on first startup you can use the `vospace_create.sh` script. eg:
+
 ```
 ./scripts/db/vospace_create.sh "$MYSQL_DB_NAME" "$MYSQL_USER" "$MYSQL_PW" vos-mysql
 ```
@@ -68,27 +72,39 @@ To initialize the database schema on first startup you can use the `vospace_crea
 |          | `CAPS_IDENTIFIER`      | Set the identifier of the VOS capabilities            | `ivo://datalab.noirlab/vospace/capabilities`          |
 |          | `DEBUG`                | Enable debugging                                      | `false`                                               |
 
-
 ## Development
+
 The main application code resides in the `java/` directory. We primarily use Docker but the application build files
 can be used and deployed directly if desired.
 
 ### Installation
 
-You can run a local instance of the VOSpace server using the following steps:
+#### Docker
 
 1. clone this repository into some directory  
 ```git clone git@github.com:astro-datalab/vospace.git .```
 2. create the `.env` file and add the appropriate settings. (see `.env.example`)
-3. generate a build with ANT (If you do not have an ANT image you can build it with ```docker build -f Dockerfile.ApacheAnt -t apache-ant .```)
-```
-docker run --rm  -v ./java:/app apache-ant dist
-```
-3. start the services with compose  
+3. generate a build with ANT  
+```docker run --rm  -v ./java:/app apache-ant dist```  
+**Note:** If you do not have an ANT image you can build it with  
+```docker build -f Dockerfile.ApacheAnt -t apache-ant .```
+4. start the services with compose  
 ```docker compose -f compose.dev.yml up```
-4. Seed the database with test data (this setup the schema and add some test nodes)  
+5. Seed the database with test data (this setup the schema and add some test nodes)  
 ```./scripts/dev/seedTestData.sh .env```
-4. navigate to `http://localhost:3000/vospace-2.0/vospace/` (or the host and port you used)
+6. navigate to `http://localhost:3000/vospace-2.0/vospace/` (or the host and port you used)
+
+#### ANT+Java
+
+If you prefer to not use the provided Docker tools you can also build this application directly
+with ANT. This approach will not populate the `vospace.properties` file so you must
+fill in the values of the file prior to build.
+
+1. clone this repository into some directory  
+```git clone git@github.com:astro-datalab/vospace.git .```
+2. generate a build with Apache ANT  
+```ant build```
+3. Deploy your `.war` file to a compatible environment (such as with Tomcat)
 
 ### Testing
 
@@ -98,12 +114,48 @@ tests cover the REST interface itself and not the underlying system components.
 To run the test suite, ensure you have an instance running usually at the default
 port of 8002 (you can also change the port using a SERVICE_PORT environment variable.)
 
-```
+```sh
 python3 -m unittest testing/*.py
 ```
 
 If your service is on a different port pass a `SERVICE_PORT` setting to the command:
 
-```
+```sh
 PUBLISH_PORT=3002 python3 -m unittest testing/*.py
 ```
+
+### Notes for Legacy Users
+
+This repository has been refactored to heavily rely on Docker. You can use this
+repository without Docker but there are a couple of things to make note of when
+migrating from older versions of the codebase.
+
+**vospace.properties**  
+The previous host specific `vospace.properties` files no longer exist. These now
+get populated from the environment at runtime (only when using Docker). If you
+build the application without Docker you will need to populate the properties
+file yourself. See the legacy branch for an example of an old properties file:
+<https://github.com/astro-datalab/vospace/blob/legacy/java/vospace.properties.gp04>
+
+  You can also use this snippet to replace the properties file with your current
+environment settings (see `.env.example` for example environment):
+
+  ```sh
+  envsubst < java/vospace.properties > java/vospace.properties
+  ```
+
+**scripts**  
+Various host specific scripts have been moved into "archived" directories and will
+eventually be fully retired. If you need to use these scripts keep in mind that
+their directory might be different and you might need to restore them to their
+original directory (`/java`). Additionally, some of these scripts may not be
+compatible with the new Docker version of the service. Archived scripts can be
+found at `./scripts/archived`.
+
+**testing**  
+The old integration and load test suites was moved into the `testing/archived`
+directory in favor of a test suite which focuses solely on the VOS API interface
+itself. This test suite will be evaluated in the future and restored or moved as
+applicable. You can still run this integration and scale test but note that
+the files have moved and might need some adjustment. We now prefer our new test
+suite which focuses on VOSpace only and doesn't connect to storage manager.
