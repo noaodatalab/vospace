@@ -48,6 +48,11 @@ To initialize the database schema on first startup you can use the `vospace_crea
 ```
 
 ### Environment Settings
+Various environment settings can be configured in a `.env` file. See the `.env.example` file
+for an example of how to configure your environment.  
+
+**Note**: The database settings should match your database configuration when using a standalone database.
+**Note**: The storage settings should match your host environment when mounting a network file system.
 
 | File     | Variable               | Description                                           | Example                                               |
 |----------|------------------------|-------------------------------------------------------|-------------------------------------------------------|
@@ -145,17 +150,17 @@ environment settings (see `.env.example` for example environment):
   ```
 
 **scripts**  
-Various host specific scripts have been moved into "archived" directories and will
-eventually be fully retired. If you need to use these scripts keep in mind that
-their directory might be different and you might need to restore them to their
-original directory (`/java`). Additionally, some of these scripts may not be
-compatible with the new Docker version of the service. Archived scripts can be
-found at `./scripts/archived`.
+Various host specific scripts have been moved into `archived/` directories and will
+either be restored or retired in the future. If you need to use these
+scripts keep in mind that their directory might be different and you might need
+to restore them to their original directory (`/java`). Additionally, some of these
+scripts may not be compatible with the new Docker version of the service. Archived
+scripts can be found at `./scripts/archived`.
 
 **testing**  
-The old integration and load test suites was moved into the `testing/archived`
-directory in favor of a test suite which focuses solely on the VOS API interface
+The old integration and load test suites were moved into the `testing/archived`
+directory in favor of a test suite which focuses solely on the VOS REST interface
 itself. This test suite will be evaluated in the future and restored or moved as
-applicable. You can still run this integration and scale test but note that
-the files have moved and might need some adjustment. We now prefer our new test
-suite which focuses on VOSpace only and doesn't connect to storage manager.
+appropriate. You can still run this integration and scale test but note that
+the files have moved and might need some adjustment. If you want to test the
+VOSpace server, refer to the testing section above.
