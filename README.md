@@ -77,6 +77,65 @@ for an example of how to configure your environment.
 |          | `CAPS_IDENTIFIER`      | Set the identifier of the VOS capabilities            | `ivo://datalab.noirlab/vospace/capabilities`          |
 |          | `DEBUG`                | Enable debugging                                      | `false`                                               |
 
+
+### Hooks
+Various hooks are available and some configuration is available via the environment settings.
+
+#### **Authentication** - `/isValidToken`  
+For each protected request an authentication hook will be called. You should configure your
+auth service to accommodate this request. **Note**: the token will be loaded from the `X-DL-AuthToken`
+request header (at the moment this isn't configurable). Additional details of the request are provided below:
+
+URL: `${AUTH_BASE_URL}/isValidToken`  
+Method: `GET`  
+URL Params:  
+- **token**: the token to validate
+
+Headers:  
+- **X-DL-AuthToken**: the provided auth token
+
+Expected Responses:
+- **Response Status**: 200  
+  **Response Body**: True  
+  _Description_: Indicates successful authentication
+
+- **Response Status**: 401  
+  **Response Body**: False  
+  _Description_: Indicates an error during authentication
+
+Example request as curl
+```
+curl "http://authservice/isValidToken?token=example_owner.1.1.notarealtoken"
+```
+
+#### **Authorization** - `/hasAccess`  
+For each request to a node resource an authorization hook will be called. You should configure your
+auth service to accommodate this request. **Note**: the token will be loaded from the `X-DL-AuthToken`
+request header (at the moment this isn't configurable). Additional details of the request are provided below:
+
+URL: `${AUTH_BASE_URL}/hasAccess`  
+Method: `GET` 
+URL Params:  
+- **owner**: the registered owner of node  
+- **group**: the registered group of the node
+
+Headers:  
+- **X-DL-AuthToken**: the provided auth token
+
+Expected Responses:
+- **Response Status**: 200  
+  **Response Body**: OK  
+  _Description_: Indicates that the user has access to the resource based on the user and group settings  
+
+- **Response Status**: 401  
+  _Description_: Indicates that the user does not have access to the resource
+
+Example request as curl
+```
+curl -H 'X-DL-AuthToken: example_owner.1.1.notarealtoken' "http://authservice/hasAccess?owner=example_owner&group=example_group"
+
+```
+
 ## Development
 
 The main application code resides in the `java/` directory. We primarily use Docker but the application build files

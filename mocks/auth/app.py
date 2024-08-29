@@ -18,5 +18,12 @@ def has_access():
 	"""
 	return "OK"
 
+@app.route('/isValidToken')
+def is_valid_token():
+	"""
+	This mocks a response for a call to /isValidToken
+	"""
+	return "True"
+
 if __name__ == '__main__':
 	app.run(host='0.0.0.0', port=8000)
