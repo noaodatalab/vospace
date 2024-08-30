@@ -1,6 +1,7 @@
 """
 Various utility classes for the VOS test suite
 """
+import re
 from dataclasses import dataclass
 from datetime import datetime
 import requests
@@ -83,6 +84,24 @@ class VosXML:
             </node>"
         )
 
+    @staticmethod
+    def transfer(user: str, source: str, dest: str):
+        """
+        Return the XML to generate a new transfer
+        """
+        target_uri = f"{VosXML.base_uri}/{user}/{source}"
+        dest_uri = f"{VosXML.base_uri}/{user}/{dest}"
+
+        return (
+            f"<vos:transfer xmlns:vos='http://www.ivoa.net/xml/VOSpace/v2.0'>\
+                <vos:target>{target_uri}</vos:target>\
+                <vos:direction>{dest_uri}</vos:direction>\
+                <vos:view uri='ivo://ivoa.net/vospace/core#defaultview' original='True'/>\
+                <vos:protocol uri=''/>\
+                <vos:keepBytes>False</vos:keepBytes>\
+            </vos:transfer>"
+        )
+
 class VosHTTP:
     """
     Provides various methods for calling VOS API endpoints
@@ -122,6 +141,23 @@ class VosHTTP:
         if res.status_code != 200:
             raise RuntimeError(f"Error loading node with uri {dirname}")
         return res.text
+
+    def transfer_status(self, user: TestUser, url: str):
+        """
+        Return the status of a transfer
+        """
+        job_status = requests.get(
+            url,
+            timeout=5000,
+            headers={
+                'X-DL-AuthToken': user.token
+            }
+            )
+        raw_xml = job_status.text
+        phase = "QUEUED"
+        if m := re.findall(r".+\<phase\>(\w+)<.+", raw_xml, flags=re.M):
+            phase = m[0]
+        return phase
 
 class VosFile:
     """

@@ -80,7 +80,7 @@ for an example of how to configure your environment.
 
 ### Hooks
 
-Various hooks are available and some configuration is available via the environment settings.
+Various hooks are registered and some configuration is available via the environment settings.
 
 #### **Authentication** - `/isValidToken`  
 
@@ -121,7 +121,7 @@ auth service to accommodate this request. **Note**: the token will be loaded fro
 request header (at the moment this isn't configurable). Additional details of the request are provided below:
 
 URL: `${AUTH_BASE_URL}/hasAccess`  
-Method: `GET`
+Method: `GET`  
 URL Params:  
 
 - **owner**: the registered owner of node  
@@ -204,7 +204,7 @@ This repository has been refactored to heavily rely on Docker. You can use this
 repository without Docker but there are a couple of things to make note of when
 migrating from older versions of the codebase.
 
-**vospace.properties**  
+**Properties Files**  
 The previous host specific `vospace.properties` files no longer exist. These now
 get populated from the environment at runtime (only when using Docker). If you
 build the application without Docker you will need to populate the properties
@@ -218,7 +218,7 @@ environment settings (see `.env.example` for example environment):
   envsubst < java/vospace.properties > java/vospace.properties
   ```
 
-**scripts**  
+**Scripts**  
 Various host specific scripts have been moved into `archived/` directories and will
 either be restored or retired in the future. If you need to use these
 scripts keep in mind that their directory might be different and you might need
@@ -226,7 +226,7 @@ to restore them to their original directory (`/java`). Additionally, some of the
 scripts may not be compatible with the new Docker version of the service. Archived
 scripts can be found at `./scripts/archived`.
 
-**testing**  
+**Testing**  
 The old integration and load test suites were moved into the `testing/archived`
 directory in favor of a test suite which focuses solely on the VOS REST interface
 itself. This test suite will be evaluated in the future and restored or moved as

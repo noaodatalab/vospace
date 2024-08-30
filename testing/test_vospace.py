@@ -5,6 +5,7 @@ Test VOSpace API interface
 import os
 import unittest
 import requests
+import time
 from testing.utils import (
     VosHTTP,
     VosFile,
@@ -170,6 +171,59 @@ class VOSpace(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIn(nprop.value, REST.get_node(self.user1, testdir))
 
+    def test_move_node(self):
+        """
+        Tests moving a node via transfer methods
+        """
+        # first create a node that we can move later, we'll also verify that
+        # we can load the created node
+        fro_dir = f"{self.testdir}/mv-src-{VosFile.key()}"
+        REST.create_container(self.user1, fro_dir)
+        REST.get_node(self.user1, fro_dir)
+
+        # now move the created node to the "to_dir"
+        to_dir = f"{self.testdir}/mv-dest-{VosFile.key()}"
+        transfer_xml = VosXML.transfer(self.user1.name, fro_dir, to_dir)
+        res = requests.post(
+            f"{SERVICE_URL}/sync",
+            data=transfer_xml,
+            headers={
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-DL-AuthToken': self.user1.token
+            },
+            timeout=5000,
+            allow_redirects=False
+            )
+
+        # we remove the /results/transferDetails from the returned URL
+        # and then use that to check the status
+        # TODO: This is how we do it in our client, we should verify this
+        # is appropriate
+        job_url = res.headers.get('Location').replace(
+            "/results/transferDetails", "")
+
+        # use a polling method to wait for the job to finish
+        phase = REST.transfer_status(self.user1, job_url)
+        while phase.upper() not in ["ERROR", "COMPLETED"]:
+            time.sleep(0.5)
+            phase = REST.transfer_status(self.user1, job_url)
+        self.assertEqual(phase, "COMPLETED")
+
+        # once the job succeeds then retrieve the node and make sure it exists
+        # and is valid
+        moved_node = REST.get_node(self.user1, to_dir)
+        self.assertGreater(len(moved_node), 0)
+        self.assertIn(to_dir, moved_node)
+        # now make sure loading the original node throws an error
+        self.assertRaises(
+            RuntimeError, lambda x="": REST.get_node(self.user1, fro_dir)
+            )
+
+    def test_lock_node(self):
+        """
+        Tests locking a node
+        """
+
     def test_transfer(self):
         """
         Various transfer creation tests
@@ -178,16 +232,6 @@ class VOSpace(unittest.TestCase):
     def test_copy_node(self):
         """
         Tests copying a node via transfer methods
-        """
-
-    def test_move_node(self):
-        """
-        Tests moving a node via transfer methods
-        """
-
-    def test_lock_node(self):
-        """
-        Tests locking a node
         """
 
 if __name__ == "__main__":
