@@ -55,58 +55,58 @@ for an example of how to configure your environment.
 **Note**: The database settings should match your database configuration when using a standalone database.
 **Note**: The storage settings should match your host environment when mounting a network file system.
 
-| File     | Variable               | Description                                           | Example                                               |
-|----------|------------------------|-------------------------------------------------------|-------------------------------------------------------|
-| `./.env` | `DATA_URL`             | External address of the data URL                      | `http://localhost:8080/vospace-2.0/vospace/data`      |
-|          | `TRANSFER_URL`         | External address of the transfers URL                 | `http://localhost:8080/vospace-2.0/vospace/transfers` |
-|          | `AUTH_BASE_URL`        | Base URL of the auth service                          | `http://auth-mock:8000`                               |
-|          | `MYSQL_DB_URL`         | Database url in the form of [host]/[db_name]          | `vos-mysql/vospace_dev`                               |
-|          | `MYSQL_DB_NAME`        | Name of the mysql database                            | `vospace_dev`                                         |
-|          | `MYSQL_USER`           | Name of the mysql user                                | `testuser`                                            |
-|          | `MYSQL_PW`             | The password for the mysql user                       | `[secret]`                                            |
-|          | `MYSQL_ROOT_PW`        | The root password for mysql                           | `[secret]`                                            |
-|          | `PORT`                 | The port of the service in the container              | `8080`                                                |
-|          | `PUBLISH_PORT`         | The port to publish when using compose                | `8002`                                                |
-|          | `STORAGE_ROOT`         | Root location of the file store                       | `/net/dl2/vospace/users`                              |
-|          | `STAGING_ROOT`         | Root location for staged data                         | `/net/dl2/vospace/tmp`                                |
-|          | `STORAGE_USER`         | User for the file store (this should match the host)  | `example_owner`                                       |
-|          | `STORAGE_UID`          | UID for the file store (this should match the host)   | `1001`                                                |
-|          | `STORAGE_GROUP`        | Group for the file store (this should match the host) | `example_group`                                       |
-|          | `STORAGE_GID`          | GID for the file store (this should match the host)   | `1001`                                                |
-|          | `VOS_IDENTIFIER`       | Set the VOS identifier                                | `ivo://datalab.noirlab/vospace`                       |
-|          | `ROOT_NODE_IDENTIFIER` | Set the identifier of the root node                   | `vos://datalab.noirlab!vospace`                       |
-|          | `CAPS_IDENTIFIER`      | Set the identifier of the VOS capabilities            | `ivo://datalab.noirlab/vospace/capabilities`          |
-|          | `DEBUG`                | Enable debugging                                      | `false`                                               |
+| Variable Name          | Description                                           | Example                                               |
+|------------------------|-------------------------------------------------------|-------------------------------------------------------|
+| `DATA_URL`             | External address of the data URL                      | `http://localhost:8080/vospace-2.0/vospace/data`      |
+| `TRANSFER_URL`         | External address of the transfers URL                 | `http://localhost:8080/vospace-2.0/vospace/transfers` |
+| `AUTH_BASE_URL`        | Base URL of the auth service                          | `http://auth-mock:8000`                               |
+| `MYSQL_DB_URL`         | Database url in the form of [host]/[db_name]          | `vos-mysql/vospace_dev`                               |
+| `MYSQL_DB_NAME`        | Name of the mysql database                            | `vospace_dev`                                         |
+| `MYSQL_USER`           | Name of the mysql user                                | `testuser`                                            |
+| `MYSQL_PW`             | The password for the mysql user                       | `[secret]`                                            |
+| `MYSQL_ROOT_PW`        | The root password for mysql                           | `[secret]`                                            |
+| `PORT`                 | The port of the service in the container              | `8080`                                                |
+| `PUBLISH_PORT`         | The port to publish when using compose                | `8002`                                                |
+| `STORAGE_ROOT`         | Root location of the file store                       | `/net/dl2/vospace/users`                              |
+| `STAGING_ROOT`         | Root location for staged data                         | `/net/dl2/vospace/tmp`                                |
+| `STORAGE_USER`         | User for the file store (this should match the host)  | `example_owner`                                       |
+| `STORAGE_UID`          | UID for the file store (this should match the host)   | `1001`                                                |
+| `STORAGE_GROUP`        | Group for the file store (this should match the host) | `example_group`                                       |
+| `STORAGE_GID`          | GID for the file store (this should match the host)   | `1001`                                                |
+| `VOS_IDENTIFIER`       | Set the VOS identifier                                | `ivo://datalab.noirlab/vospace`                       |
+| `ROOT_NODE_IDENTIFIER` | Set the identifier of the root node                   | `vos://datalab.noirlab!vospace`                       |
+| `CAPS_IDENTIFIER`      | Set the identifier of the VOS capabilities            | `ivo://datalab.noirlab/vospace/capabilities`          |
+| `DEBUG`                | Enable debugging                                      | `false`                                               |
 
 ### Hooks
 
 Various hooks are registered and some configuration is available via the environment settings.
 
-#### **Authentication** - `/isValidToken`  
-
+#### `/isValidToken`
+___
 For each protected request an authentication hook will be called. You should configure your
 auth service to accommodate this request. **Note**: the token will be loaded from the `X-DL-AuthToken`
-request header (at the moment this isn't configurable). Additional details of the request are provided below:
+request header (at the moment this isn't configurable). Additional details of the request are provided below:  
 
-URL: `${AUTH_BASE_URL}/isValidToken`  
-Method: `GET`  
-URL Params:  
+**URL:** `${AUTH_BASE_URL}/isValidToken`  
+**Method:** `GET`  
+**URL Params:**  
 
-- **token**: the token to validate
+- `token`: the token to validate
 
-Headers:  
+**Headers:**  
 
-- **X-DL-AuthToken**: the provided auth token
+- `X-DL-AuthToken`: the provided auth token
 
-Expected Responses:
+**Expected Responses:**
 
-- **Response Status**: 200  
-  **Response Body**: True  
-  _Description_: Indicates successful authentication
+- Response Status: `200`  
+  Response Body: `True`  
+  _Indicates successful authentication_
 
-- **Response Status**: 401  
-  **Response Body**: False  
-  _Description_: Indicates an error during authentication
+- Response Status: `401`  
+  Response Body: `False`  
+  _Indicates an error during authentication_
 
 Example request as curl
 
@@ -114,31 +114,31 @@ Example request as curl
 curl "http://authservice/isValidToken?token=example_owner.1.1.notarealtoken"
 ```
 
-#### **Authorization** - `/hasAccess`  
-
+#### `/hasAccess`  
+---
 For each request to a node resource an authorization hook will be called. You should configure your
 auth service to accommodate this request. **Note**: the token will be loaded from the `X-DL-AuthToken`
 request header (at the moment this isn't configurable). Additional details of the request are provided below:
 
-URL: `${AUTH_BASE_URL}/hasAccess`  
-Method: `GET`  
-URL Params:  
+**URL:** `${AUTH_BASE_URL}/hasAccess`  
+**Method:** `GET`  
+**URL Params:**  
 
-- **owner**: the registered owner of node  
-- **group**: the registered group of the node
+- `owner`: the registered owner of node  
+- `group`: the registered group of the node
 
-Headers:  
+**Headers:**  
 
-- **X-DL-AuthToken**: the provided auth token
+- `X-DL-AuthToken`: the provided auth token
 
-Expected Responses:
+**Expected Responses:**
 
-- **Response Status**: 200  
-  **Response Body**: OK  
-  _Description_: Indicates that the user has access to the resource based on the user and group settings  
+- Response Status: `200`  
+  Response Body: `OK`  
+  _Indicates that the user has access to the resource based on the user and group settings_  
 
-- **Response Status**: 401  
-  _Description_: Indicates that the user does not have access to the resource
+- Response Status: `401`  
+  _Indicates that the user does not have access to the resource_
 
 Example request as curl
 
