@@ -5,10 +5,10 @@ ARG TOMCAT_VERSION=9.0.93-jre8
 FROM tomcat:${TOMCAT_VERSION}
 
 # Sets the UID of the storage and vospace user
-ARG STORAGE_UID=81
+ARG STORAGE_UID=91
 
 # Sets the GID of the storage and vospace user
-ARG STORAGE_GID=81
+ARG STORAGE_GID=91
 
 # Sets the name of the vospace user (for legacy reasons the default is tomcat)
 ARG STORAGE_USER=tomcat
