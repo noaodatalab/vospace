@@ -1,6 +1,6 @@
 services:
   vos-api:
-    image: ghcr.io/astro-datalab/vospace/vospace:348b35f
+    image: ghcr.io/astro-datalab/vospace/vospace:4686a1a
     build:
         args:
             STORAGE_USER: ${STORAGE_USER}
