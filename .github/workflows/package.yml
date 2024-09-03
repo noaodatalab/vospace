@@ -7,9 +7,9 @@ env:
 
 on:
   push:
-    # branches:
-    #   - main
-    #   - 'hotfix-*'
+    branches:
+      - main
+      - 'hotfix-*'
 
 jobs:
   package-docker:
