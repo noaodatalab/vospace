@@ -60,6 +60,15 @@ WORKDIR /usr/local/tomcat/
 # copy the vospace distributable into the container
 COPY ./java/vospace-2.0.war ./webapps/
 
+# the service is considered healthy when the root VOSpace document is available
+HEALTHCHECK \
+    --interval=10m \
+    --timeout=30s \
+    --start-period=10s \
+    --retries=3 \
+    CMD \
+    curl -f "http://localhost:8080/vospace-2.0/vospace" || exit 1
+
 # set the main entrpoint
 ENTRYPOINT [ "/entrypoint.sh" ]
 
